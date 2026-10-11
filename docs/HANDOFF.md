@@ -49,7 +49,11 @@
 - t39 ui2：可玩页第二轮。邺城没拿到兵符时桌上不放兵符；收束页改成竹简加封泥的装置；旁白加淡底。截图存 /tmp/play-shots/v8-*。
 - t40 lab3：推演机打磨。岔路刻出槽道并留走痕；去掉浮动说明框；调试入口只在 dev 出现；导师灯牌接真话；手机上把机器放大。截图存 /tmp/lab-shots4/。
 - t41 film3：放映厅手机竖屏香炉挡人；拿起时木签缩小、和物件同框；底部黑卡改成台沿刻字。截图存 /tmp/film-shots/v3-*。
-- **t42 sol2：docs/design/LIVING.md**，角色活起来的总体设计，已追加用户 m01234 的三点。交回后由 captain 审，审完按其中第 5 节拆成 3–5 个实现任务派下去。
+- t42 sol2 已完成 docs/design/LIVING.md，已经按其中 §10 拆成实现任务：
+  - t43 sim2：开源审查，看角色的记忆、上下文组装和 LLM 循环有没有现成的可用（Concordia、AI Town、generative_agents、Letta、mem0、graphiti、cognee、langgraphjs），交付 docs/research/agent-memory/DECISION.md。
+  - t44 kernel2：核心生活循环（已授权写 shared/core、shared/agents、session、play，以及新增 shared/life）。opt-in 开关，默认关闭时逐字节不变；记忆放在 store/recall/consolidate/forget 接口后面。
+  - t45 scenes2（依赖 t44）：取符之夜的生活配方。t46 ui2、t47 film3、t48 lab3 分别做三个页面（依赖 t44、t45 和各自的打磨任务）。t49 qa2：tests/living.test.js。
+- 额度接力（2026-10-11 设好）：Magpie 里有一个按顺序路由的分组 `group/captain`（anthropic/claude-opus-5-5 → opencode-zen/claude-opus-5-5 → codex/gpt-6.1-sol → opencode-go/deepseek-v4.1-flash），配置在 ~/.config/magpie/providers.json 的 groups 里，routing 是 "order"，备份在 /tmp/magpie-providers.before-captain.json。captain 会话选这个模型，前一个额度用完（402/429）就自动换下一个。同一段对话有粘性：换过去以后会一直留在接手的模型上。
 
 交回时 captain 要做的：看截图（贴给用户）→ 跑 npm test 和对照组 → 用费曼格式汇报 → 不合格的地方另开一个跟进任务（不要自己动手改）。
 
