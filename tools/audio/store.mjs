@@ -21,7 +21,7 @@ export class AudioAssetStore {
     const canonical = path.join(this.home,'assets',`${key}.${format}`);
     fs.mkdirSync(path.dirname(canonical),{recursive:true,mode:0o700});
     const tmp = `${canonical}.${randomUUID()}.tmp`; fs.writeFileSync(tmp,buffer,{mode:0o600}); fs.renameSync(tmp,canonical);
-    const row = {key,file:canonical,format,bytes:buffer.length,...meta}; writeJSON(`${canonical}.json`,row);
+    const row = {...meta,key,file:canonical,format,seconds:result.seconds ?? null,bytes:buffer.length}; writeJSON(`${canonical}.json`,row);
     if (req.out) { const out = path.resolve(req.out); fs.mkdirSync(path.dirname(out),{recursive:true}); fs.writeFileSync(out,buffer); writeJSON(`${out}.json`,{...row,file:out}); }
     const assets = readJSON(this.file,{}); assets[key] = row; writeJSON(this.file,assets);
     return {...row,file:req.out ? path.resolve(req.out) : canonical};
