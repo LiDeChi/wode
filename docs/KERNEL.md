@@ -76,6 +76,11 @@ export const SCENES = { granary: { … } };
 
 `gate: false` 是给围城粮仓留的口子：这一场不受导演授权约束，内核的 `allowed()` 见到它就放行（意图的 `allowed` 与画面上的选项都恒为真）。原因是旧实现对粮仓从来不查闸门——旧 `view()` 对粮仓选项一律写 `allowed: true`，`granaryChoose` 也不看 `allowed`（A 组导演在暮色那一拍只授 `[say, watch]`，粮仓的「给」照样能做）。只有粮仓声明这个字段。
 
+写规则表时有两处必须守住（都栽过，改场景的人请照做）：
+
+1. **`when` 只能写这次意图本身或 `apply` 不会改的状态，别写 `apply` 会翻的字段。** 匹配发生在控制器 `apply` 之后：围城粮仓的 `desk.apply` 会在「检验」那一步就把 `phase` 从 `inspect` 翻成 `decide`，所以 `when:{ctrl:{desk:{phase:…}}}` 会让两条规则在同一次 dispatch 上都命中，`work` 效果在检验时也多跑一遍——账本多 7 条，680 个脚本里 582 个对不上。改成按意图写（`when:{intent:['seal','note','pledge']}` / `{intent:['report','witness','hide']}`）就归零。要看「事后状态」只能读 `facts` 里已经算好的字段（`accepted`、`backlash`、`verdict`、`tell`…）。
+2. **每一幕自己的计数（`steps` 之类）不要放在各幕共用的那条路径上。** 旧实现只在取符之夜数 `a.steps`；把自增放进所有幕的公共分支，`state.play.acts.daliang` 也会长出 `steps` 字段——对照组不比它，但存档形状变了，`estimateSeconds()` 这类读数会跟着漂。
+
 ---
 
 ## 3. 控制器接口
