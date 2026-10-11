@@ -12,13 +12,20 @@
 //   loyal      总选讲义的：选项里读得出「义」的就选它；读不出来走稳妥路线（夜里先递令牌再挪）
 //   contrarian 总选反着来：反过来挑最后一个能选的；进粮仓先把守仓人换成另一个
 //
+// 两个新组合（被偷听、押粮）走的是另一条进场路：createPlay(session).enterExtra(id)。
+// 同一条 walk 多收一个 enter 回调就能驱动它们，四种玩家、指纹去重、有限深度枚举全部照旧复用
+// （见下面「两个新组合」那一节），所以新场景接进来不用再写一套模拟器。
+//
 // 地板（§6）：
 //   没有死路             任何时刻 view().options 里至少有一个 allowed（wait 永远可选）
 //   三种结局都走得到      history / jinbi-lives / broken（外加对取符之夜做有限深度枚举）
 //   一种诉求说服不了所有人 sameAppealWinsAll 必须是 false
 //   一局 8–12 分钟        estimateSeconds 的 min/max 落在这个区间
+//   新组合也守地板        每个新组合：四种玩家 × 两位导演 × 若干种子都不卡（stuck=0）、
+//                         枚举出来的每个结局至少有一条路走到、任何局面都留着一个能推进时间的选项
+//                         （不会出现“只会被拒、又永远不耗时间”的死循环）
 
-import { createPlay, estimateSeconds } from './play.js';
+import { createPlay, estimateSeconds, EXTRA_IDS } from './play.js';
 import { makeRng } from '../core/rng.js';
 
 /** 见导师时说的那句话（和对照组 tests/fixtures/play-scripts.mjs 一致，玩家画像才可比） */
@@ -69,7 +76,8 @@ function appealOf(option) {
 }
 
 const allowedOptions = (v) => (v.options || []).filter((o) => o.allowed !== false);
-const isActView = (v) => v.stage === 'act' || v.stage === 'granary';
+/** 有选项可做的画面：分幕、粮仓，以及两个新组合（stage 'extra'） */
+const isActView = (v) => v.stage === 'act' || v.stage === 'granary' || v.stage === 'extra';
 
 /** 第一个能动的选项（wait 除外）；全是 wait 就还是 wait */
 const pickFirst = (opts) => opts.find((o) => o.verb !== 'wait') || opts[0];
@@ -129,16 +137,17 @@ function chooser(plan, memo) {
 /**
  * 走一局。step(view, opts, play) 决定每一步做什么（watch / ask / choose / keeper）。
  * shouldStop 用来到半路停下（枚举取符之夜时，停在那一幕的起点）。
+ * enter(play) 用来换一条进场路（两个新组合走 enterExtra(id)）；不传就是原作的分幕流程。
  * 返回 { play, view, acts, path, error }：error 非空就是走不下去——地板检查里的“死路”。
  */
-function walk(createSession, answers, step, shouldStop) {
+function walk(createSession, answers, step, shouldStop, enter) {
   const s = createSession();
   s.meet(answers, NEED);
   const play = createPlay(s);
   const acts = [];
   const path = [];
   play.begin();
-  let v = play.next();
+  let v = enter ? enter(play) : play.next();
   let guard = 0;
   while (v.stage !== 'done' && guard++ < MAX_STEPS) {
     if (shouldStop && shouldStop(v)) return { play, view: v, acts, path, error: null };
@@ -243,6 +252,133 @@ export function simulate(createSession, opts = {}) {
     path: r.path,
     stuck: !!r.error || st.stage !== 'done',
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * 两个新组合（被偷听 / 押粮）：enterExtra 驱动
+ * ------------------------------------------------------------------ */
+
+/** 新组合的时长估算：play.js 的 estimateSeconds 只认分幕流程，这里按“做了几个决定”估（同夜里那一档的算法） */
+const EXTRA_SECONDS_BASE = 45;
+const EXTRA_SECONDS_PER_STEP = 15;
+/** 新组合的有限深度枚举：选项少、又有天亮/落锁的步数上限，很快收敛 */
+const EXTRA_DEPTH = 10;
+const EXTRA_BUDGET = 400;
+
+/** 新组合把结局写在 state().extra.ending 里（不是 coda 的 ending） */
+const extraEnding = (play) => play.state().extra?.ending || null;
+
+/** 这一场现在的时间走到第几拍：认控制器自己报的 kind，不认场景名字；没有时钟就是 null */
+function clockStep(v) {
+  const c = (v.controllers || []).find((x) => x.view && x.view.kind === 'clock');
+  return c && typeof c.view.step === 'number' ? c.view.step : null;
+}
+
+/** 此刻这一场的状态指纹：控制器各自的 view + flags + 收束与否。用它去重，枚举才不会爆炸 */
+function extraSig(v) {
+  return JSON.stringify([v.act, !!v.done, v.flags, (v.controllers || []).map((c) => [c.id, c.view])]);
+}
+
+/**
+ * 让一个模拟玩家替你把一个新组合走完（进场走 createPlay(session).enterExtra(sceneId)）。
+ * 四种玩家的判断规则与分幕那一套完全相同；返回 { scene, ending, seconds, path, stuck }。
+ */
+export function simulateExtra(createSession, sceneId, opts = {}) {
+  const answers = opts.answers || ANSWERS.A;
+  const name = PERSONAS[opts.persona] ? opts.persona : 'curious';
+  const persona = PERSONAS[name];
+  const memo = freshMemo(opts.seed);
+  let enterError = null;
+  const r = walk(createSession, answers, (v, o, play) => persona.next(v, o, play, memo), null, (play) => {
+    try { return play.enterExtra(sceneId); } catch (e) { enterError = e.message; return play.view(); }
+  });
+  const steps = r.path.filter((p) => p.includes(':choose:')).length;
+  return {
+    scene: sceneId,
+    ending: extraEnding(r.play),
+    seconds: EXTRA_SECONDS_BASE + EXTRA_SECONDS_PER_STEP * steps,
+    path: r.path,
+    stuck: !!r.error || !!enterError || r.play.state().stage !== 'done',
+  };
+}
+
+/** 从开场把一串走法接上去（每一步按选项 id 选）；返回 { error, view, play } */
+function extraBase(createSession, answers, sceneId, moves) {
+  const s = createSession();
+  s.meet(answers, NEED);
+  const play = createPlay(s);
+  play.begin();
+  let v;
+  try { v = play.enterExtra(sceneId); } catch (e) { return { error: e.message, view: null, play }; }
+  for (const m of moves) {
+    if (v.done) break;
+    const opts = allowedOptions(v);
+    if (!opts.some((o) => o.id === m)) return { error: `not-allowed:${m}`, view: v, play };
+    v = play.choose(m).view;
+  }
+  return { error: null, view: v, play };
+}
+
+/**
+ * 对一个新组合做有限深度枚举：每个局面把 allowed 的选项都走一遍，用状态指纹去重。
+ * 顺手查三件事：
+ *   endings    这一场能走到哪几个结局，以及每个结局的“见证路径”（第一条走到它的走法）
+ *   stalls     有没有哪个局面「一个能推进时间的选项都没有」——只会被拒、又永远不耗时间。
+ *              押粮里粮袋出手之后再点借粮者就是被拒且不耗时间（view 里那个选项 allowed:false）；
+ *              只要同一局面还有 go / wait 这类会走时钟的选项，就不算 stall。
+ *   refused    有多少个局面里出现过 allowed:false 的选项（把上面那种局面数出来，好核对）
+ * 返回 { endings, witness, deadEnds, stalls, refused }。
+ */
+function enumerateExtra(createSession, answers, sceneId) {
+  const endings = new Set();
+  const witness = {};
+  const deadEnds = [];
+  const stalls = [];
+  const seen = new Set();
+  let frontier = [{ moves: [] }];
+  let budget = EXTRA_BUDGET;
+  let refused = 0;
+
+  for (let depth = 0; depth < EXTRA_DEPTH && frontier.length; depth++) {
+    const next = [];
+    for (const node of frontier) {
+      const base = extraBase(createSession, answers, sceneId, node.moves);
+      if (base.error) { deadEnds.push({ scene: sceneId, moves: node.moves.join('>'), error: base.error }); continue; }
+      if (base.view.done) {
+        const e = extraEnding(base.play);
+        if (e) { endings.add(e); witness[e] = witness[e] || node.moves; }
+        continue;
+      }
+      if ((base.view.options || []).some((o) => o.allowed === false)) refused += 1;
+      const step = clockStep(base.view);
+      const sig0 = extraSig(base.view);
+      let progress = false;
+      let cut = false;
+      for (const o of allowedOptions(base.view)) {
+        if (budget-- <= 0) { cut = true; break; }
+        const moves = [...node.moves, o.id];
+        const child = extraBase(createSession, answers, sceneId, moves);
+        if (child.error) { deadEnds.push({ scene: sceneId, moves: moves.join('>'), error: child.error }); continue; }
+        if (child.view.done) {
+          const e = extraEnding(child.play);
+          progress = true;
+          if (e) { endings.add(e); witness[e] = witness[e] || moves; }
+          continue;
+        }
+        const cStep = clockStep(child.view);
+        const sig = extraSig(child.view);
+        // 推进时间 = 时钟多走一拍；没有时钟的场景就退一步，看状态有没有真的变
+        if (step !== null && cStep !== null) { if (cStep > step) progress = true; }
+        else if (sig !== sig0) progress = true;
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        next.push({ moves });
+      }
+      if (!progress && !cut) stalls.push({ scene: sceneId, moves: node.moves.join('>') || '(开场)', note: '没有能推进时间的选项' });
+    }
+    frontier = next;
+  }
+  return { endings: [...endings], witness, deadEnds, stalls, refused };
 }
 
 /* ------------------------------------------------------------------ *
@@ -422,14 +558,18 @@ function enumerateNight(createSession, answers) {
 
 /**
  * 把地板逐条跑一遍：
- *   两套导演偏好 × 四种玩家 × 若干种子走满一局；再对带格子的那一幕做有限深度枚举。
- * 返回 { deadEnds, endings, sameAppealWinsAll, seconds:{min,max}, ok }。
+ *   两套导演偏好 × 四种玩家 × 若干种子走满一局；再对带格子的那一幕做有限深度枚举；
+ *   两个新组合各走一遍（四种玩家 × 两位导演 × 若干种子 + 每个结局的见证路径重放）。
+ * 返回 { deadEnds, endings, sameAppealWinsAll, seconds:{min,max}, extras, stalls, ok }。
  * endings 是走到的次数（> 0 就是走得到；有限枚举至少记 1 次）。
+ * extras[场景 id] = { runs, endings, reachable, missing, stalls, refused, seconds, ok }：
+ * 一局的 8–12 分钟地板只管原作整局，新组合是单场，秒数单独报，不混进 seconds。
  */
 export function floorChecks(createSession) {
   const deadEnds = [];
   const endings = { history: 0, 'jinbi-lives': 0, broken: 0 };
   const seconds = [];
+  const stalls = [];
 
   for (const dir of ['A', 'B']) {
     for (const persona of Object.keys(PERSONAS)) {
@@ -448,6 +588,62 @@ export function floorChecks(createSession) {
 
   const { sameAppealWinsAll } = probeAppeals(createSession, ANSWERS.B);
 
+  /* ---------------- 两个新组合（被偷听 / 押粮） ---------------- */
+
+  const extras = {};
+  for (const sceneId of EXTRA_IDS) {
+    const runs = [];
+    const reached = {};
+    for (const dir of ['A', 'B']) {
+      for (const persona of Object.keys(PERSONAS)) {
+        for (const seed of SEEDS) {
+          const r = simulateExtra(createSession, sceneId, { answers: ANSWERS[dir], persona, seed });
+          runs.push({ answers: dir, persona, seed, ...r });
+          if (r.ending) reached[r.ending] = (reached[r.ending] || 0) + 1;
+          if (r.stuck) deadEnds.push({ answers: dir, persona, seed, scene: sceneId, where: r.path[r.path.length - 1] || null, path: r.path.slice(-4) });
+        }
+      }
+    }
+    const scan = enumerateExtra(createSession, ANSWERS.B, sceneId);
+    for (const d of scan.deadEnds) deadEnds.push({ answers: 'B', persona: 'enumeration', seed: null, scene: sceneId, where: d.error, path: [d.moves] });
+    for (const st of scan.stalls) stalls.push(st);
+    // 每个结局的见证路径原样重放一遍：不只是枚举说它走得到，是真的再走一次、结局对得上
+    for (const e of scan.endings) {
+      const moves = scan.witness[e] || [];
+      const base = extraBase(createSession, ANSWERS.B, sceneId, moves);
+      const ended = base.error ? null : extraEnding(base.play);
+      const path = moves.map((m) => `${sceneId}:choose:${m}`);
+      if (base.error) path.push(`${sceneId}:stuck:${base.error}`);
+      runs.push({
+        answers: 'B', persona: 'witness', seed: null, scene: sceneId, ending: ended,
+        seconds: EXTRA_SECONDS_BASE + EXTRA_SECONDS_PER_STEP * moves.length, path,
+        stuck: !!base.error || ended !== e,
+      });
+      if (ended) reached[ended] = (reached[ended] || 0) + 1;
+      if (base.error || ended !== e) {
+        deadEnds.push({ answers: 'B', persona: 'witness', seed: null, scene: sceneId, where: base.error || `witness-ending:${ended}≠${e}`, path: [moves.join('>')] });
+      }
+    }
+    const reachable = scan.endings;
+    const missing = reachable.filter((e) => !reached[e]);
+    const secs = runs.map((r) => r.seconds);
+    extras[sceneId] = {
+      runs: runs.length,
+      endings: reached,      // 四种玩家 + 见证重放各走到结局几次
+      reachable,             // 枚举证明走得到的结局（每一个都配一条见证路径）
+      missing,               // 枚举走得到、但一次都没被走到的结局（应当为空）
+      stalls: scan.stalls,
+      refused: scan.refused, // 出现过 allowed:false 选项的局面数（押粮粮袋出手后就是这种局面）
+      seconds: { min: Math.min(...secs), max: Math.max(...secs) },
+      ok: runs.every((r) => !r.stuck)
+        && scan.deadEnds.length === 0
+        && scan.stalls.length === 0
+        && reachable.length > 0
+        && missing.length === 0,
+    };
+  }
+  const extrasOk = EXTRA_IDS.every((id) => extras[id].ok);
+
   const sec = {
     min: seconds.length ? Math.min(...seconds) : 0,
     max: seconds.length ? Math.max(...seconds) : 0,
@@ -456,7 +652,8 @@ export function floorChecks(createSession) {
     && ENDINGS.every((e) => endings[e] > 0)
     && sameAppealWinsAll === false
     && sec.min >= FLOOR_SECONDS.min
-    && sec.max <= FLOOR_SECONDS.max;
+    && sec.max <= FLOOR_SECONDS.max
+    && extrasOk;
 
-  return { deadEnds, endings, sameAppealWinsAll, seconds: sec, ok };
+  return { deadEnds, endings, sameAppealWinsAll, seconds: sec, extras, stalls, ok };
 }
