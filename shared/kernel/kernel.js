@@ -110,7 +110,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       effect: (spec, cause) => applyEffect(ctx, spec, cause ?? [ctx._lastSeq ?? lastSeq].filter(Boolean)),
       act: (intent, extra) => actRecord(sceneId, ctx, intent, extra),
       move: (person, to) => moveTo(sceneId, world, person, to),
-      attention: (person, mode) => callCtrl(sceneId, 'attention', 'set', person, mode),
+      attention: (person, mode) => callCtrl(sceneId, 'attention', 'set', person, mode, world),
       playWork: (workId, choice, opts) => session.playWork(workId, choice, opts),
       notice: (by, reason) => { if (!world.noticed[by]) world.noticed[by] = reason; },
       seen: () => { const k = Object.keys(world.noticed)[0]; return k ? world.noticed[k] : null; },
