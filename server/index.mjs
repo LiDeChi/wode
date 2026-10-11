@@ -39,6 +39,11 @@ const MIME = {
   '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  // 资产管线产出的声音（web/assets/gen/**）：缺了这几个，Safari 拿到 octet-stream 会拒绝播放
+  '.m4a': 'audio/mp4',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
 };
 
 function sendJson(res, status, obj) {
