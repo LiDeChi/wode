@@ -106,11 +106,16 @@ export function createMentor({ ledger, def, budget = 10, saved } = {}) {
   /**
    * 预算分配：depth 与 centrality 加权定档，超预算时从 centrality 最低的往下降。
    * scenes = [{ id, title, centrality }]
+   *
+   * 这里定的档位就是「这一场的人演得多细」（docs/KERNEL.md §6）：内核用 createPlay(session,{tiers:'mentor'})
+   * 读走 chosen（按 beat id 记）。预算不够时从最不中心的往下降档，降到底也照常演完——不抛错、不中断。
+   * 输入脏（不是数组、centrality 不是数）时按默认值算，一样不抛错。
    */
   function allot(scenes = [], cause = []) {
+    if (!Array.isArray(scenes)) scenes = [];
     const depth = notes.depth?.value ?? DEFAULT_VALUE;
     const items = scenes.map((sc, i) => {
-      const c = clamp(sc.centrality ?? DEFAULT_VALUE);
+      const c = clamp(Number.isFinite(sc?.centrality) ? sc.centrality : DEFAULT_VALUE);
       const score = depth * 0.6 + c * 0.4;
       const tier = score >= 0.6 ? '细演' : score >= 0.35 ? '普通' : '一笔带过';
       return { id: sc.id, c, i, tier, cut: false };
@@ -134,7 +139,7 @@ export function createMentor({ ledger, def, budget = 10, saved } = {}) {
     const e = write(
       'mentor.allot',
       {
-        input: scenes.map((sc) => ({ id: sc.id, centrality: sc.centrality })),
+        input: scenes.map((sc) => ({ id: sc?.id, centrality: sc?.centrality })),
         options: TIERS,
         chosen: out,
         spent: sum,
