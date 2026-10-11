@@ -299,16 +299,21 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     const list = instancesOf(sceneId);
     for (const { ctrl } of list) ctrl.before?.(intent, ctx);
     let res = null;
-    const owner = list.find((i) => i.id === intent.owner);
-    if (owner?.ctrl.apply) res = owner.ctrl.apply(intent, ctx) || null;
+    const owner = list.find((i) => i.id === intent.owner && i.ctrl.apply);
+    const who = intent.to || intent.person;
+    if (owner) res = owner.ctrl.apply(intent, ctx) || null;
+    // 等/看/问 没人认领时走内核自己那三条路（看与问不改世界，只读）
+    else if (intent.verb === 'watch' && who) res = { text: watch(sceneId, who).preview?.explain ?? null, readOnly: true };
+    else if (intent.verb === 'ask' && who) res = { text: ask(sceneId, who).answer, readOnly: true };
     else if (intent.to) res = { r: react(sceneId, intent, resolveTo(world, intent.to), { channels: intent.channels, appeal: intent.appeal, bar: intent.bar ?? ctx.bar }) };
     const partial = normalizeResult(res);
     if (partial.refused) return { ...partial, refused: true };
     for (const { ctrl } of list) ctrl.tick?.(intent, ctx);
-    const outcome = { r: partial.r ?? null, text: partial.text ?? '', claims: [...(partial.claims || [])] };
+    const outcome = { r: partial.r ?? null, text: partial.text ?? ctx._endText ?? '', claims: [...(partial.claims || [])] };
     if (partial.cost != null) outcome.cost = partial.cost;
     if (partial.choice != null) outcome.choice = partial.choice;
-    if (partial.end != null) outcome.end = partial.end;
+    if (ctx._end != null) outcome.end = ctx._end;
+    else if (partial.end != null) outcome.end = partial.end;
     const rule = firstRule(scene.rules || [], buildFacts(sceneId, world, intent, outcome.r, ctx));
     if (rule) {
       const auto = [outcome.r?.reactSeq ?? lastSeq].filter(Boolean);
