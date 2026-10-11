@@ -136,18 +136,26 @@ export const QIFU_CAST = {
  * 反应仍走内核「intent.to」那条路。没有 options 的 lines 不增加选项，只负责装人物。
  */
 /**
- * 进场正文按站位二选一。句子来自本场 standing.why，不另写一套门槛。
+ * 进场正文按这一局的实情挑一句：先看有没有兵符（opening.noToken），再看站位（standing.why）。
+ * 句子都来自本场配置，不另写一套门槛。
  * 只改玩家看见的 scene / goal，不写信任、不写旗标、不改选项台词（选项台词会进账本）。
  */
 function applyOpening(ctx) {
   const spec = ctx.scene?.opening;
-  if (!spec || spec.by !== 'standing') return;
+  if (!spec) return;
+  // 兵符没出宫那一局（flags.night !== 'clean'）：开场不能还写「合符」，也不该再给站位线索
+  const flags = ctx.world?.flags || {};
+  const branch = spec.noToken && flags.night !== 'clean' ? spec.noToken : spec;
+  const standing = branch.by === 'standing';
   const cfg = (ctx.scene.controllers || []).find((row) => row[0] === 'standing')?.[1] || {};
   const which = cfg.speaker && ctx.trustOf(cfg.speaker) >= (cfg.threshold ?? 0.45) ? 'high' : 'low';
-  const why = (cfg.why || {})[which];
-  if (!why) return;
-  if (typeof spec.scene === 'string') ctx.scene.scene = spec.scene.replaceAll('{why}', why);
-  if (typeof spec.goal === 'string') ctx.scene.goal = spec.goal.replaceAll('{why}', why);
+  const why = standing ? (cfg.why || {})[which] : null;
+  if (standing && !why) return;                     // 配置不全就保持原样
+  const fill = (tpl) => (typeof tpl === 'string' ? tpl.replaceAll('{why}', why ?? '') : null);
+  const scene = fill(branch.scene);
+  const goal = fill(branch.goal);
+  if (scene) ctx.scene.scene = scene;
+  if (goal) ctx.scene.goal = goal;
 }
 
 export function lines(cfg = {}) {
@@ -489,10 +497,16 @@ export const QIFU_SCENES = {
     goal: '晋鄙合了符，还是起疑。他要的是魏卒安全和交割手续，不是一句大义。',
     scene: '晋鄙把两半兵符并在一起，抬头看信陵君：「今吾拥十万之众，单车来代之，何如哉？」拿大义压军令，像是来夺军。',
     // 进场时 lines 按公子信不信你，把 {why} 换成 standing.why 的高/低那一句。进场前这两句保持原样。
+    // 兵符没出宫那一局（flags.night !== 'clean'）换成 noToken：手里没符，就没有「合符」这场面，
+    // 也不该再给站位线索——否则和收束页「手里没有兵符」自相矛盾。
     opening: {
       by: 'standing',
       goal: '{why}。他要的是魏卒安全和交割手续，不是一句大义。',
       scene: '晋鄙把两半兵符并在一起，抬头看信陵君：「今吾拥十万之众，单车来代之，何如哉？」{why}。他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。',
+      noToken: {
+        scene: '公子一行到了邺下，手里没有兵符。晋鄙闭营，连辕门都没开。',
+        goal: '手里没有兵符，邺下的营门就没开过。',
+      },
     },
     ambient: { kind: 'doubt', channels: { 印信: 0.7, 兵权: 0.6 } },
     cast: QIFU_CAST,

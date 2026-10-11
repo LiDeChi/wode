@@ -80,15 +80,17 @@ export const WEICHENG_SCENES = {
       // 检验：把东西推过去，守仓人给个反应（旧 text = `${tell}。${name}${action}。`）
       { when: { intent: ['seal', 'note', 'pledge'] }, text: '{tell}。{name}{action}。' },
       // 决定：交给导演批，批没批决定最后那句话（旧三句，hide 不看导演）
+      // 这三句是给玩家看的人话：不出现「导演批没批」「爱雕琢／爱放开」「两件证据」这些机关词。
+      // 批没批仍由导演决定（账本里的 verdict 一个字没动），这里只把结果说成城里人的反应。
       {
         when: { intent: ['report', 'witness', 'hide'] },
         then: [['work', 'weicheng', '@intent', { reuseOpen: true }]],
         text: {
           hide: '你把账合上。城里的说法和城外一样：存粮尚可支撑。',
           '*': {
-            approve: '导演批了：{verdict.rule}。「邯郸存粮尚可支撑」成了曾经的共识。',
-            refuse: '导演没批：{verdict.rule}。守仓人的说法挂着，推不动城外的共识。',
-            default: '导演没批：{verdict.rule}。守仓人的说法挂着，推不动城外的共识。',
+            approve: '守仓人的话有了旁证，城里的人改了口：「邯郸存粮尚可支撑」成了曾经的共识。',
+            refuse: '守仓人的话只有一条旁证，城里的人还是信原来那套说法。',
+            default: '守仓人的话只有一条旁证，城里的人还是信原来那套说法。',
           },
         },
       },

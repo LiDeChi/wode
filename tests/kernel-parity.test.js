@@ -1,13 +1,14 @@
 // 第三阶段·M2 的新基线（t32 重录）：680 条旧对照脚本 + 12 条命名路线。
 // 旧基线 tests/fixtures/play-golden.json **原样留着**：第三个测试用旧场景快照把它重放出来，
-// 证明当年那 680 条到现在仍然一笔不差（玩法层），差的只有 t33 从人话里拿走的读数文字。
+// 证明当年那 680 条到现在仍然一笔不差（玩法层），差的只有从人话里拿走的读数文字
+// （t33 的 reason、t38 粮仓决定那一步的正文）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createSession } from '../shared/engine/session.js';
 import { createPlay } from '../shared/engine/play.js';
-import { WEICHENG_SCENES } from '../shared/scenes/weicheng.js';
 import { QIFU_SCENES as V1_QIFU_SCENES } from './fixtures/scenes-v1-qiefu.mjs';
+import { WEICHENG_SCENES as V1_WEICHENG_SCENES } from './fixtures/scenes-v1-weicheng.mjs';
 import { scripts, runScript } from './fixtures/play-mechanics-v2-scripts.mjs';
 
 const v2 = JSON.parse(readFileSync(new URL('./fixtures/play-mechanics-v2-golden.json', import.meta.url), 'utf8'));
@@ -31,7 +32,8 @@ test('同一串选择，与 M2 新基线走出同一个世界', () => {
 });
 
 test('旧 golden 原样留着，旧场景还能把它一笔不差地重放出来', () => {
-  const v1Play = (s) => createPlay(s, { scenes: { ...V1_QIFU_SCENES, ...WEICHENG_SCENES } });
+  // 旧场景 = 抽内核那一刻的四幕（scenes-v1-qiefu）+ 粮仓改人话之前的那一版（scenes-v1-weicheng）
+  const v1Play = (s) => createPlay(s, { scenes: { ...V1_QIFU_SCENES, ...V1_WEICHENG_SCENES } });
   const fields = ['stage', 'ending', 'days', 'flags', 'acts', 'logHash', 'ledgerSize', 'trail'];
   const diffs = [];
   let hashOnly = 0;

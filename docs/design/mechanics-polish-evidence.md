@@ -269,3 +269,76 @@ for (const [tag, d, y] of [['高站位', 'yi', 'back'], ['低站位', 'wait', 'h
 - `node --test tests/kernel-parity.test.js` → 3/3：新基线 692 条逐字段相同；旧 golden 那 644 条「指纹变了、玩法没变」照旧。
   正文是画面字段（`view().scene` / `view().goal`），不进 `log`、不进账本，所以 `logHash` 与 `ledgerHash` 一个都没变，
   `tests/fixtures/play-mechanics-v2-golden.json` **不需要重录**，旧 golden 也没动。
+
+## 12. 收束句里的人话（t38：两处只动玩家看得见的文字）
+
+这一轮只改玩家看见的句子，账本条目、结局、天数、旗标、选项台词一个字没动。
+
+### 12.1 邺城：手里没兵符那一局
+
+| 这一局 | 正文（`view().scene`） | 目标（`view().goal`） |
+| --- | --- | --- |
+| 兵符出了卧内（`flags.night === 'clean'`） | 按站位二选一（§11 那两行） | `{站位句}。他要的是魏卒安全和交割手续，不是一句大义。` |
+| 兵符没出宫（`flags.night === 'seen'`） | 公子一行到了邺下，手里没有兵符。晋鄙闭营，连辕门都没开。 | 手里没有兵符，邺下的营门就没开过。 |
+
+改之前，无论手里有没有兵符，邺城开场都写「晋鄙把两半兵符并在一起……」，还给一句站位线索：
+手里明明没符，画面却在合符；而且这一局其实只剩「跟着公子进营」一条路，站位线索只会把人往错的方向引。
+接法还是 `shared/scenes/qiefu.js` 的 `applyOpening`：从「只看站位」扩成「先看有没有兵符（`opening.noToken`），再看站位」。
+模板仍留在 `opening` 里，每次进场从模板重算（幂等），只写 `view().scene` / `view().goal`，不碰信任、旗标与选项台词。
+
+### 12.2 粮仓：决定那一步的收束句
+
+| 导演的裁决 | 改前 | 改后 |
+| --- | --- | --- |
+| 批了（`director.approve`） | 导演批了：爱雕琢。「邯郸存粮尚可支撑」成了曾经的共识。 | 守仓人的话有了旁证，城里的人改了口：「邯郸存粮尚可支撑」成了曾经的共识。 |
+| 没批（`director.refuse`） | 导演没批：爱雕琢：推翻共识要两件证据。守仓人的说法挂着，推不动城外的共识。 | 守仓人的话只有一条旁证，城里的人还是信原来那套说法。 |
+| 你把账合上（`hide`） | （没动）你把账合上。城里的说法和城外一样：存粮尚可支撑。 | 同左 |
+
+「导演批没批」「爱雕琢／爱放开」「要两件证据」是这一层的机关话，玩家不需要看见。
+裁决本身照旧写在账本里（`director.approve` / `director.refuse`，`payload.rule` 还是「爱雕琢」「爱放开」），
+只是画面那句话不再引用它，改成说城里人改没改口。
+
+### 12.3 `logHash` 为什么变、怎么重录
+
+- 粮仓那三句是 `log` 里的 `text`，文字一改 `logHash` 自然跟着变：692 条里只有 `acts[granary].text` 518 条与 `logHash` 518 条不同，
+  `stage` / `ending` / `days` / `flags` / `ledgerSize` / `ledgerHash` / `trail` 全同。
+- 按 t32 的方式重录 `tests/fixtures/play-mechanics-v2-golden.json`：`diff` 旧新文件共 2072 行，
+  字段只有 `"text"` 1036 行与 `"logHash"` 1036 行，没有第三个字段。旧基线 `tests/fixtures/play-golden.json` **没动**。
+- 第三个测试原来拿「活的」粮仓场景去重放旧基线，文字一改就红 → 新增 `tests/fixtures/scenes-v1-weicheng.mjs`
+  （`git show 34f27b5:shared/scenes/weicheng.js`，冻住改文字前的那一版），`tests/kernel-parity.test.js` 的 `v1Play` 改用它。
+  旧基线要重放的是「当年那套场景」，四幕用 `scenes-v1-qiefu.mjs`、粮仓用这一份，两半都冻住才对得上。
+
+### 12.4 复验
+
+```js
+// 邺城：同一局，手里有没有兵符，开场不一样
+import { createSession } from './shared/engine/session.js';
+import { createPlay } from './shared/engine/play.js';
+const NIGHT_CLEAN = ['token_b', 'wait', 'step', 'step', 'step', 'wait', 'step'];
+const NIGHT_SEEN = ['step', 'step'];   // 中庭被守卫乙看见 → flags.night = 'seen'
+function toYe(night) {
+  const s = createSession();
+  s.meet({ wait: .8, polish: .8, depth: .85 }, '我想看一个人在乱世里怎么做选择');
+  const p = createPlay(s);
+  p.begin(); p.next(); p.choose('yi'); p.next(); p.choose('back'); p.next();
+  for (const id of night) p.choose(id);
+  return p.next();
+}
+console.log('有符：' + toYe(NIGHT_CLEAN).scene);
+console.log('没符：' + toYe(NIGHT_SEEN).scene);
+```
+
+跑出来是这两行：
+
+```
+有符：晋鄙把两半兵符并在一起，抬头看信陵君：「今吾拥十万之众，单车来代之，何如哉？」公子让你上前替他说话。他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。
+没符：公子一行到了邺下，手里没有兵符。晋鄙闭营，连辕门都没开。
+```
+
+粮仓那三句的复验：照 `tests/mechanics-polish.test.js` 的走法跑到粮仓决定那一步，
+分别挑 `report`（导演拒）、`witness`（两件证据）、`hide`，看画面最后一句（三句都写在 `shared/scenes/weicheng.js` 的规则表里）。
+
+```bash
+node --test tests/kernel-parity.test.js      # 3/3：新基线逐字段相同，旧基线用两份场景快照重放一笔不差
+node --test tests/mechanics-polish.test.js   # 6/6：死意图、门前那一拍、三种结局、时长地板
+```
