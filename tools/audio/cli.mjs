@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { createAudioEngine } from './engine.mjs';
@@ -42,9 +43,9 @@ export async function main(args = process.argv.slice(2)) {
     }
     throw new AudioError('config','key 命令无效','用 key has NAME 或 key set NAME（从标准输入提供值）');
   }
-  const home = opts.home || process.env.DW_AUDIO_HOME;
-  const config = opts.config ? readJSON(path.resolve(opts.config),{}) : undefined;
-  const adapters = await defaultAdapters(config || {});
+  const home = opts.home || process.env.DW_AUDIO_HOME || path.join(os.homedir(),'.digital-world/audio');
+  const config = readJSON(opts.config ? path.resolve(opts.config) : path.join(home,'config.json'),{});
+  const adapters = await defaultAdapters(config);
   const authorize = opts.confirm ? async estimate => {
     if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
     process.stdout.write(`估算 ${estimate.estimated ?? '未知'} USD，最多预留 ${estimate.reserved} USD；云端 clone 会上传参考录音。\n`);

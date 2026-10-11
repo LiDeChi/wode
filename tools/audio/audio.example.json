@@ -1,6 +1,6 @@
 {
   "mode": "auto",
-  "budget": { "perCall": 0.5, "daily": 3, "monthly": 15 },
+  "budget": { "perCall": 0.10, "daily": 0.50, "monthly": 1.00 },
   "unknownPriceCeiling": null,
   "policy": { "providerOrder": ["local", "monid", "fal", "elevenlabs", "mock"], "allowEscalation": false },
   "providers": {

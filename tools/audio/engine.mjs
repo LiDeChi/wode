@@ -96,7 +96,7 @@ export function createAudioEngine(options = {}) {
       budget.reserve(job.job_id,authorization.amount,safe(estimate),authorization.source);
       const base = {job_id:job.job_id,status:'running',provider:provider.id,model,file:null,format:null,seconds:null,
         cost:{estimated:estimate.estimated ?? null,actual:null,currency:'USD',priceSource:estimate.priceSource || 'unknown'},
-        license:null,meta:{prompt:req.text || req.prompt || req.name,seed:req.seed,createdAt:new Date(now()).toISOString(),why:selected.why,authorization:authorization.source}};
+        license:null,meta:{prompt:req.text || req.prompt || req.name,seed:req.seed,createdAt:new Date(now()).toISOString(),why:selected.why,authorizationSource:authorization.source}};
       jobs.update(job.job_id,{status:'running'});
       let result, executed = false;
       try {
