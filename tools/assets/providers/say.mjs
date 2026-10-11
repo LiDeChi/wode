@@ -132,10 +132,14 @@ export function durationOf(file) {
   return fs.statSync(file).size > 12000 ? 1 : 0;
 }
 
-/** 这条文本至少该有多长才不像空壳（中文语速大约 4–6 字/秒） */
+/**
+ * 这条文本至少该有多长才不像空壳。
+ * 不是「猜正常语速」——短台词本来就短（「诺。」念出来不到一秒），这条线只用来把
+ * 「没下载的哑音色」那种 0.016 秒的静音挡掉，所以取一个很宽的每字下限。
+ */
 function minPlausibleSeconds(text, rate) {
   const chars = String(text || '').replace(/\s/g, '').length;
-  return Math.min(1.2, Math.max(0.2, chars / 5 / Math.max(0.5, rate)));
+  return Math.min(1, Math.max(0.25, (chars * 0.08) / Math.max(0.5, rate)));
 }
 
 export async function available() {
