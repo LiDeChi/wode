@@ -5,12 +5,11 @@
 //   场景数据（shared/scenes/**：控制器组合 + 有序规则表 + 文本） + 共用交互内核（shared/kernel/**）。
 // 这个文件只剩下「舞台流转」和「对外那张脸」。
 //
-// 这一版的迁移状态（小步提交，见 commit 说明）：
-//   · 已迁：大梁 / 夷门 / 取符之夜 / 邺城 —— 选项来自控制器的 intents()，后果来自规则表 + 效果。
-//   · 未迁：暮色粮仓仍在旧路径（下面的 granaryChoose）。原因是内核的 allowed() 对每一次 dispatch
-//     都查导演闸门，而旧实现对粮仓从来不查（旧 view() 对粮仓选项一律 allowed:true，granaryChoose
-//     也不看 allowed）；场景数据里已经声明了 gate:false，但内核还没认这个字段。
-//     等内核补上一句 `if (sceneOf(sceneId).gate === false) return true;`，粮仓就搬过去。
+// 迁移状态：全部搬完。
+//   · 大梁 / 夷门 / 取符之夜 / 邺城 —— 选项来自控制器的 intents()，后果来自规则表 + 效果。
+//   · 暮色粮仓 —— 同样跑在内核上（shared/scenes/weicheng.js）。这一场和四幕不同的一点：旧代码
+//     对粮仓从来不查导演授权（旧 view() 对粮仓选项一律 allowed:true，granaryChoose 也不看 allowed），
+//     所以那道场景声明了 gate:false，内核的 allowed() 见到它直接放行（docs/KERNEL.md §2）。
 //
 // 对外面子和旧实现一致：begin/next/choose/watch/ask/chooseKeeper/view/grantsOf/state；
 // view() 里旧字段一个不少，另加 controllers:[{id,view}]（每个控制器自己那块的渲染数据）。
@@ -57,8 +56,8 @@ export const START_DAYS = 30;
 export const KEEPERS = ['keeper_doubt', 'keeper_rash'];
 
 /**
- * 场景表。四幕来自 shared/scenes/qiefu.js（选项在它们的控制器里，不在这张表里）；
- * 粮仓那一场也已经写好场景数据，但它暂时还跑在旧路径上，所以这里同时留着旧那一份设定。
+ * 场景表。五场全部来自 shared/scenes/**（选项在它们的控制器里，不在这张表里）。
+ * 对外仍然叫 ACTS：舞台流转要用每一幕的 beat 与标题。
  */
 export const SCENES = { ...QIFU_SCENES, ...WEICHENG_SCENES };
 
@@ -66,26 +65,7 @@ export const SCENES = { ...QIFU_SCENES, ...WEICHENG_SCENES };
  *  各幕自己写的控制器（由场景数据点名）也在这里合进去。 */
 export const SCENE_CONTROLLERS = { ...QIFU_CONTROLLERS, ...WEICHENG_CONTROLLERS };
 
-/** 旧形状的粮仓设定：搬去内核之前，旧那几段代码还按它读进度与三样东西 */
-const GRANARY = {
-  title: '暮色粮仓', place: '邯郸城内', beat: 'dusk', lead: null, work: 'weicheng',
-  people: ['borrower'],
-  goal: '账对不上。借粮者在桌前，桌上三样东西：印信、借条、担保物。',
-  scene: '天快黑了，麻袋堆在墙角，守仓人的手一直按在账册上。',
-  inspect: [
-    { id: 'seal', item: '印信', channels: { 印信: 0.7 }, line: '把印信推到守仓人面前' },
-    { id: 'note', item: '借条', channels: { 数量: 0.7 }, line: '把借条推到守仓人面前' },
-    { id: 'pledge', item: '担保物', channels: { 人: 0.6 }, line: '把担保物推到守仓人面前' },
-  ],
-  decide: [
-    { id: 'report', line: '拿着仓簿副页去报' },
-    { id: 'witness', line: '拉上李同一起去报' },
-    { id: 'hide', line: '先瞒下来' },
-  ],
-};
-
-/** 对外仍然叫 ACTS：每一幕的设定（四幕的 options 在各自的控制器里） */
-export const ACTS = { ...SCENES, granary: GRANARY };
+export const ACTS = SCENES;
 
 function freshState() {
   return {
@@ -138,6 +118,12 @@ export function createPlay(session, opts = {}) {
     configurable: true, enumerable: true,
     get: () => kern.root().worlds?.night?.ctrl?.nightwalk ?? null,
     set: () => { /* 夜的状态由 nightwalk 自己持有 */ },
+  });
+  // 粮仓那三样东西与两个阶段住在 desk 控制器里；旧代码里它叫 s.granary。
+  Object.defineProperty(session.state.play, 'granary', {
+    configurable: true, enumerable: true,
+    get: () => kern.root().worlds?.granary?.ctrl?.desk ?? null,
+    set: () => { /* 守仓人的桌子由 desk 自己持有 */ },
   });
 
   const name = (id) => minds[id]?.name || id;
@@ -277,9 +263,10 @@ export function createPlay(session, opts = {}) {
 
     const out = kern.dispatch(actId, optionId);
     if (out.refused) return { ...out, view: view() };
-    a.steps = (a.steps || 0) + 1;
 
     if (actId === 'night') {
+      // 步数只有取符之夜数（旧实现就是只在夜里加 a.steps）
+      a.steps = (a.steps || 0) + 1;
       // 夜晚这一步的文本由 nightwalk 给（灯走完、谁看见了谁之后）；规则表另外给「符落定」那句话
       const nw = worldOf('night').ctrl.nightwalk;
       log({ kind: 'act', text: nw.lastText, person: out.r?.person, tell: out.r?.tell, option: opt.id });
@@ -343,7 +330,12 @@ export function createPlay(session, opts = {}) {
     const s = P();
     s.stage = 'granary';
     session.commission('weicheng');
-    s.granary = { keeper: s.granary?.keeper || 'keeper_doubt', phase: 'inspect', inspected: null, keeperAct: null };
+    const g = kern.enter('granary').ctrl.desk;      // 建桌子（幂等）；旧代码在这里新建 s.granary
+    g.keeper = g.keeper || 'keeper_doubt';
+    g.phase = 'inspect';
+    g.inspected = null;
+    g.keeperAct = null;
+    delete g.tries;                                  // 旧代码新建对象，前一次的现场记录不带走
     return view();
   }
 
@@ -358,41 +350,26 @@ export function createPlay(session, opts = {}) {
   }
 
   /**
-   * 暮色粮仓：还没搬到内核（内核的 allowed() 不认 gate:false，见文件头）。
-   * 除了反应改由内核记（kern.react），其余照旧。
+   * 暮色粮仓：两步都在内核上（shared/scenes/weicheng.js 的 desk 控制器 + 规则表）。
+   * 检验阶段把东西推过去，守仓人给个反应；决定阶段交给导演批，收尾（收幕 / 包场）留在这里。
    */
   function granaryChoose(optionId) {
-    const s = P();
-    const g = s.granary;
-    const act = ACTS.granary;
     const a = actState('granary');
-    if (g.phase === 'inspect') {
-      const opt = act.inspect.find((o) => o.id === optionId);
-      if (!opt) throw new Error(`没有这个选项：${optionId}`);
-      const r = kern.react('granary', { ...opt, verb: 'give' }, g.keeper, { channels: opt.channels });
-      remember('granary');
-      g.inspected = opt.id;
-      g.keeperAct = r.perception.action.act;
-      g.phase = 'decide';
-      const text = `${r.tell}。${name(g.keeper)}${r.perception.action.act}。`;
-      (g.tries ||= []).push({ keeper: g.keeper, item: opt.item, act: r.perception.action.act, stoppedAt: r.perception.stoppedAt });
-      log({ kind: 'act', text, person: g.keeper, tell: r.tell, option: opt.id, seq: r.reactSeq });
-      return { r, text, view: view() };
+    const phase = P().granary?.phase;                // 桌子翻面发生在 dispatch 里，先记下原来那一面
+    const out = kern.dispatch('granary', optionId);
+    if (out.refused) return { ...out, view: view() };
+    if (phase === 'decide') {
+      const text = out.text;
+      a.choice = optionId;
+      a.outcome = { text, work: out.work?.touched ?? null };
+      log({ kind: 'act', text, option: optionId });
+      finishAct('granary');
+      session.wrap('weicheng');
+      return { text, view: view() };
     }
-    const opt = act.decide.find((o) => o.id === optionId);
-    if (!opt) throw new Error(`没有这个选项：${optionId}`);
-    const w = playWork(session, 'weicheng', opt.id, { reuseOpen: true });
-    const verdict = ledger.last((e) => e.kind === 'director.approve' || e.kind === 'director.refuse');
-    let text;
-    if (opt.id === 'hide') text = '你把账合上。城里的说法和城外一样：存粮尚可支撑。';
-    else if (verdict?.kind === 'director.approve') text = `导演批了：${verdict.payload.rule}。「邯郸存粮尚可支撑」成了曾经的共识。`;
-    else text = `导演没批：${verdict?.payload.rule}。守仓人的说法挂着，推不动城外的共识。`;
-    a.choice = opt.id;
-    a.outcome = { text, work: w.touched };
-    log({ kind: 'act', text, option: opt.id });
-    finishAct('granary');
-    session.wrap('weicheng');
-    return { text, view: view() };
+    remember('granary');
+    log({ kind: 'act', text: out.text, person: out.r?.person, tell: out.r?.tell, option: optionId, seq: out.r?.reactSeq });
+    return { r: out.r, text: out.text, view: view() };
   }
 
   /** 画面需要的一切：现在在哪、能做什么、为什么只能做这些 */
@@ -413,14 +390,12 @@ export function createPlay(session, opts = {}) {
       look: minds[id]?.def.look || null, voice: minds[id]?.def.voice || '',
     }));
     let options;
-    let controllers = [];
+    const intents = kern.intents(actId);
     if (actId === 'granary') {
-      // 旧路径：粮仓选项从来不查闸门，画面上一直是 allowed:true
-      options = (s.granary.phase === 'inspect' ? act.inspect : act.decide).map((o) => ({ id: o.id, verb: s.granary.phase === 'inspect' ? 'give' : 'say', line: o.line, item: o.item || null, allowed: true }));
+      // 粮仓那一场声明了 gate:false，所以画面上一直是 allowed:true；选项字段与旧实现逐个相同
+      options = intents.map((o) => ({ id: o.id, verb: o.verb, line: o.line, item: o.item || null, allowed: o.allowed }));
     } else {
-      const intents = kern.intents(actId);
       options = intents.map((o) => ({ id: o.id, verb: o.verb, to: o.to || null, toName: o.to ? name(o.to) : null, line: o.line, item: o.item || null, allowed: o.allowed }));
-      controllers = kern.views(actId);
       // 有些幕的开场只留一个选项（只改画面，不改 choose 的可选项）
       const ow = act.optionsWhen;
       if (ow) {
@@ -429,6 +404,7 @@ export function createPlay(session, opts = {}) {
         if (hit) options = options.filter((o) => ow.only.includes(o.id)).map((o) => ({ ...o, line: ow.line?.[o.id] ?? o.line }));
       }
     }
+    const controllers = kern.views(actId);
     const nightView = controllers.find((c) => c.id === 'nightwalk')?.view || null;
     const tier = kern.tierOf(actId);
     const out = {

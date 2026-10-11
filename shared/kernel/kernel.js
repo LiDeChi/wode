@@ -171,6 +171,9 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
   }
 
   function allowed(sceneId, intent) {
+    // 场景可以声明 gate:false：这一场不受导演授权约束（围城粮仓——旧 view() 对粮仓选项一律
+    // allowed:true，granaryChoose 也从不查闸门）。只有粮仓这么写。
+    if (sceneOf(sceneId).gate === false) return true;
     if (ALWAYS.includes(intent.verb)) return true;
     const g = grants(sceneId).verbs;
     return [intent.verb, ...(intent.needs || [])].every((v) => g.includes(v));
@@ -376,8 +379,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
         outcome.text = outcome.text ? `${outcome.text} ${line}` : line;
       }
     } else if (tier === '一笔带过') {
-      const cut = briefText(outcome.text);
-      if (cut.cut) outcome.text = `${cut.text}（${ELIDED_NOTE}）`;
+      // 一笔带过：旁白只留一两句，括号里的机制说明（打动多少、门槛多少）先不说
+      if (outcome.text) {
+        const cut = briefText(oneLine(outcome.text));
+        if (cut.text !== outcome.text) outcome.text = `${cut.text}（${ELIDED_NOTE}）`;
+      }
       outcome.elided = true;
       outcome.elidedNote = ELIDED_NOTE;
     }

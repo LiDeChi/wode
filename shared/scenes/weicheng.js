@@ -78,17 +78,17 @@ export const WEICHENG_SCENES = {
     finish: 'after-first-rule',
     rules: [
       // 检验：把东西推过去，守仓人给个反应（旧 text = `${tell}。${name}${action}。`）
-      { when: { ctrl: { desk: { phase: 'inspect' } } }, text: '{tell}。{name}{action}。' },
+      { when: { intent: ['seal', 'note', 'pledge'] }, text: '{tell}。{name}{action}。' },
       // 决定：交给导演批，批没批决定最后那句话（旧三句，hide 不看导演）
       {
-        when: { ctrl: { desk: { phase: 'decide' } } },
+        when: { intent: ['report', 'witness', 'hide'] },
         then: [['work', 'weicheng', '@intent', { reuseOpen: true }]],
         text: {
           hide: '你把账合上。城里的说法和城外一样：存粮尚可支撑。',
           '*': {
             approve: '导演批了：{verdict.rule}。「邯郸存粮尚可支撑」成了曾经的共识。',
             refuse: '导演没批：{verdict.rule}。守仓人的说法挂着，推不动城外的共识。',
-            default: '守仓人把账册合上了。',
+            default: '导演没批：{verdict.rule}。守仓人的说法挂着，推不动城外的共识。',
           },
         },
       },

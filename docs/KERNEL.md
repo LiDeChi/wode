@@ -47,6 +47,7 @@ export const SCENES = {
   daliang: {
     work: 'qiefu', beat: 'daliang', title, place, goal, scene, lead, people: [...],
     ambient: { kind, channels },            // 看心思时“他此刻面对的局面”
+    gate: false,                            // 可选：这一场不受导演授权闸门约束（只有围城粮仓这么写）
     controllers: [                          // 顺序有意义：before 钩子和 tick 按这个顺序跑
       ['speech',   { lines: [ { id:'yi', to:'xinling', appeal:{义:0.8}, channels:{义:0.6,请求:0.3}, line:'…' }, …,
                               { id:'king', needs:['go'], to:'weiwang', appeal:{惧:0.7}, channels:{…}, line:'跟公子进宫，对魏王说…' } ] }],
@@ -72,6 +73,8 @@ export const SCENES = { granary: { … } };
 ```
 
 选项的 id 必须和旧 `ACTS` 一致（对照组按 id 选）。选项在 `view().options` 里的顺序也和旧的一致。
+
+`gate: false` 是给围城粮仓留的口子：这一场不受导演授权约束，内核的 `allowed()` 见到它就放行（意图的 `allowed` 与画面上的选项都恒为真）。原因是旧实现对粮仓从来不查闸门——旧 `view()` 对粮仓选项一律写 `allowed: true`，`granaryChoose` 也不看 `allowed`（A 组导演在暮色那一拍只授 `[say, watch]`，粮仓的「给」照样能做）。只有粮仓声明这个字段。
 
 ---
 
