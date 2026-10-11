@@ -7,8 +7,13 @@ import { createClaimGraph } from '../core/claims.js';
 import { createMind } from '../core/mind.js';
 import { createMentor } from '../agents/mentor.js';
 import { createDirector } from '../agents/director.js';
-import { PEOPLE, STAFF, HISTORY } from '../data/seed.js';
+import { PEOPLE, STAFF, HISTORY, PLACES, ITEMS } from '../data/seed.js';
 import { CATALOG } from '../play/catalog.js';
+import { SCENES as QIEFU_SCENES } from '../scenes/qiefu.js';
+import { SCENES as WEICHENG_SCENES } from '../scenes/weicheng.js';
+
+/** 一部作品的场景数据（导演开资产单要读的东西）。scenes/ 由 scenes 组维护，这里只读 */
+const SCENE_SETS = { qiefu: QIEFU_SCENES, weicheng: WEICHENG_SCENES };
 
 /** 史料层是设定，不由任何人的决定产生，所以记成 'world' 发出的设定主张 */
 function seedHistory(claims) {
@@ -98,6 +103,20 @@ export function createSession({ saved, speaker } = {}) {
     return mentor.editNote(field, value, u.seq);
   }
 
+  /**
+   * 开资产单（docs/ASSETS.md §3）：导演按自己的手艺给这一部作品列清单。
+   * 只有显式调用才会走到这里——演出的任何路径（createPlay）都不调它，
+   * 所以 680 个脚本对照组的账本一笔不变；调一次会写一笔 director.dress。
+   */
+  function dress(work) {
+    const scenes = SCENE_SETS[work];
+    if (!scenes) throw new Error(`没有这部作品的场景数据：${work}`);
+    const d = director();
+    if (!d) throw new Error('还没有导演：先上传记让导师请一位');
+    const cause = [ledger.last((e) => e.from === 'user')?.seq].filter(Boolean);
+    return d.dress({ work, scenes, places: PLACES, people: PEOPLE, items: ITEMS }, cause);
+  }
+
   function save() {
     return {
       ledger: ledger.toJSON(),
@@ -113,7 +132,7 @@ export function createSession({ saved, speaker } = {}) {
     ledger, claims, mentor, directors, minds, state, speaker,
     // voices 是 state.voices 的同一个对象：narrate 直接往会话上写旁注，save 也一起存
     voices: state.voices,
-    meet, commission, react, wrap, editNote, director, save,
+    meet, commission, react, wrap, editNote, director, dress, save,
     audit: () => auditService(ledger),
     trace: (seq) => traceToUser(ledger, seq),
   };
