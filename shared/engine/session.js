@@ -9,11 +9,6 @@ import { createMentor } from '../agents/mentor.js';
 import { createDirector } from '../agents/director.js';
 import { PEOPLE, STAFF, HISTORY, PLACES, ITEMS } from '../data/seed.js';
 import { CATALOG } from '../play/catalog.js';
-import { SCENES as QIEFU_SCENES } from '../scenes/qiefu.js';
-import { SCENES as WEICHENG_SCENES } from '../scenes/weicheng.js';
-
-/** 一部作品的场景数据（导演开资产单要读的东西）。scenes/ 由 scenes 组维护，这里只读 */
-const SCENE_SETS = { qiefu: QIEFU_SCENES, weicheng: WEICHENG_SCENES };
 
 /** 史料层是设定，不由任何人的决定产生，所以记成 'world' 发出的设定主张 */
 function seedHistory(claims) {
@@ -108,9 +103,10 @@ export function createSession({ saved, speaker } = {}) {
    * 只有显式调用才会走到这里——演出的任何路径（createPlay）都不调它，
    * 所以 680 个脚本对照组的账本一笔不变；调一次会写一笔 director.dress。
    */
-  function dress(work) {
-    const scenes = SCENE_SETS[work];
-    if (!scenes) throw new Error(`没有这部作品的场景数据：${work}`);
+  // 场景数据由调用方递进来（import shared/scenes/<work>.js 的 SCENES）：会话不静态依赖场景文件，
+  // 场景组改到一半时，会话、演出和对照组照样能加载。
+  function dress(work, scenes) {
+    if (!scenes || typeof scenes !== 'object') throw new Error(`没有这部作品的场景数据：${work}（调用时把 SCENES 递进来）`);
     const d = director();
     if (!d) throw new Error('还没有导演：先上传记让导师请一位');
     const cause = [ledger.last((e) => e.from === 'user')?.seq].filter(Boolean);

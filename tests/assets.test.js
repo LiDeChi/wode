@@ -156,7 +156,7 @@ test('key 唯一、带 kind 前缀、spec 不重复，每个 Brief 都有 why �
 
 test('session.dress 写一笔 director.dress 账，payload 里的 keys 与资产单一致', () => {
   const s = sessionWith(ANSWERS.A);
-  const sheet = s.dress('qiefu');
+  const sheet = s.dress('qiefu', SCENES);
   const entry = s.ledger.last((e) => e.kind === 'director.dress');
   assert.ok(entry, 'session.dress 应写下一笔 director.dress');
   assert.equal(entry.payload.work, 'qiefu');
