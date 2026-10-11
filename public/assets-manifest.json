@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "style": "战国漆木剧场，风格化程序化 2.5D；历史造型待人工考据审定",
+  "assets": [
+    { "id": "environment-city-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment city", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-court-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment court", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-gate-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment gate", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-night-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment night", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-camp-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment camp", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-granary-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment granary", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "environment-studio-v1", "version": 1, "source": "src/presentation/models.ts buildEnvironment studio", "license": "original-project-asset", "kind": "procedural-scene" },
+    { "id": "character-kit-v1", "version": 1, "source": "src/presentation/models.ts buildCharacter + src/data/catalog.ts CHARACTERS appearance", "license": "original-project-asset", "kind": "character-pack", "includes": "character-{entity.id}-v1" },
+    { "id": "prop-seal-v1", "version": 1, "source": "src/presentation/models.ts makeSeal; 史记卷077合符段，形制为本作设计", "license": "original-project-asset", "kind": "prop" },
+    { "id": "music-five-tone-v1", "version": 1, "source": "src/presentation/audio.ts pentatonic rule composition", "license": "original-project-asset", "kind": "procedural-music" },
+    { "id": "sound-events-v1", "version": 1, "source": "src/presentation/audio.ts choice/seal/alarm/page", "license": "original-project-asset", "kind": "procedural-sfx" },
+    { "id": "object-icon-kit-v1", "version": 1, "source": "src/ui/icons.ts original SVG line shapes", "license": "original-project-asset", "kind": "interface-device" }
+  ],
+  "dependencies": [
+    { "id": "three", "license": "MIT", "source": "https://github.com/mrdoob/three.js" },
+    { "id": "noto-serif-sc", "license": "SIL Open Font License 1.1", "source": "https://fonts.google.com/noto/specimen/Noto+Serif+SC" },
+    { "id": "noto-sans-sc", "license": "SIL Open Font License 1.1", "source": "https://fonts.google.com/noto/specimen/Noto+Sans+SC" }
+  ]
+}

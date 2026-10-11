@@ -1,0 +1,15 @@
+{
+  "runId": "release-20261011-4",
+  "sourceFingerprint": "3b45c889035105afddc8e951843c19c29d81d12aae9c660ad077ce83805259f9",
+  "manifest": "artifacts/evidence.json",
+  "results": [
+    {"mode":"desktop","state":"home","diagnostics":{"calls":21,"triangles":2688,"geometries":16,"textures":9},"errors":[],"withinBudget":true},
+    {"mode":"mobile","state":"home","diagnostics":{"calls":21,"triangles":2688,"geometries":16,"textures":9},"errors":[],"withinBudget":true},
+    {"mode":"desktop","state":"granary","diagnostics":{"calls":76,"triangles":9470,"geometries":54,"textures":12},"errors":[],"withinBudget":true},
+    {"mode":"mobile","state":"granary","diagnostics":{"calls":76,"triangles":9470,"geometries":54,"textures":12},"errors":[],"withinBudget":true},
+    {"mode":"desktop","state":"active-play","diagnostics":{"calls":111,"triangles":10676,"geometries":78,"textures":13},"errors":[],"withinBudget":true},
+    {"mode":"mobile","state":"active-play","diagnostics":{"calls":111,"triangles":10676,"geometries":78,"textures":13},"errors":[],"withinBudget":true},
+    {"mode":"mobile","state":"pause","diagnostics":{"calls":111,"triangles":10676,"geometries":78,"textures":13},"errors":[],"withinBudget":true},
+    {"mode":"desktop","state":"fail-or-retry","diagnostics":{"calls":111,"triangles":10676,"geometries":78,"textures":13},"errors":[],"withinBudget":true}
+  ]
+}
