@@ -217,3 +217,80 @@ p.tiers() -> { night: '细演', … }           // 已经定下来的档位表�
 算力：`budget` 非空时按 `TIER_COST` 记帐（内核的 `tierSpend()`），不够就从当前这场往下降档（细演→普通→一笔带过），**降到底照常演完，不抛错、不中断**——玩家只是看到「这里被省略了」。降档只改文字厚薄：680 个脚本 × 4 种档位来源（不传 / 细演 / 一笔带过 / `'mentor'`）逐一比对，结局、天数、旗标、每一幕的选择全一致；账本条数与其余内容一笔不差，只有 `user.ask` 那条的 `answer` 文字本身随档位变长变短。
 
 自查（`/tmp/t27-depth-check.mjs`）：同一串选择分别用三档跑完一局，打印每幕字数与 `elided` 标记，结局相同。
+
+---
+
+## 9. 生活循环（持续生活：`living` 入口）
+
+§1–§8 是「玩家做一件事 → 演一次」。这一节是同一套内核上的**持续生活**：玩家不动的时候，世界照逻辑拍走，演员自己看、自己想、自己动。全部是确定性结构，不调 LLM、不抽随机（唯一种子入口是调用方传进来并存下的 `seed`）。
+
+### 入口：默认关闭，一字不变
+
+```js
+const play = createPlay(session, { living: 'director', seed: 'ep-1' });   // living: true 等价
+play.advance({ toTick: 12, inputs: [{ id: 'i1', tick: 3, op: 'choose', args: ['a1'] }] });
+play.lifeRead('daliang');        // 读镜（只读）
+play.lifeTrace(seq);             // 当时那条感知片段
+```
+
+- 不传 `living`：`state.play` 里连 `life` 键都不建，`view()` 一个字段不多，返回对象不多一个方法，账本一笔不差（680 脚本 digest 与不传时相同：`530555aae5c4774a`）。
+- 传了才多出：`advance`、`lifeEnter(sceneId)`、`lifeRead(sceneId)`、`lifeTrace(seq)`、`lifeRecall(query)`、`life`、`kernel()`；`view().life = { tick, scene, paused, ended, policy }`。
+- 新增可枚举字段只有 `state.play.life`（`shared/engine/play.js` 的 `freshLifeState()`）与 `session.state.episode`。旧路径不写这两个键。
+
+### 逻辑拍（`shared/life/life.js`）
+
+- 一个整数逻辑拍 = 一秒；浏览器把前台秒数换成 `toTick` 传进来，**内核里没有帧循环**。
+- `advance({toTick, inputs}) -> {from,to,processed,reactions,outcomes,events,view}`：先收输入，再逐拍推进；同一拍**先处理玩家输入，再按场景声明顺序处理环境和演员**；`state.ended` 或 `state.paused` 时不推进（关掉入口等二十秒 = 没等）。
+- 幂等：同一个 `input.id` 只跑一次（第二次记 `repeated:true`）；`toTick` 不大于当前拍则原地返回。**分两段推进到同一拍 = 一次推进**（digest 相同）。
+- 子种子：`makeRng(\`${seed}/${episodeId}/${sceneId}/${tick}/${actorId}/${eventId}\`)`（`shared/core/rng.js`）；不需要抽签就不消费随机。禁 `Math.random` / `Date` / `window` / `document` / `fs` / `process`。
+
+### 脉搏与自主（`shared/kernel/kernel.js` 的 `dispatchEvent`）
+
+- `dispatchEvent(sceneId, event)`，`event = {id,tick,origin:'actor'|'environment',from,kind,channels,cause,policy}`。
+- 环境：世界签名（天数 / 旗标 / 最近反应 / 控制器状态 / 已知地点 / 最近动作）没变 → `{silent:true}`，**不落 `world.pulse`、不形成经历**；真变了才落一条 `world.pulse`。
+- 演员：他已经看过这个脉搏（`world.seenPulse`）→ `{silent:true}`；否则走一次真实感知（写 `actor.react`），停在 unit 且 `policy.autonomy.verbs` 允许时才写 `actor.act`——`from` 一定是 `actor:<id>`，`cause` 指向他自己的那条反应（`world.pulse → actor.react → actor.act`）。
+- 演员的授予来自导演的 `policy.autonomy`（**独立授予，不借玩家的 `beat.grants`**）；两套授予内核分别检查。
+- 规则：这类场景的规则表里多 `event` / `pulse` / `tick` / `policy` 四个事实；效果清单多一条 `['act', person, spec]`（写 `actor.act`，`verb` 默认 `'think'`，没授予则返回 `{refusedAct:true}`）。
+
+### 导演的生活计划（`shared/life/plan.js`）
+
+- `designLife({director, design, scenes, work, seed}) -> {policies, decisions}`；纯函数，不写状态，**按 work 逐个调用**。
+- `policy = {beat, scene, work, waitForPlayer, cadenceTicks, autonomy:{people,verbs}, warning:{ticks,why}, historyReveal, environment:{cadenceTicks,kind,channels}, why, sourceSeq}`。
+- 读 `stagecraft.taste(director).craft`：`freedomBias > lockBias` → 演员不等玩家（`autonomy.verbs` 加上该场声明的动词），否则只想不动；`节奏` 分档决定 `cadenceTicks`（2 / 3 / 4 拍）；`悲剧 > 0.6` → `historyReveal:'slow'`，否则 `'after-decision'`。
+- 提交一次：`session.commitLifeDesign({work,beat,policy})` 写 `director.life-design` 一条并把 `policy.sourceSeq` 钉成那条 seq；同一场同一拍再提交返回 `{committed:false}`。
+
+### 读镜（`shared/life/view.js`）
+
+- `createLifeView({session,kernel,life}).read(sceneId)`：**只读**——不调 `play.view()`，不碰心智（不 `tick` / `perceive` / `hear`，也不调会写 `user.ask` 的 `ask`）。返回 `{scene,beat,work,tick,place,title,policy,actors,director,mentor,causes,experiences,watching}`。
+- 每个片段带 `source / layer / object / reasonId / seq / at / path`：来源、层级、对象、原因 id、账本 seq 全在结构里。`say(rec)` 只是模板翻译层，改措辞不参与任何计算（以后可换 LLM 措辞）。
+- `life.perception(seq)` 取的是**感知当时**留下的片段（`state.play.life.perceptions`），不是拿现在的记忆倒算。
+
+### 导师心智（`shared/agents/mentor.js`）
+
+- 只在启用持续生活的会话里 `enableMind()`（用已有 `STAFF.mentor` 定义），关掉入口就没有这个心智，存档里也没有 `mind` 键。
+- 场中停留满 8 拍且本场没记过 → `observe({kind:'pause',tick,scene})` 记一条 `notes.pause`（**不调 `learn`**，不凭停留断言「你爱深层人心」）；后台 / 暂停不算。
+
+### 经验跨局留、历史不串台
+
+- 经历与手艺分开存：`state.play.life.experiences`（本段经历）与 `state.play.life.store`（记忆存储）随存档走；`session.state.episode` 记本段开场 seq、继承主张 id 与本段产出的主张 id。
+- `find(subject,predicate)` 只在**本段**（`session.episodeScope().claimIds`）里找下场 / 结局 / 学习反应 → 上一局晋鄙的下场不参与新分支的结局计算。不开生活时 `episodeScope()` 为 null，行为与旧版逐字节相同。
+
+### 记忆存储的字面契约（`shared/core/memory.js`）
+
+供测试直接断言（`/tmp/t44-memory.mjs` 是参照实现）：
+
+1. 导出 `createMemoryStore(opts)`、`MEMORY_DEFAULTS`、`sigOf(entry)`、`impactOf(entry)`。
+2. 默认值全在 `MEMORY_DEFAULTS`：`{capacity:240, decay:0.99, consolidateAt:1.2, bucketSize:8, overFetch:4, throttleTicks:5, forgetRatio:0.3, keepRecent:15, exemptImpact:0.6, levels:2, weights:{relevance:3,importance:2,recency:0.5}}`。
+3. `remember(entry) -> id`（字符串 `m1`、`m2`…）：同一个 `sig` 返回同一个 id，只把 activation 加亮 `+0.2`（上限 2）。
+4. `sigOf`：`` `${kind}|${actorId}|${sceneId}|${seq ? 's' + seq : (关键词排序并集 || 't' + tick)}` `` —— **事实只在账本，记忆只留账本 seq 与派生量**。
+5. `impactOf`：`clamp01(0.4*error + 0.3*goalHit + 0.2*first + 0.1*min(1,|moved|))`；显式传 `impact` 则优先。
+6. `recall(query) -> [{id,seq,kind,tick,depth,impact,score:{relevance,importance,recency,rrf,total}}]`：三路（actor / scene / keyword）各自排名 → RRF `Σ 1/(rank+1)` → **先归一再加权 3 : 2 : 0.5**；所有分数 `round3`；同输入同输出。命中即更新 `lastAccess`，按 `throttleTicks` 节流。
+7. `consolidate({toTick}) -> [entry]`：`pending >= consolidateAt` 且原始条目 ≥ `bucketSize` 才做；产出 `depth+1`，`sig` 为 `sum1:<ids>`（再上一层 `sum2:<ids>`）；关键词 / who 取并集、impact 取最大、seq 取最新，被用过的条目置 `bucketed`。
+8. `forget({toTick}) -> {dropped:[id],kept:n}`：`expires` 过期（明确指令，**不受豁免**）+ 冷掉（`activation <= 0` 且 `impact < exemptImpact`）+ 容量淘汰（`impact >= exemptImpact` 豁免、最近 `keepRecent` 条永远留、一次最多丢 `forgetRatio`）。
+9. `tick({toTick})` 只推进时序（activation 每拍 −0.15、`now`），**不巩固不遗忘**；`save() / restore(saved)` 是纯 JSON（`{v,nextId,now,pending,entries,cfg}`），`restore` 整体替换；存档里没有账本事实（不出现 `line` / `appeal` / `said`）。
+
+### 自查
+
+- `/tmp/t44-parity.mjs`：680 个脚本结果的 digest，工作树与 HEAD 相同（默认关闭生活 → 行为逐字段不变）。
+- `/tmp/t44-life.mjs`：两段 = 一次、输入幂等、纯读零写、关入口等二十秒 = 没等、同种子同结果、没新刺激不伪造经历、授予允许时演员自己动（`cause` 指向他自己的反应）、经历跨局留而旧局下场不串台。
+- `/tmp/t44-memory.mjs`：上面 9 条字面契约逐条断言。
