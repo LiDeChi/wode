@@ -17,7 +17,9 @@
 //                                       createAudioEngine 按 config.local 自动注册（t15 的「注册这一行」）
 //   tools/assets/providers/localsvc.mjs 模块级 name/kinds/ext + available(ctx) / make(brief, outPath, ctx)
 //                                       （同 providers/magpie.mjs 的约定）
-//   tools/assets/review.mjs             review(brief, file, lock, opts) → {verdict, why, checks}
+//   tools/assets/review.mjs             review(brief, file, lock, opts) → {verdict, why, checks}（已落地核对：
+//                                       brief.spec 带 seconds/size/quality，opts 里 attempt/maxRedo 决定 redo 还是 reject，
+//                                       opts.critic + opts.fetch 注入评审模型，opts.{ffmpeg,ffprobe}=false 可当没装）
 //   tools/local/doctor.mjs              CLI：node doctor.mjs [--config <path>] [--json]
 // openai.mjs / comfyui.mjs 不直接 import：§2 要求两侧适配器都只调 tools/local 的客户端，
 // 所以这里经适配器 / 引擎触发它们，断言落在假服务收到的请求上。
@@ -683,16 +685,41 @@ test('导演审片：时长超差判 redo，重做仍超判 reject，critic 低�
   await mkdir(path.join(box.dir, 'out'), { recursive: true });
   const mod = await loadOptional('tools/assets/review.mjs');
   if (!need(t, mod && typeof mod.review === 'function', '等 kernel2 t16：tools/assets/review.mjs 未落地')) return;
+  assert.equal(typeof mod.default?.review, 'function', 'review.mjs 也要有默认导出（review 在内）');
+
+  // 量具用假的，这一组才不取决于开发机装没装 ffmpeg/ffprobe。
+  // 两条假命令写成 /bin/sh 脚本（不依赖 node 在哪）：假 ffprobe 报 0.25s（图片报 1536x1024），
+  // 假 ffmpeg 在取平均色那条路上吐 3 字节 RGB(#334455)，在量响度那条路上往 stderr 报 -30 LUFS。
+  // 真实签名是 review(brief, file, lock, opts)：规格在 brief.spec（seconds/size/quality），
+  // 重做次数由 opts.{attempt,maxRedo} 给。
+  const binDir = path.join(box.dir, 'bin');
+  await mkdir(binDir, { recursive: true });
+  const fakeProbe = path.join(binDir, 'ffprobe');
+  await writeFile(fakeProbe, `#!/bin/sh
+for a in "$@"; do last="$a"; done
+case "$last" in
+	*.png|*.jpg|*.jpeg|*.webp) printf '%s' '{"streams":[{"width":1536,"height":1024}],"format":{"format_name":"png"}}' ;;
+	*) printf '%s' '{"streams":[],"format":{"duration":"0.25","format_name":"wav"}}' ;;
+esac
+`, { mode: 0o755 });
+  const fakeFfmpeg = path.join(binDir, 'ffmpeg');
+  await writeFile(fakeFfmpeg, `#!/bin/sh
+case " $* " in
+	*" scale=1:1 "*) printf '\\063\\104\\125' ;;
+	*) printf '  I: -30.0 LUFS\\n' >&2 ;;
+esac
+`, { mode: 0o755 });
+  const tools = { ffprobe: fakeProbe, ffmpeg: fakeFfmpeg };
 
   const shortFile = path.join(box.dir, 'out', 'V1.wav');
   await writeFile(shortFile, wavBuffer(0.25));   // 规格 5 秒，实际 0.25 秒：远超声纳 ±20%
-  const brief = { key: 'V1', kind: 'voice', prompt: '旁白', seconds: 5 };
+  const brief = { key: 'V1', kind: 'voice', why: '旁白', spec: { prompt: '旁白', seconds: 5, quality: 'generated' } };
   const lock = { plateKey: null, palette: ['#334455'], negative: [], seedBase: 1, voices: {}, loudness: -16 };
   const verdicts = new Set(['accept', 'redo', 'reject']);
 
-  const first = await mod.review(brief, shortFile, lock, {});
+  const first = await mod.review(brief, shortFile, lock, tools);
   assert.ok(verdicts.has(first.verdict), `verdict 只能是 accept/redo/reject，实际 ${first.verdict}`);
-  assert.equal(first.verdict, 'redo', '时长不在 spec ±20% 内 → redo');
+  assert.equal(first.verdict, 'redo', '时长不在 spec ±20% 内、还有一次重做机会 → redo');
   assert.equal(typeof first.why, 'string', 'why 要说清退在哪');
   assert.ok(Array.isArray(first.checks) && first.checks.length > 0, 'checks 要逐项列出');
   for (const c of first.checks) {
@@ -700,42 +727,51 @@ test('导演审片：时长超差判 redo，重做仍超判 reject，critic 低�
     assert.equal(typeof c.ok, 'boolean', '每条 check 要有 ok');
     assert.ok('value' in c && 'expect' in c, '每条 check 要有 value 与 expect');
   }
-  const durationCheck = first.checks.find((c) => /duration|时长|seconds/i.test(c.name));
+  const durationCheck = first.checks.find((c) => c.name === 'duration');
   assert.ok(durationCheck, '必须有一条量时长的 check');
   assert.equal(durationCheck.ok, false, '时长超差这条要判 false');
+  assert.equal(first.critic, undefined, '没配评审模型时不留 critic 记录');
 
-  // 重做仍超 → reject：契约把重做循环放在 run.mjs，这里只要重做后的判定仍然是 redo，
-  // 且 run.mjs 确实把 maxRedo 用完才 reject（下面 §5.9 的端到端那组会落这个终点）。
-  const second = await mod.review(brief, shortFile, lock, { redo: 1 });
-  assert.equal(second.verdict, 'redo', '重做一次还是超差 → 仍判 redo（由 run.mjs 判定 reject 并记 manifest）');
+  // 第几次重做、还能重做几次，由调用方给：attempt > maxRedo 才 reject
+  const retry = await mod.review(brief, shortFile, lock, { ...tools, attempt: 1, maxRedo: 1 });
+  assert.equal(retry.verdict, 'redo', '第 1 次尝试、允许重做 1 次 → redo');
+  const second = await mod.review(brief, shortFile, lock, { ...tools, attempt: 2, maxRedo: 1 });
+  assert.equal(second.verdict, 'reject', '重做一次还是超差（attempt 2 > maxRedo 1）→ reject');
+  assert.match(second.why, /重做/, 'reject 的 why 要说明重做次数已经用完');
 
-  // 没配 critic / 没 ffmpeg：对应检查是 skipped，而不是失败
-  const offline = await mod.review({ ...brief, seconds: 0.25 }, shortFile, lock, {});
-  assert.ok(offline.checks.some((c) => c.skipped === true), '缺 ffmpeg / 缺 critic 时对应检查要记 skipped');
-  assert.notEqual(offline.verdict, 'reject', 'skipped 不是失败，不能因此 reject');
+  // 没配量具：对应检查记 skipped，不算失败 → 其余都过就该收下
+  const offline = await mod.review(brief, shortFile, lock, { ffprobe: false, ffmpeg: false });
+  assert.ok(offline.checks.some((c) => c.skipped === true), '缺 ffmpeg / ffprobe 时对应检查要记 skipped');
+  assert.equal(offline.verdict, 'accept', 'skipped 不是失败：量不出来不能拦着收下');
 
-  // critic 注入 fetch：低分 → redo
+  // critic 注入 fetch：低分 → redo，高分 → accept（评审配置走 opts.critic，图片才有视觉评审）
   const criticCalls = [];
-  const criticFetch = async (url, init) => {
+  const criticFetch = (score) => async (url) => {
     criticCalls.push(String(url));
-    const payload = { choices: [{ message: { content: JSON.stringify({ score: 0.2, why: '色调不像同一位导演' }) } }] };
+    const payload = { choices: [{ message: { content: JSON.stringify({ score, reason: '色调不像同一位导演' }) } }] };
     return { ok: true, status: 200, json: async () => payload, text: async () => JSON.stringify(payload) };
   };
   const seen = path.join(box.dir, 'out', 'bright.png');
   await writeFile(seen, PNG);
-  const withCritic = await mod.review(
-    { key: 'P1', kind: 'image', prompt: '城门', seconds: 5 },
-    seen,
-    lock,
-    { criteria: { ratio: 1 }, fetch: criticFetch, config: { critic: { url: 'http://127.0.0.1:9/v1/chat/completions', model: 'qwen-vl', threshold: 0.6 } } },
-  );
-  if (criticCalls.length > 0) {
-    assert.equal(withCritic.verdict, 'redo', 'critic 低于 threshold(0.6) → redo');
-    assert.ok(withCritic.checks.some((c) => /critic|评审|推荐模型/.test(c.name) && c.ok === false), '低分要在 checks 里留下一条 false');
-    assert.ok(withCritic.critic != null || withCritic.checks.some((c) => c.skipped !== true && /critic/i.test(c.name)), 'critic 的结果要留痕');
-  } else {
-    t.diagnostic('注入的 critic fetch 未被调用：critic 可能读的是 opts.config.critic.url 之外的字段（实现为准）');
-  }
+  const plate = path.join(box.dir, 'out', 'PLATE.png');
+  await writeFile(plate, PNG);
+  const imageBrief = { key: 'P1', kind: 'image', why: '城门', spec: { prompt: '城门', size: '1536x1024', quality: 'generated' } };
+  const imageLock = { plateKey: 'PLATE-1', palette: ['#334455'], negative: [], seedBase: 1, voices: {}, loudness: -16, words: ['低饱和', '留白'] };
+  const withCritic = { ...tools, critic: { url: 'http://127.0.0.1:9/', model: 'qwen-vl', threshold: 0.6 }, plates: { 'PLATE-1': plate } };
+
+  const low = await mod.review(imageBrief, seen, imageLock, { ...withCritic, fetch: criticFetch(0.2) });
+  assert.equal(criticCalls.length, 1, '配了评审模型就要问一次');
+  assert.ok(criticCalls[0].endsWith('/v1/chat/completions'), `评审要打到 OpenAI 兼容的 chat/completions，实际 ${criticCalls[0]}`);
+  const criticCheck = low.checks.find((c) => c.name === 'critic');
+  assert.ok(criticCheck, '评审结果要进 checks');
+  assert.equal(criticCheck.ok, false, '0.2 < threshold 0.6 → 这条判 false');
+  assert.equal(low.verdict, 'redo', 'critic 低于 threshold(0.6) → redo');
+  assert.equal(low.critic?.score, 0.2, 'review 结果里要留 critic 分数');
+  assert.equal(low.critic?.ok, false, 'critic 留痕要带上 ok');
+
+  const high = await mod.review(imageBrief, seen, imageLock, { ...withCritic, fetch: criticFetch(0.95) });
+  assert.equal(high.verdict, 'accept', 'critic 高分、确定性检查全过 → accept');
+  assert.equal(high.critic?.ok, true, '高分时 critic 留痕要 ok:true');
 });
 
 // =====================================================================
