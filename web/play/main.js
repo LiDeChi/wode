@@ -1,0 +1,419 @@
+// 主控：一局从选导演走到结局。所有输入都发生在场景里（点人、点实物、点小机关）。
+import * as THREE from 'three';
+import { createRender } from '/game/render.js';
+import { createSession } from '/shared/engine/session.js';
+import { createPlay } from '/shared/engine/play.js';
+import { createStage } from './stage.js';
+import { createCamera } from './camera.js';
+import { createUI } from './ui.js';
+
+const params = new URLSearchParams(location.search);
+const DEV = params.get('dev') === '1';
+
+const ANSWERS = { lu: { wait: 0.8, polish: 0.8, depth: 0.85 }, shan: { wait: 0.2, polish: 0.2, depth: 0.25 } };
+const NEED = '我想看一个人在乱世里怎么做选择';
+const DIRECTOR = { lu: '陆导', shan: '单导' };
+const HOLDER = '门客（你）';
+
+const ITEM_PROP = {
+  '赵使的竹简': 'prop:letter',
+  '宫中令牌': 'prop:token',
+  '印信': 'prop:seal',
+  '借条': 'prop:note',
+  '担保物': 'prop:pledge',
+  '兵符': 'prop:tally',
+};
+
+const OPT_LABEL = {
+  yi: '说「义」', li: '说「利」', king: '请见魏王', back: '说「义」', fear: '说「惧」', hou: '问侯嬴为什么',
+  en: '说「恩」', ju: '说「惧」', step: '往前挪一格', rush: '一口气冲两格',
+  token_a: '把令牌递给守卫甲', token_b: '把令牌递给守卫乙',
+  seal: '把印信推过去', note: '把借条推过去', pledge: '把担保物推过去',
+  report: '拿着仓簿去报', witness: '拉上李同一起去报', hide: '先瞒下来',
+};
+
+const canvas = document.getElementById('stage');
+const render = createRender(canvas);
+const cam = createCamera(render);
+const ui = createUI({ dev: DEV });
+const stage = createStage(render.scene, render);
+
+let session = null;
+let play = null;
+let view = null;
+let busy = false;
+let ended = false;
+const opened = new Set();   // 哪个人的诉求签已经摊开了
+let lastAct = null;
+
+/* ── 小工具 ──────────────────────────────────────────────── */
+
+const v3 = new THREE.Vector3();
+
+function nameOf(id) {
+  const p = (view?.people ?? []).find((x) => x.id === id);
+  if (p) return p.name;
+  const g = view?.granary?.keepers?.find((x) => x.id === id);
+  return g?.name ?? id;
+}
+
+function anchorPos(key) {
+  const a = stage.anchors.get(key);
+  return a ? a.getPos() : null;
+}
+
+function humanError(e) {
+  const msg = String(e?.message ?? e ?? '');
+  if (msg.includes('没有授予')) return '这位导演没给你这种时机——这件事你此刻做不了。';
+  if (msg.includes('已经做完')) return '这一场已经做完了，往下走吧。';
+  if (msg.includes('还没做出选择')) return '这一场你还没动手。先在这一幕里做一个选择。';
+  return msg || '有一处说不清的地方。';
+}
+
+function fail(e) {
+  if (DEV) console.error(e);
+  ui.clearTags();
+  ui.fatal('这一场出了点岔子。', humanError(e));
+}
+
+/** 舞台上能点的东西先收走，说话的时候不许乱点 */
+function freeze(on) {
+  ui.el.tags.style.pointerEvents = on ? 'none' : '';
+}
+
+async function speak(name, text) {
+  freeze(true);
+  ui.clearTags();
+  await ui.say(name, text);
+  await ui.advance();
+  freeze(false);
+}
+
+async function peek(text) {
+  if (busy) return;
+  busy = true;
+  try { await speak('', text); } catch (e) { fail(e); } finally { busy = false; }
+}
+
+/* ── 把一幕摆到画面上 ─────────────────────────────────────── */
+
+function peopleFor(v) {
+  const people = [...(v.people ?? [])];
+  if (v.stage === 'granary' && v.granary?.keepers) {
+    const others = v.granary.keepers.filter((k) => k.id !== v.granary.keeper);
+    for (const k of others) if (!people.some((p) => p.id === k.id)) people.push({ id: k.id, name: k.name, title: '另一个守仓人' });
+  }
+  return people;
+}
+
+function focusKeyFor(v) {
+  if (v.stage === 'granary') return `person:${v.granary?.keeper}`;
+  const leads = { daliang: 'xinling', yimen: 'houying', night: 'prop:token', ye: 'jinbi' };
+  const key = leads[v.act];
+  if (key && stage.anchors.has(key)) return key;
+  const first = (v.people ?? [])[0];
+  return first ? `person:${first.id}` : 'device';
+}
+
+function labelFor(opt, v) {
+  if (OPT_LABEL[opt.id]) return OPT_LABEL[opt.id];
+  if (opt.verb === 'wait') {
+    return { daliang: '不出声，看公子', yimen: '跟着车走，不出声', night: '贴着墙根，等灯过去', ye: '看铁椎落下' }[v.act] ?? '不出声';
+  }
+  if (opt.verb === 'give' && opt.item) return `递上${opt.item}`;
+  const line = String(opt.line ?? '');
+  return line.length > 10 ? `${line.slice(0, 10)}…` : (line || opt.id);
+}
+
+/** 这个选项的签挂在哪：挂人身上（要先把人点开），还是挂在实物/装置上（一直在） */
+function anchorFor(opt, v) {
+  if (v.stage === 'granary') {
+    if (opt.item && ITEM_PROP[opt.item]) return { key: ITEM_PROP[opt.item] };
+    return { key: `person:${v.granary.keeper}`, personId: v.granary.keeper, kind: 'intent' };
+  }
+  if (v.act === 'night') {
+    if (opt.item && ITEM_PROP[opt.item]) {
+      const to = opt.to && stage.anchors.has(`person:${opt.to}`) ? opt.to : null;
+      return to ? { key: `person:${to}`, personId: to, kind: 'intent' } : { key: 'prop:token' };
+    }
+    return { key: 'path' };
+  }
+  if (opt.to && stage.anchors.has(`person:${opt.to}`)) {
+    return { key: `person:${opt.to}`, personId: opt.to, kind: 'intent' };
+  }
+  if (opt.item && ITEM_PROP[opt.item]) return { key: ITEM_PROP[opt.item] };
+  if (v.act === 'ye') return { key: 'prop:tally' };
+  return { key: 'device' };
+}
+
+function paint(v) {
+  ui.setScene(v);
+  ui.setDays(v.days);
+  ui.objective(v.goal ?? '');
+  ui.showClepsydra(v.act === 'night' ? v.night : null);
+  stage.setNight(v.act === 'night' ? v.night : null);
+
+  const entries = [];
+  const anchors = stage.anchors;
+
+  for (const p of peopleFor(v)) {
+    const key = `person:${p.id}`;
+    if (!anchors.has(key)) continue;
+    const isKeeper = !!v.granary?.keepers?.some((k) => k.id === p.id);
+    const other = isKeeper && p.id !== v.granary.keeper;
+    entries.push({
+      key, kind: 'person', label: other ? `${p.name}（换他）` : p.name,
+      hint: [p.title, p.look].filter(Boolean).join(' · '),
+      onClick: () => {
+        if (other) { doKeeper(p.id); return; }
+        if (opened.has(p.id)) opened.delete(p.id); else opened.add(p.id);
+        paint(view);
+      },
+    });
+  }
+
+  for (const opt of v.options ?? []) {
+    const a = anchorFor(opt, v);
+    if (a.personId && !opened.has(a.personId)) continue;
+    if (!anchors.has(a.key)) continue;
+    entries.push({
+      key: a.key, intent: opt.id, kind: a.kind ?? 'intent', disabled: !opt.allowed,
+      label: labelFor(opt, v), hint: opt.line ?? '', onClick: () => doChoose(opt.id),
+    });
+  }
+
+  for (const f of stage.flavor ?? []) {
+    if (!anchors.has(f.key)) continue;
+    if (entries.some((e) => e.key === f.key && e.kind === 'flavor')) continue;
+    entries.push({ key: f.key, kind: 'flavor', label: f.label, onClick: () => peek(f.line) });
+  }
+
+  ui.setTags(entries);
+
+  const verbs = v.grants?.verbs ?? [];
+  const gizmos = [];
+  for (const p of peopleFor(v)) {
+    const key = `person:${p.id}`;
+    if (!anchors.has(key)) continue;
+    const actions = [];
+    if (verbs.includes('watch')) actions.push({ label: '看', role: 'watch', title: '看他的心思', onClick: () => doWatch(p.id) });
+    actions.push({ label: '问', role: 'ask', title: '追问他一句', onClick: () => doAsk(p.id) });
+    gizmos.push({ key, actions });
+  }
+  ui.setGizmos(gizmos);
+  ui.dev({ 阶段: v.stage, 场: v.act ?? v.stage, 天数: v.days, 可选项: (v.options ?? []).map((o) => `${o.id}${o.allowed ? '' : '(不许)'}`) });
+}
+
+function showAct(v) {
+  const first = stage.actId !== v.act;
+  if (first) {
+    stage.build(v.act, { ...v, people: peopleFor(v) });
+    cam.setShot(stage.actShot(v.act), true);
+    opened.clear();
+  } else {
+    stage.refresh(v);
+  }
+  paint(v);
+  const key = focusKeyFor(v);
+  const go = () => {
+    const p = anchorPos(key);
+    if (!p) return;
+    if (v.act === 'night') cam.focus(p, { dist: 10.5, elev: 0.40, az: cam.camera.position.x >= 0 ? 0.32 : -0.32 });
+    else cam.focus(p, { dist: key.startsWith('person:') ? 6.8 : 8.6, elev: key.startsWith('person:') ? 0.24 : 0.30 });
+  };
+  if (first) setTimeout(go, 1000); else go();
+  lastAct = v.act;
+}
+
+/* ── 一局怎么走 ──────────────────────────────────────────── */
+
+async function settle() {
+  while ((view.stage === 'act' || view.stage === 'granary') && view.done) view = play.next();
+  if (view.stage === 'coda') return showCoda(view);
+  if (view.stage === 'done') return showFinal(view);
+  return showAct(view);
+}
+
+async function doChoose(id) {
+  if (busy || !view) return;
+  const opt = (view.options ?? []).find((o) => o.id === id);
+  if (!opt) return;
+  const keepOpened = view.act === 'night';
+  busy = true;
+  try {
+    if (!opt.allowed) {
+      await speak('', `${labelFor(opt, view)}——这会儿做不成。${opt.item ? '那件事、那件东西，此刻都不在你手里。' : ''}`);
+      return;
+    }
+    freeze(true);
+    ui.clearTags();
+    const r = play.choose(id);
+    const speaker = r.r?.person ?? null;
+    if (speaker) { const p = anchorPos(`person:${speaker}`); if (p) cam.focus(p, { dist: 6.2, elev: 0.22 }); }
+    if (r.r?.tell) ui.tell(r.r.tell);
+    freeze(false);
+    await speak(speaker ? nameOf(speaker) : HOLDER, r.text ?? '……');
+    view = r.view;
+    if (!keepOpened) opened.clear();
+    await settle();
+  } catch (e) {
+    fail(e);
+  } finally {
+    busy = false;
+  }
+}
+
+async function doWatch(id) {
+  if (busy || !view) return;
+  busy = true;
+  try {
+    const r = play.watch(id);
+    const p = anchorPos(`person:${id}`);
+    if (p) cam.focus(p, { dist: 5.6, elev: 0.22 });
+    ui.showMind(r);
+  } catch (e) {
+    ui.hideMind();
+    await speak('', humanError(e));
+  } finally {
+    busy = false;
+  }
+}
+
+async function doAsk(id) {
+  if (busy || !view) return;
+  busy = true;
+  try {
+    const r = play.ask(id);
+    const p = anchorPos(`person:${id}`);
+    if (p) cam.focus(p, { dist: 5.8, elev: 0.22 });
+    await speak(nameOf(id), r.answer ?? '……');
+  } catch (e) {
+    fail(e);
+  } finally {
+    busy = false;
+  }
+}
+
+async function doKeeper(id) {
+  if (busy || !view || view.stage !== 'granary') return;
+  busy = true;
+  try {
+    view = play.chooseKeeper(id);
+    opened.clear();
+    await speak('', `你换了个说话的人：${nameOf(id)}。`);
+    await showAct(view);
+  } catch (e) {
+    fail(e);
+  } finally {
+    busy = false;
+  }
+}
+
+function showCoda(v) {
+  ended = true;
+  ui.clearTags();
+  ui.clearGizmos();
+  ui.hideClepsydra();
+  cam.setShot({ target: [0, 1.3, -1.0], dist: 54, az: 0.6, elev: 0.44 });
+  ui.showCoda(v.coda, {
+    onGranary: () => {
+      ui.hideEnding();
+      ui.clearTags();
+      view = play.next();
+      showAct(view);
+    },
+    onClose: () => showFinal(view),
+  });
+}
+
+function showFinal(v) {
+  ui.clearTags();
+  ui.clearGizmos();
+  ui.hideLine();
+  cam.setShot({ target: [0, 1.3, -1.0], dist: 62, az: 0.6, elev: 0.46 });
+  const acts = v.acts ?? (play.state().acts
+    ? Object.entries(play.state().acts).map(([id, a]) => ({ id, title: id, text: a.outcome?.text ?? '' }))
+    : []);
+  ui.showFinal(acts.map((a) => ({ id: a.id, title: a.title, outcome: a.text })), { onRestart: () => location.reload() });
+}
+
+/* ── 开场 ────────────────────────────────────────────────── */
+
+function startDirector(dir) {
+  try {
+    session = createSession();
+    session.meet(ANSWERS[dir], NEED);
+    play = createPlay(session);
+    const film = play.begin();
+    ui.el.title.hidden = true;
+    ui.el.film.hidden = false;
+    ui.el.filmText.textContent = film.film ?? '';
+    ui.el.filmDirector.textContent = `导演：${DIRECTOR[dir]}`;
+    ui.el.enterFilm.addEventListener('click', () => {
+      try {
+        ui.el.film.hidden = true;
+        view = play.next();
+        showAct(view);
+      } catch (e) { fail(e); }
+    });
+  } catch (e) {
+    fail(e);
+  }
+}
+
+document.getElementById('pick-lu').addEventListener('click', () => startDirector('lu'));
+document.getElementById('pick-shan').addEventListener('click', () => startDirector('shan'));
+document.getElementById('restart').addEventListener('click', () => location.reload());
+ui.bindMindClose(() => ui.hideMind());
+
+window.addEventListener('error', (e) => fail(e.error ?? e.message));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason));
+window.addEventListener('resize', () => render.resize());
+ui.bindRestart(() => location.reload());
+
+/* ── 每帧 ────────────────────────────────────────────────── */
+
+function screenOf(key) {
+  const a = stage.anchors.get(key);
+  if (!a) return { visible: false };
+  v3.copy(a.getPos());
+  v3.project(render.camera);
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  const behind = v3.z > 1;
+  return {
+    x: (v3.x * 0.5 + 0.5) * w,
+    y: (-v3.y * 0.5 + 0.5) * h,
+    visible: !behind && v3.x > -1.25 && v3.x < 1.25 && v3.y > -1.25 && v3.y < 1.25,
+    depth: v3.z,
+  };
+}
+
+let prev = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - prev) / 1000);
+  prev = now;
+  try {
+    cam.update(dt);
+    stage.update(dt);
+    render.render();
+    ui.syncTags(screenOf);
+  } catch (e) {
+    fail(e);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+render.resize();
+
+if (DEV) {
+  window.__play = {
+    get view() { return view; },
+    get stage() { return { act: stage.actId, anchors: [...stage.anchors.keys()] }; },
+    choose: (id) => doChoose(id),
+    watch: (id) => doWatch(id),
+    ask: (id) => doAsk(id),
+    keeper: (id) => doKeeper(id),
+    state: () => play?.state?.() ?? null,
+  };
+}

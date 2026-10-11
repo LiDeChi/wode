@@ -49,6 +49,8 @@ const LAYOUT = {
     people: {
       player: { x: 0.4, z: 1.8, facing: 180 },
       borrower: { x: -4.2, z: 1.4, facing: 24 },
+      keeper_doubt: { x: 1.0, z: -1.3, facing: -6 },
+      keeper_rash: { x: 1.0, z: -1.3, facing: -6 },
     },
   },
 };
@@ -107,12 +109,13 @@ export function createStage(scene, render) {
     const sc = P.scrolls(0.1, 0.7, -2.9, 0.25);
     put(sc);
     anchors.set('prop:letter', { kind: 'prop', label: '赵使的竹简', getPos: () => V(0.1, 1.5, -2.9) });
-    const gate = P.gateMark(0, 12.5, 3.0, 3.4);
+    // 宫门立在院侧——必须落在镜头前方（相机在 +z 侧朝 −z 看），否则这张签永远点不到
+    const gate = P.gateMark(-6.6, 2.8, 3.0, 3.2);
     put(gate);
     const pad = P.devicePad(1.1);
-    pad.position.set(0, 0.02, 12.5);
+    pad.position.set(-6.6, 0.02, 3.4);
     put(pad);
-    anchors.set('device', { kind: 'device', label: '宫门', getPos: () => V(0, 1.9, 12.5) });
+    anchors.set('device', { kind: 'device', label: '宫门', getPos: () => V(-6.6, 2.0, 3.2) });
     for (const [x, z] of [[-1.6, 6.5], [1.9, 7.2]]) put(P.torchProp(x, 2.4, z));
     const l = P.lantern(-3.4, 4.0, 2.6);
     put(l);
@@ -217,6 +220,11 @@ export function createStage(scene, render) {
           const ready = feed.rujiReady || feed.done;
           r.group.rotation.y = (ready ? -18 : -6) * (Math.PI / 180);
         }
+        const p = actors.get('player');
+        if (p && feed) {
+          const i = Math.max(0, Math.min(TILES_Z.length - 1, feed.pos ?? 0));
+          p.walkTo(0, TILES_Z[i]);
+        }
       },
     });
     anchors.set('person:guard_a', {
@@ -224,6 +232,15 @@ export function createStage(scene, render) {
       getPos: () => {
         const a = actors.get('guard_a');
         return V(a?.group.position.x ?? 1.7, 2.15, a?.group.position.z ?? 6);
+      },
+    });
+    // 走道前方：夜里「往前挪一格」这类动作的落点
+    anchors.set('path', {
+      kind: 'device', label: '前路',
+      getPos: () => {
+        const p = actors.get('player');
+        const z = (p?.group.position.z ?? 12) - 3.6;
+        return V(0, 1.2, z);
       },
     });
   }
@@ -351,7 +368,12 @@ export function createStage(scene, render) {
       if (!actors.has('player')) addPerson('player', def.people.player ?? { x: 0, z: 3.4, facing: 180 });
 
       // 一幕特有的场景细语：不参与选择，只是场景里能动的东西
-      if (id === 'night') {
+      if (id === 'granary') {
+        flavor = [
+          { key: 'device', label: '仓簿', line: '仓簿摊在案上。出多少、进多少，一笔一笔都记着——只是记的人也会手抖。' },
+          { key: 'person:borrower', label: '借粮的人', line: '他一直搓手。他不是不怕，是家里等不到。' },
+        ];
+      } else if (id === 'night') {
         flavor = [
           { key: 'person:guard_a', label: '提灯的守卫', line: '灯举得不高。他的影子在砖上拖得很长——他在打盹，也在看灯。' },
           { key: 'person:guard_b', label: '背身的守卫', line: '他背对着回廊。有人塞东西给他，他大概也会装作没看见。' },
@@ -361,11 +383,6 @@ export function createStage(scene, render) {
         flavor = [
           { key: 'person:zhuhai', label: '朱亥的袖子', line: '袖子里藏着一柄四十斤的铁椎。他不说话，只看公子的眼色。' },
           { key: 'prop:tally', label: '兵符', line: '两半铜符合在一处，纹路严丝合缝。凭这个，能叫动十万人的营。' },
-        ];
-      } else if (id === 'granary') {
-        flavor = [
-          { key: 'device', label: '仓簿', line: '仓簿摊在案上。出多少、进多少，一笔一笔都记着——只是记的人也会手抖。' },
-          { key: 'person:borrower', label: '借粮的人', line: '他一直搓手。他不是不怕，是家里等不到。' },
         ];
       } else if (id === 'daliang') {
         flavor = [
@@ -377,10 +394,44 @@ export function createStage(scene, render) {
           { key: 'device', label: '夷门门洞', line: '门洞里穿风。一个看门的老头在这里站了五十年。' },
         ];
       }
+      if (id === 'granary') this.refresh(view);
       return this;
     },
 
-    setNight(feed) { nightFeed = feed; },
+    setNight(feed) {
+      nightFeed = feed;
+      if (actId !== 'night') return;
+      const t = feed ? Math.max(0, Math.min(1, (feed.step ?? 0) / (feed.limit ?? 12))) : 0;
+      const mix = (a, b) => {
+        const pa = parseInt(a.slice(1), 16); const pb = parseInt(b.slice(1), 16);
+        const ch = (sh) => Math.round((((pa >> sh) & 255) * (1 - t)) + (((pb >> sh) & 255) * t));
+        return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
+      };
+      render.setSceneEnvironment({ sky: mix('#07080f', '#2b3346'), fog: 0.05 - t * 0.016 });
+    },
+
+    /** 同一幕里换人/换状态（不重建布景，人不会瞬移） */
+    refresh(v) {
+      const def = LAYOUT[actId] ?? LAYOUT.daliang;
+      const people = v?.people ?? [];
+      for (const person of people) {
+        if (!actors.has(person.id)) addPerson(person.id, def.people[person.id] ?? { x: 0, z: -3.4, facing: 0 });
+      }
+      for (const [id, a] of actors) {
+        if (id === 'player') continue;
+        a.group.visible = people.some((p) => p.id === id);
+      }
+      if (v?.stage === 'granary' && v.granary) {
+        const active = actors.get(v.granary.keeper);
+        if (active) { active.group.position.set(1.0, 0, -1.3); active.group.rotation.y = -0.1; }
+        for (const k of v.granary.keepers ?? []) {
+          if (k.id === v.granary.keeper) continue;
+          const a = actors.get(k.id);
+          if (a) { a.group.visible = true; a.group.position.set(3.7, 0, -0.2); a.group.rotation.y = -0.6; }
+        }
+      }
+      return this;
+    },
 
     /** 每帧 */
     update(dt) {

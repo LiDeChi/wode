@@ -21,6 +21,7 @@ export function createUI({ dev = false } = {}) {
   };
 
   const tagNodes = new Map();
+  const gizmoNodes = new Map();
   let typing = null;
 
   // ── 大字：打字机 ────────────────────────────────────────────
@@ -91,12 +92,14 @@ export function createUI({ dev = false } = {}) {
     },
     async advance() {
       if (typing) { skipTyping(); }
-      el.advance.hidden = true;
+      // 等玩家点的时候，那颗「继续」必须亮着——它就是给玩家看的
+      el.advance.hidden = false;
       return new Promise((resolve) => {
         const go = () => {
           el.advance.removeEventListener('click', go);
           document.removeEventListener('keydown', key);
           el.linebar.removeEventListener('click', go);
+          el.advance.hidden = true;
           resolve();
         };
         const key = (e) => {
@@ -112,9 +115,13 @@ export function createUI({ dev = false } = {}) {
     // ── 场景里的签 ────────────────────────────────────────────
     setTags(entries) {
       const seen = new Set();
+      const stack = new Map();
       for (const e of entries) {
         const id = e.key + '|' + (e.intent ?? '');
         seen.add(id);
+        // 同一个人身上可能挂着好几张诉求签：给每张排个号，别叠在同一个像素上
+        const n = stack.get(e.key) ?? 0;
+        stack.set(e.key, n + 1);
         let node = tagNodes.get(id);
         if (!node) {
           node = document.createElement('button');
@@ -125,6 +132,7 @@ export function createUI({ dev = false } = {}) {
           tagNodes.set(id, node);
         }
         node.__entry = e;
+        node.dataset.stack = String(n);
         node.className = 'tag ' + (e.kind === 'person' ? 'tag-person' : e.kind === 'flavor' ? 'tag-flavor' : '');
         node.textContent = e.label;
         node.dataset.key = e.key;
@@ -141,10 +149,11 @@ export function createUI({ dev = false } = {}) {
       for (const node of [...tagNodes.values(), ...gizmoNodes.values()]) {
         const p = getScreen(node.dataset.key);
         if (!p || !p.visible) { node.style.visibility = 'hidden'; continue; }
+        const n = Number(node.dataset.stack ?? 0);
         node.style.visibility = 'visible';
-        node.style.left = `${p.x}px`;
-        node.style.top = `${p.y}px`;
-        node.style.zIndex = String(1000 - Math.round(p.depth ?? 0));
+        node.style.left = `${p.x + (n > 0 ? (n % 2 ? 12 : -12) : 0)}px`;
+        node.style.top = `${p.y - n * 36}px`;
+        node.style.zIndex = String(1000 - Math.round(p.depth ?? 0) + n);
       }
     },
     clearTags() {
@@ -171,6 +180,7 @@ export function createUI({ dev = false } = {}) {
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'gizmo';
+          b.dataset.role = action.role ?? '';
           b.textContent = action.label;
           b.title = action.title ?? '';
           b.addEventListener('click', (ev) => { ev.stopPropagation(); action.onClick?.(); });
