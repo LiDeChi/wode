@@ -127,26 +127,29 @@ test('SQLite survives reopen and rejects stale page overwrite', () => {
   assert.deepEqual(store.read('test-world'), changed);
   store.close(); rmSync(directory, { recursive: true });
 });
-test('night collision, sight occlusion, pickup and exit produce physical outcomes', () => {
+// The exit half of this moved to playability.test.ts, which drives a real route: the act now
+// closes only when 如姬 is out as well, and there is no way to assert that from a teleported
+// position, because she walks on her own legs and cannot be placed by hand.
+test('night collision, sight occlusion and the cover rule produce physical outcomes', () => {
   let outcome: unknown;
   const game = new NightGame(view => { outcome = view; }, () => {});
   game.key('d', true); for (let n = 0; n < 600; n++) game.tick(1/60); game.key('d', false);
   assert.ok(game.view.x <= 6.6);
   assert.ok(COVER.every(r => !(Math.abs(game.view.x-r.x)<r.w/2 && Math.abs(game.view.z-r.z)<r.d/2)));
-  // Standing on the seal is not taking it any more: the grab is a committed hold, so
-  // walking over the pedestal has to leave the seal where it is.
+  // Standing on the seal is not taking it, and neither is holding the key on your own: the hold
+  // is cover for 如姬, and she has to be at the pedestal for her theft to happen at all. Both
+  // halves are physical rules, so both are asserted here rather than left to the playthrough
+  // suite - what that suite proves is that a real route gets her there.
   const reach = new NightGame(view => { outcome = view; }, () => {});
   reach.view.x = 5.2; reach.view.z = -4.1; reach.tick(1/30);
   assert.equal(reach.view.inReach, true, '走到兵符旁边应当在可取的范围内');
   for (let n = 0; n < 60; n++) reach.tick(1/30);
   assert.equal(reach.view.obtained, false, '只走过去、不按住取符，兵符不会自己到手');
   reach.grab(true);
-  for (let n = 0; n < 120 && !reach.view.obtained; n++) reach.tick(1/30);
+  for (let n = 0; n < 120; n++) reach.tick(1/30);
   reach.grab(false);
-  assert.equal(reach.view.obtained, true, '按住取符足够久应当拿到兵符');
-  reach.view.x = -5.5; reach.view.z = 4; reach.tick(1/30);
-  assert.equal(reach.view.finished, true);
-  assert.ok(outcome);
+  assert.equal(reach.view.obtained, false, '如姬不在石台边时，玩家按住取符也不该凭空拿到兵符');
+  assert.equal(reach.view.companion.taking, false, '她不在石台边，就没有在取符这回事');
 });
 test('crouching shortens what a guard can see, which is what the drawn cone shows', () => {
   // Guard B stands at (4.9, -1.2) facing +z on the first tick, so a player 2.8 away on that

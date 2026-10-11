@@ -116,7 +116,8 @@ for (const ending of ['historical', 'counterfactual'] as const) test(`real movem
   await setGrab(page, mobile, true);
   await expect.poll(async () => (await nightView(page))?.obtained, { timeout: 10000 }).toBe(true);
   await setGrab(page, mobile, false);
-  await expect(page.getByText(/兵符在手/)).toBeVisible();
+  // The tally is hers: the HUD has to say so, or the player will think they are the thief.
+  await expect(page.getByText(/兵符在如姬手上/)).toBeVisible();
   await mkdir('artifacts/captures', { recursive: true });
   await page.screenshot({ path: `artifacts/captures/${info.project.name}-seal-obtained.png` });
   await move(page, 'w', '向前', v => v.z <= -4.3, mobile);

@@ -2,14 +2,24 @@
 //
 // A one-off probe can only show that today's constants happen to work. Probes live in `.runtime/`,
 // which is not in the repository, so a probe also cannot stop the next change from quietly
-// removing the thing it measured. These five tests are the difference between "I measured it
+// removing the thing it measured. These seven tests are the difference between "I measured it
 // once" and "it cannot silently stop being true".
 //
 // They are floors, not targets. A designer retuning the guards is free to move every constant:
 // the scene may get harder or easier. What it may not do is lose the margin that rewards reading
 // the guards, lose the punishment for ignoring them, lose the middle outcome where you are seen
-// and still get home, or widen the leash until standing in the open in front of a guard on his
-// own beat becomes safe. Those are what make it a stealth scene rather than a walk.
+// and still get home, widen the leash until standing in the open in front of a guard on his own
+// beat becomes safe, or quietly stop being about 如姬's theft and your escort.
+//
+// The escort moved what "reading the guards" buys. She walks the path you walked, about a step
+// behind, and she cannot crouch - court dress, and she is carrying the tally - so she crosses every
+// corridor upright and slightly late, and a window that only just fits you does not fit her. The
+// measured shape, which the tests below assert: committing the instant a window opens ends 1/12
+// clean and 11/12 seen, waiting long enough for her to clear it as well ends 12/12 clean, and
+// waiting far too long (about nine seconds of extra dither) gets you both caught.
+//
+// So 望风 is not a word in the fiction here, it is the mechanic: the guard window has to be read
+// for two bodies, not one, and the reading is paid for in waiting.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { NightGame } from '../src/game/night.ts';
@@ -26,10 +36,10 @@ const B_NORTH = (view: NightView) => view.guards[1].z > -0.6 && view.guards[1].a
 
 // The line a player arrives at after being caught a few times: creep, wait for the beat, take the
 // seal inside one window, leave the same way.
-const READ_THE_GUARDS: Leg[] = [
+const line = (window: (view: NightView) => boolean): Leg[] => [
   { key: 'a', crouch: true, until: view => view.x <= -5.4 },
   { key: 'w', crouch: true, until: view => view.z <= -4.3 },
-  { crouch: true, until: A_PAST_LANE },
+  { crouch: true, until: window },
   { key: 'd', crouch: true, until: view => view.x >= 2.5 },
   { crouch: true, until: B_NORTH },
   { key: 'd', crouch: true, until: view => view.x >= 5.2 },
@@ -37,10 +47,11 @@ const READ_THE_GUARDS: Leg[] = [
   { crouch: true, grab: true, until: view => view.obtained },
   { key: 'w', crouch: true, until: view => view.z <= -4.3 },
   { key: 'a', crouch: true, until: view => view.x <= 2.5 },
-  { crouch: true, until: A_PAST_LANE },
+  { crouch: true, until: window },
   { key: 'a', crouch: true, until: view => view.x <= -5.4 },
   { key: 's', crouch: true, until: view => view.finished }
 ];
+const READ_THE_GUARDS = line(A_PAST_LANE);
 
 // The same errand with the reading removed and the escape made loud: no waits, straight in, run
 // home. This is the control that proves the waits above are load bearing rather than decoration.
@@ -92,7 +103,33 @@ function survey(legs: Leg[], slopTicks: number, phases: number) {
 
 test('reading the guards pays: being a fifth of a second late on every leg still gets you home', () => {
   const late = survey(READ_THE_GUARDS, 6, 12);
-  assert.ok(late.clean >= 8, `读守卫、每段都晚 0.2 秒，仍然应当多数能全身而退；实测干净 ${late.clean}、被发现但逃脱 ${late.spotted}、被抓 ${late.caught}、未结束 ${late.unfinished}`);
+  // What the careful line buys is now "home with the tally", not "home unremarked". She is the
+  // one carrying it and she cannot crouch, so the narrow window lets her be read on the way out.
+  assert.ok(late.caught <= 2, `读守卫、每段都晚 0.2 秒，不应当多数被抓；实测危险 ${late.caught}/12、未结束 ${late.unfinished}/12`);
+  assert.ok(late.clean + late.spotted >= 10, `读守卫的一程应当多数带着兵符收场；实测干净 ${late.clean}、被发现但逃脱 ${late.spotted}、被抓 ${late.caught}、未结束 ${late.unfinished}`);
+});
+
+test('waiting for her to clear the window too is what buys the clean ending', () => {
+  // The escort's whole skill claim, asserted as the comparison rather than as a magic number.
+  // A player who steps off the moment the window opens is reading it for one body; she is still
+  // in the corridor. The same player who gives her the extra moment ends unseen. If someone
+  // retunes the guards until patience stops paying, the act has lost the trade it is built on.
+  const hasty = survey(READ_THE_GUARDS, 0, 12);
+  const patient = survey(READ_THE_GUARDS, 6, 12);
+  assert.ok(patient.clean > hasty.clean,
+    `为两个人等窗口，应当比只算自己更干净；实测等足 ${patient.clean}/12 对抢窗 ${hasty.clean}/12`);
+  assert.ok(patient.clean >= 8, `等她也能过去再走，应当多数干净收场；实测 ${patient.clean}/12`);
+  assert.ok(hasty.caught <= 2, `抢窗口的代价应当是被看见，而不是直接结束；实测被抓 ${hasty.caught}/12`);
+});
+
+test('the tally is hers, and she has to come out with it', () => {
+  // The document has 如姬 steal the tally and the player escort her, so the seal must end up in
+  // her hands rather than the player's, and it must be hers when the act closes.
+  const view = drive(READ_THE_GUARDS, 0, 0);
+  assert.equal(view.obtained, true, '这一程应当能拿到兵符');
+  assert.equal(view.companion.carrying, true, '兵符应当在如姬手上，而不是玩家手上');
+  assert.ok(Math.hypot(view.companion.x - view.x, view.companion.z - view.z) <= 5,
+    '结算时两人不应当天各一方');
 });
 
 test('ignoring the guards still costs the run', () => {
@@ -109,14 +146,15 @@ test('being seen and still getting home is reachable, not a theoretical third ou
   assert.ok(spotted >= 1, `三种结局里的「被看见但带着兵符回家」应当在实战里真实可达；48 次尝试里实测 ${spotted} 次`);
 });
 
-test('being glimpsed near the seal costs the clean ending, not the run', () => {
-  // The band one notch past what the careful line absorbs, where a run used to be decided by
-  // which phase of a guard's beat it happened to land on. A guard drawn off his own beat now
-  // gives up rather than running the player down, so the same band should resolve as "seen, and
-  // away with it": the loss moves from the run to the secret.
-  const late = survey(READ_THE_GUARDS, 15, 12);
-  assert.ok(late.caught <= 2, `只晚半秒就该用「被发现但逃出去」付账，而不是直接结束；实测被抓 ${late.caught}/12，未结束 ${late.unfinished}/12`);
-  assert.ok(late.spotted >= 5, `这一档应当多数以被看见但仍带着兵符回家收场；实测 ${late.spotted}/12`);
+test('rushing the window costs the clean ending, not the run', () => {
+  // The band just short of the careful line: a player who reads the guard but commits for himself
+  // alone. That used to be decided by which phase of the beat the run landed on; now it resolves
+  // the same way every time, as "seen, and away with it" - the loss moves from the run to the
+  // secret, which is what makes the middle outcome belong to the impatient rather than to the
+  // unlucky. The careful wait above is the fix, so this band has to keep being reachable.
+  const hasty = survey(READ_THE_GUARDS, 0, 12);
+  assert.ok(hasty.caught <= 2, `抢窗口不该直接结束这一局，而该用「被发现」付账；实测被抓 ${hasty.caught}/12，未结束 ${hasty.unfinished}/12`);
+  assert.ok(hasty.spotted >= 5, `这一档应当多数以被看见但仍带着兵符回家收场；实测 ${hasty.spotted}/12`);
 });
 
 test('a guard on his own beat still catches a motionless figure in the open', () => {

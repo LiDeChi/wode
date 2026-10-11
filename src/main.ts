@@ -167,14 +167,20 @@ async function storyChoice(choice: string) {
 }
 const guardStateLabel = { patrol: '巡逻', investigate: '赶来查看', return: '归位' } as const;
 function nightHudHtml() {
-  return `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">按住 E 取走寝殿的兵符，再回到左侧门外</strong><small id="night-status">屏风能挡住视线，石台挡住脚步。走得快就响，蹲着走就静。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-gauges"><div class="night-gauge"><span>脚步</span><div class="gauge-track"><span id="noise-fill"></span></div><small id="noise-label">站着不动</small></div><div class="night-gauge"><span>守卫</span><div class="guard-watch" id="guard-watch"></div><small id="guard-note">两人都在巡逻</small></div><div class="night-gauge pebble-gauge"><span>碎瓦</span><strong id="pebble-count">×2</strong><small>掷出去把守卫引开</small></div></div><div class="grab-panel" id="grab-panel" hidden><span>按住 E 取符</span><div class="grab-track"><span id="grab-fill"></span></div><small>取符时不能走动。有人看着你，就会被认出来。</small></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><button class="action-button" data-action="dash" aria-pressed="false">疾行</button><button class="action-button grab-button" aria-pressed="false">取符</button><button class="action-button" data-action="throw">掷石</button><span class="keyboard-help">方向键 / WASD 移动 · Shift 放轻脚步 · 空格 疾行<br>按住 E 取符 · Q 掷石 · 也可以点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`;
+  return `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">按住 E 掩护如姬取走寝殿的兵符，再带她回到左侧门外</strong><small id="night-status">屏风能挡住视线，石台挡住脚步。走得快就响，蹲着走就静。她跟着你的脚印走，可她不能蹲下。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-gauges"><div class="night-gauge"><span>脚步</span><div class="gauge-track"><span id="noise-fill"></span></div><small id="noise-label">站着不动</small></div><div class="night-gauge"><span>守卫</span><div class="guard-watch" id="guard-watch"></div><small id="guard-note">两人都在巡逻</small></div><div class="night-gauge pebble-gauge"><span>碎瓦</span><strong id="pebble-count">×2</strong><small>掷出去把守卫引开</small></div></div><div class="grab-panel" id="grab-panel" hidden><span>按住 E 掩护如姬取符</span><div class="grab-track"><span id="grab-fill"></span></div><small>掩护时你和如姬都不能动。窗口要算两个人，她能被人看见的距离比你远。</small></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><button class="action-button" data-action="dash" aria-pressed="false">疾行</button><button class="action-button grab-button" aria-pressed="false">掩护</button><button class="action-button" data-action="throw">掷石</button><span class="keyboard-help">方向键 / WASD 移动 · Shift 放轻脚步 · 空格 疾行<br>按住 E 掩护取符 · Q 掷石 · 也可以点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`;
 }
 function renderNightHud(view: NightView) {
   theatre?.updateNight(view);
   const setWidth = (id: string, value: number) => { const element = document.getElementById(id); if (element) element.style.width = `${Math.max(0, Math.min(1, value)) * 100}%`; };
   setWidth('exposure-fill', view.exposure);
   const exposure = document.getElementById('exposure-label');
-  if (exposure) exposure.textContent = view.exposure >= 0.5 ? '有人认出了你' : view.exposure > 0.02 ? '有人望向这里' : view.hiding ? '藏在屏风后' : '无人看见';
+  // Hers is reported separately and first, because she is the one who cannot crouch: a player who
+  // only watches their own bar has no way to learn why the guard turned, and 望风 stays a word.
+  if (exposure) exposure.textContent = view.companionExposure >= 0.5 ? '守卫盯上了如姬'
+    : view.exposure >= 0.5 ? '有人认出了你'
+    : view.companionExposure > 0.02 ? '有人在看如姬'
+    : view.exposure > 0.02 ? '有人望向这里'
+    : view.hiding ? '藏在屏风后' : '无人看见';
   // Loudness is a bar rather than a word so the trade the player is making — walk fast and
   // be heard, or creep and be slow — stays visible while they are making it.
   setWidth('noise-fill', view.noise / 1.8);
@@ -187,10 +193,11 @@ function renderNightHud(view: NightView) {
   const pebbles = document.getElementById('pebble-count'); if (pebbles) pebbles.textContent = `×${view.pebbles}`;
   const panel = document.getElementById('grab-panel'); if (panel) panel.hidden = !view.inReach && view.grab <= 0;
   setWidth('grab-fill', view.grab);
-  const goal = document.getElementById('night-goal'); if (goal && view.obtained) goal.textContent = '兵符在手。沿来路回到左侧门外。';
+  const goal = document.getElementById('night-goal'); if (goal && view.obtained) goal.textContent = '兵符在如姬手上。带她沿来路回到左侧门外。';
   const status = document.getElementById('night-status');
-  if (status) status.textContent = view.spotted ? '有人看清了你，这一环会留下缺口。'
-    : view.obtained ? '拿到了。剩下的只有一件事：别被看见。'
+  if (status) status.textContent = view.spotted ? '有人看清了这一程，这一环会留下缺口。'
+    : view.obtained ? '她拿到了。剩下的只有一件事：把两个人都带出去。'
+    : view.companion.taking ? '她正在取符，你按住别动。'
     : view.hiding ? '屏风挡住了视线，慢慢挪。'
     : '屏风与石台能挡住视线。走得快就响，蹲着走就静。';
 }
@@ -236,7 +243,7 @@ async function finishNight(view: NightView) {
   // into either a clean win or a total failure.
   const clean = view.obtained && !view.detected && !view.spotted;
   audio.cue(view.detected ? 'alarm' : view.spotted ? 'choice' : 'seal');
-  showOverlay(`<div class="moment-result"><span class="large-seal">${view.detected ? '痕' : view.spotted ? '隙' : view.obtained ? '符' : '等'}</span><h2>${view.detected ? '有人看见了这一夜' : view.spotted ? '兵符到手，可有人看清了这一程' : view.obtained ? '半块兵符，终于到了你手里' : '这一夜，你留在门外'}</h2><p>${h(result.message || (view.detected ? '这不是终止。你的迟疑，会成为别人的记忆。' : view.spotted ? '器物可以补，走漏的消息补不回来。' : '如姬的名字，留在了这段经历里。'))}</p><p class="muted">${clean ? '兵符会去往邺，那里仍有一个人在等证据。' : '成因链已经改变。接下来的，是本作的历史。'}</p><button class="primary" data-action="${nightStandalone ? 'night-result-home' : 'next-act'}">${nightStandalone ? '回作品墙看后果' : '去邺城'}${icon('arrow')}</button><button class="text-button" data-action="night-retry">从门外再来一次</button></div>`, false);
+  showOverlay(`<div class="moment-result"><span class="large-seal">${view.detected ? '痕' : view.spotted ? '隙' : view.obtained ? '符' : '等'}</span><h2>${view.detected ? '有人看见了这一夜' : view.spotted ? '兵符到手，可有人看清了这一程' : view.obtained ? '半块兵符，终于到了如姬手里' : '这一夜，你留在门外'}</h2><p>${h(result.message || (view.detected ? '这不是终止。你的迟疑，会成为别人的记忆。' : view.spotted ? '器物可以补，走漏的消息补不回来。' : '如姬的名字，留在了这段经历里。'))}</p><p class="muted">${clean ? '兵符会去往邺，那里仍有一个人在等证据。' : '成因链已经改变。接下来的，是本作的历史。'}</p><button class="primary" data-action="${nightStandalone ? 'night-result-home' : 'next-act'}">${nightStandalone ? '回作品墙看后果' : '去邺城'}${icon('arrow')}</button><button class="text-button" data-action="night-retry">从门外再来一次</button></div>`, false);
 }
 function siegeSquare() {
   currentScene = 'siege-square'; work = 'siege';

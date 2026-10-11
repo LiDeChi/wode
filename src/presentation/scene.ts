@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GranaryView, NightView, SceneCharacter, SceneKind, TheatreDiagnostics, TheatreOptions } from './contracts';
 import { AssetKit, buildCharacter, buildEnvironment, makeSeal, makeVisionSector, PALETTE, seeded } from './models';
 import type { CharacterModel, Environment } from './models';
-import { PEBBLES, SIGHT_RANGE, SIGHT_RANGE_LOW } from '../game/night';
+import { COMPANION_START, PEBBLES, SEAL, SIGHT_RANGE, SIGHT_RANGE_LOW } from '../game/night';
 
 interface Actor { character: SceneCharacter; model: CharacterModel; moving: boolean }
 interface Guard { id: string; cone: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> }
@@ -148,11 +148,15 @@ export class Theatre {
       const player = characters.find(character => character.id === 'player')
         ?? characters.find(character => /player|ruji|如姬|玩家|门客/i.test(`${character.id} ${character.name} ${character.silhouette}`));
       this.playerId = player?.id ?? 'player';
-      if (!this.actors.has(this.playerId)) this.addActor({ id: this.playerId, name: '如姬', color: PALETTE.jade, silhouette: 'lady', x: -5, z: 3.8 });
+      // The player is the retainer who escorts her, not 如姬 - she is a separate actor and takes
+      // the tally herself, so the fallback must not be dressed as the woman it is escorting.
+      if (!this.actors.has(this.playerId)) this.addActor({ id: this.playerId, name: '门客', color: PALETTE.jade, silhouette: 'scholar', x: -5, z: 3.8 });
       this.seal = makeSeal(this.kit); this.seal.position.set(5.2, 0, -3.5); this.scene.add(this.seal);
       this.updateNight({
         x: -5, z: 3.8, guards: defaultGuards, exposure: 0, obtained: false, detected: false, hiding: false, finished: false,
-        noise: 0, pebbles: PEBBLES, grab: 0, inReach: false, grabbing: false, crouching: false, sprinting: false, spotted: false, pulses: []
+        noise: 0, pebbles: PEBBLES, grab: 0, inReach: false, grabbing: false, crouching: false, sprinting: false, spotted: false, pulses: [],
+        companionExposure: 0, handoff: 0, companionOut: false,
+        companion: { x: COMPANION_START.x, z: COMPANION_START.z, carrying: false, taking: false }
       });
     } else this.seal = null;
     const moon = kind === 'night';
@@ -220,11 +224,24 @@ export class Theatre {
       ring.scale.setScalar(1 + (1 - pulse.life) * 1.6);
       ring.material.opacity = .52 * pulse.life;
     });
+    // 如姬 moves on the simulation's word, like everyone else on this floor. She is the one who
+    // walks up to the pedestal, and the seal rides with her afterwards, so the scene says who is
+    // carrying the tally rather than leaving it to the HUD to explain.
+    const ruji = this.actors.get('ruji');
+    if (ruji) {
+      const dx = view.companion.x - ruji.model.root.position.x, dz = view.companion.z - ruji.model.root.position.z;
+      ruji.moving = Math.hypot(dx, dz) > .0001;
+      if (ruji.moving) ruji.model.root.rotation.y = Math.atan2(dx, dz);
+      ruji.model.root.position.set(view.companion.x, .06, view.companion.z);
+      ruji.character.x = view.companion.x; ruji.character.z = view.companion.z;
+    }
     if (this.seal) {
-      this.seal.visible = !view.obtained;
       // The halo swells as the hand closes on it, so "I can take this now" is visible in
       // the scene and not only in the button row.
       this.seal.scale.setScalar(1 + view.grab * .22);
+      // On its pedestal until it is taken, then carried at her hip to the gate.
+      if (view.obtained) this.seal.position.set(view.companion.x, .9, view.companion.z);
+      else this.seal.position.set(SEAL.x, 0, SEAL.z);
     }
     if (this.fallback) this.positionFallback();
   }

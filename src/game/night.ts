@@ -45,20 +45,16 @@ const GAIT = {
   walk: { speed: 2.4, noise: 0.9 },
   sprint: { speed: 3.6, noise: 1.8 }
 } as const;
-// Measured, not guessed. Reaching the pedestal from the nearest safe pocket costs 1.6s and
-// stepping into grab range costs another 0.4s, so the hold is what decides whether the whole
-// excursion fits inside guard B's northbound window. At 2.6s the excursion cost 4.6s against a
-// 2.7s window: only a frame-perfect entry survived, and a real player was caught two times in
-// three. 1.7s leaves the excursion costing 3.7s inside the wider window B now walks, which is
-// the difference between reading the guard and guessing at him. It is still long enough that a
-// window can close on you mid-hold, which is the only reason the hold is a decision at all.
-// Crouching is slower but is seen far later (attention +0.4/s against +1.0/s standing), so the
-// stance decides how much of a glimpse you can survive.
-const GRAB_SECONDS = { crouch: 1.7, stand: 1.2 };
+// The hold used to be the player's own reach, and its length was measured to fit inside guard B's
+// northbound window (1.7s against a 2.7s window, where 2.6s had left only frame-perfect entries).
+// The hold is now 如姬's work and runs on her hands rather than the player's stance - see
+// TAKING_SECONDS. The stance still decides something, and it is still measured: it decides how
+// loud the cover is, and how much of a glimpse you can survive (a crouching body is seen at 2.45
+// against 3.2 standing, and draws attention at +0.4/s against +1.0/s).
 // Working the seal upright rattles the pedestal loudly enough to carry right across the hall,
 // and a guard who hears a noise walks to the spot it came from; crouching over it is nearly
-// silent but slow. The stance therefore buys speed with the risk of someone arriving before
-// your hands are done - a gamble that only pays while you know where B is.
+// silent. The stance therefore buys the same cover at the risk of being heard doing it - a gamble
+// that only pays while you know where B is.
 const GRAB_NOISE = { crouch: 0.05, stand: 1.2 };
 const GRAB_RELEASE_DECAY = 0.7;
 export const PEBBLES = 2;
@@ -101,19 +97,68 @@ const POSTS = [{ x: 0.4, z: 0 }, { x: 4.9, z: -1.2 }];
 const LEASH = [4.2, 2.7];
 const GIVE_UP_AT = SPOTTED_AT;
 
+// 如姬 comes into this with you. She is the one who takes the tally - the document has her steal
+// it and the retainer escort her - so the proof is her work and the risk is yours. Two rules
+// carry the whole escort:
+//
+// She follows your footsteps, a fixed step behind, and only moves when you move. Giving her a
+// route of her own was tried first and does not work: an independent route is shorter than the
+// detours you take, so she arrives at the pedestal while you are still half a room away and stands
+// there in the open until someone sees her - measured at the very first guard phase, caught at
+// 12 seconds with the player only at x=2.5 and her already at x=4.98. Walking your own path is the
+// only arrangement in which she can never get ahead of you into a place you have not cleared.
+//
+// She cannot crouch. She is in court dress and carrying the tally, so a guard makes her out at
+// walking range while you are still beneath notice, and every glimpse of her costs twice what a
+// glimpse of you costs. Walking your own path does not make her free: every metre you crawled
+// through she walks upright, on the same line, about a second later. This is the part that makes
+// 望风 mean something - the window that is wide enough for you alone is not wide enough for the
+// two of you, so clearing the corridor for her as well is the job.
+const TAKING_SECONDS = 2.4, COVER_REACH = 1.1;
+// How far behind you she walks, and how finely your path is recorded for her to follow.
+const COMPANION_LAG = 0.9, TRAIL_SAMPLE = 0.25;
+// She comes in with you, so this is where the two of you start the night.
+export const COMPANION_START = { x: -5, z: 3.8 };
+type Companion = { x: number; z: number; alert: number; taking: number; carrying: boolean };
+
 // TypeScript only lets an interface extend a plain name, not an indexed access such as
 // NightView['guards'][number]; an intersection alias says the same thing.
 type Guard = NightGuard & { target: { x: number; z: number } | null; wait: number; post: { x: number; z: number }; leash: number };
 type Rect = { x: number; z: number; w: number; d: number };
 const inside = (x: number, z: number, r: Rect, pad: number) =>
   Math.abs(x - r.x) < r.w / 2 + pad && Math.abs(z - r.z) < r.d / 2 + pad;
+// The point `arc` metres along a polyline, clamped to the ends. Used to stand 如姬 on the path the
+// player walked. Doing it by arc length rather than by lerping between two points is what keeps
+// her pace honest through corners, where the straight line between samples is shorter than the
+// path actually walked - and a follower who cuts corners is a follower who ends up somewhere the
+// player never cleared.
+function pointAlong(trail: Array<{ x: number; z: number }>, arc: number) {
+  let remaining = arc;
+  for (let index = 1; index < trail.length; index++) {
+    const a = trail[index - 1], b = trail[index];
+    const span = Math.hypot(b.x - a.x, b.z - a.z);
+    if (remaining <= span) {
+      const t = span < 1e-9 ? 0 : remaining / span;
+      return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+    }
+    remaining -= span;
+  }
+  return { ...trail[trail.length - 1] };
+}
 
 export class NightGame {
   view: NightView = {
     x: -5, z: 3.8, guards: [], exposure: 0, obtained: false, detected: false, hiding: false, finished: false,
     noise: 0, pebbles: PEBBLES, grab: 0, inReach: false, grabbing: false, crouching: false, sprinting: false,
-    spotted: false, pulses: []
+    spotted: false, pulses: [],
+    companionExposure: 0, handoff: 0, companionOut: false,
+    companion: { x: COMPANION_START.x, z: COMPANION_START.z, carrying: false, taking: false }
   };
+  // She and her trail are stepped only from inside step(), so replaying a recording rebuilds both
+  // byte for byte the same way it rebuilds the guards - no separate state to serialise or restore.
+  private friend: Companion = { x: COMPANION_START.x, z: COMPANION_START.z, alert: 0, taking: 0, carrying: false };
+  private trail: Array<{ x: number; z: number }> = [{ x: COMPANION_START.x, z: COMPANION_START.z }];
+  private friendProgress = 0;
   elapsed = 0;
   paused = false;
   crouching = false;
@@ -203,6 +248,8 @@ export class NightGame {
     if (this.view.finished) return;
     const dt = 1 / 30;
     this.elapsed += dt;
+    // She is led by distance covered, so the tick has to know where the player started it.
+    const px0 = this.view.x, pz0 = this.view.z;
     this.view.crouching = recorded ? recorded.crouching : this.crouching || this.keys.has('shift');
     this.view.sprinting = recorded ? recorded.sprint : !this.view.crouching && (this.sprinting || this.keys.has(' '));
     const action: NightAction = recorded ? recorded.action : this.pendingThrow && this.view.pebbles > 0 ? 'throw' : this.grabHeld ? 'grab' : 'none';
@@ -224,15 +271,14 @@ export class NightGame {
     else this.recording.push({ dx, dz, crouching: this.view.crouching, sprint: this.view.sprinting, action, ticks: 1 });
 
     // Reaching for the seal costs time during which you cannot run. That holding still
-    // is the whole gamble of the scene.
+    // is the whole gamble of the scene. It is still your gamble, but it is no longer your
+    // theft: the hold is what covers 如姬 while she works, so the same key, the same
+    // commitment and the same frozen seconds buy her the tally instead of you.
     this.view.inReach = !this.view.obtained && pedestalGap(this.view.x, this.view.z) < GRAB_REACH;
     this.view.grabbing = action === 'grab' && this.view.inReach;
-    const grabNeeded = this.view.crouching ? GRAB_SECONDS.crouch : GRAB_SECONDS.stand;
-    if (this.view.grabbing) {
-      this.grabSeconds += dt;
-      if (this.grabSeconds >= grabNeeded) { this.view.obtained = true; this.grabSeconds = 0; }
-    } else if (!this.view.obtained) this.grabSeconds = Math.max(0, this.grabSeconds - dt * GRAB_RELEASE_DECAY);
-    this.view.grab = this.view.obtained ? 1 : clamp(this.grabSeconds / grabNeeded, 0, 1);
+    if (this.view.grabbing) this.grabSeconds += dt;
+    else if (!this.friend.carrying) this.grabSeconds = Math.max(0, this.grabSeconds - dt * GRAB_RELEASE_DECAY);
+    this.view.grab = this.friend.carrying ? 1 : clamp(this.grabSeconds / TAKING_SECONDS, 0, 1);
 
     if (length > 0 && !this.view.grabbing) {
       const step = dt * this.gait().speed;
@@ -317,12 +363,56 @@ export class NightGame {
       this.view.guards[index] = { x: guard.x, z: guard.z, angle: guard.angle, alert: guard.alert, state: guard.state };
     }
 
+    // ---- 如姬 ----------------------------------------------------------------
+    const friend = this.friend;
+    // Record the path you walked, then stand her on it a fixed step behind. She cannot get ahead
+    // of you, because the path is only as long as you have made it.
+    const travelled = Math.hypot(this.view.x - px0, this.view.z - pz0);
+    if (travelled > 1e-4 && !this.view.finished) {
+      const last = this.trail[this.trail.length - 1];
+      if (Math.hypot(this.view.x - last.x, this.view.z - last.z) >= TRAIL_SAMPLE) this.trail.push({ x: this.view.x, z: this.view.z });
+      this.friendProgress += travelled;
+    }
+    const followed = pointAlong(this.trail, Math.max(0, this.friendProgress - COMPANION_LAG));
+    friend.x = followed.x; friend.z = followed.z;
+    // The theft is hers; the cover is yours. She cannot finish while you let go.
+    const atSeal = Math.hypot(friend.x - SEAL.x, friend.z - SEAL.z) < 1.2;
+    if (!friend.carrying && atSeal && pedestalGap(this.view.x, this.view.z) < COVER_REACH && action === 'grab') {
+      friend.taking += dt;
+      if (friend.taking >= TAKING_SECONDS) {
+        this.view.obtained = true; friend.carrying = true; friend.taking = 0; this.grabSeconds = 0;
+      }
+    } else if (!friend.carrying && friend.taking > 0) friend.taking = Math.max(0, friend.taking - dt * GRAB_RELEASE_DECAY);
+    this.view.handoff = friend.carrying ? 1 : clamp(friend.taking / TAKING_SECONDS, 0, 1);
+    // She is seen by exactly the eyes that see you, and made out sooner: she cannot crouch, so a
+    // guard reads her at walking range and every glimpse of her costs what a standing player's
+    // glimpse costs. A single frame of contact is not being seen - the same threshold that
+    // governs the player governs her, or a clean run is reported as blown by one jittery tick.
+    let herWorst = 0;
+    for (const guard of this.guards) {
+      const toX = friend.x - guard.x, toZ = friend.z - guard.z;
+      const distance = Math.hypot(toX, toZ);
+      const bearing = Math.atan2(toX, toZ);
+      const facing = Math.atan2(Math.sin(bearing - guard.angle), Math.cos(bearing - guard.angle));
+      const seesHer = distance < SIGHT_RANGE && Math.abs(facing) < SIGHT_HALF_ANGLE
+        && !this.occluded(friend.x, friend.z, guard.x, guard.z);
+      friend.alert = clamp(friend.alert + dt * (seesHer ? ALERT_GAIN.stand : -ALERT_DECAY), 0, 1);
+      if (friend.alert >= SPOTTED_AT) this.view.spotted = true;
+      herWorst = Math.max(herWorst, friend.alert);
+    }
+    this.view.companionExposure = herWorst;
+    // She is out when she is out: close enough to the gate that the two of you leave together.
+    this.view.companionOut = friend.carrying && Math.hypot(friend.x - EXIT.x, friend.z - EXIT.z) < 1.6;
+    this.view.companion = { x: friend.x, z: friend.z, carrying: friend.carrying, taking: friend.taking > 0 };
+
     if (seenAny) this.view.spotted = true;
     this.view.exposure = this.guards.reduce((worst, guard) => Math.max(worst, guard.alert), 0);
     this.view.hiding = !seenAny && COVER.some(r => Math.hypot(this.view.x - r.x, this.view.z - r.z) < Math.max(r.w, r.d) / 2 + 0.9);
 
-    if (this.guards.some(guard => guard.alert >= 1)) { this.view.detected = true; this.finish(); }
-    else if (this.view.obtained && Math.hypot(this.view.x - EXIT.x, this.view.z - EXIT.z) < 0.75) this.finish();
+    if (this.guards.some(guard => guard.alert >= 1) || friend.alert >= 1) { this.view.detected = true; this.finish(); }
+    // She has to get out too. Leaving her behind is a way to lose the act, not a cosmetic
+    // omission - otherwise the escort is scenery and the whole second body is free.
+    else if (this.view.obtained && this.view.companionOut && Math.hypot(this.view.x - EXIT.x, this.view.z - EXIT.z) < 0.75) this.finish();
     else if (this.elapsed >= 180) { this.view.detected = true; this.finish(); }
     this.onChange(this.view);
   }
