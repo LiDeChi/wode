@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 玩法体检探针（t23）：只读，不改任何 shared/**、不跑 tests/。
+// 玩法体检探针（t23 起，t32 按 MECHANICS 的 M2 口径扩写）：只读，不改任何 shared/**、不跑 tests/。
 //
 // 目的：把《窃符》四幕 + 暮色粮仓的机制现状量成数字，给「先打磨玩法」当依据。
 // 它只做两件事：用 createPlay 的公共 API 把一局走完，然后读账本（session.ledger.entries）。
@@ -7,27 +7,41 @@
 //
 // 量什么：
 //   grants    两位导演在每一幕到底授予了哪些动词，哪些选项在画面上就被挡掉
-//   space     全组合枚举（5 大梁 × 4 夷门 × 4 夜路 × 4 邺城 × 2 导演 = 640 局）的结局与每一步的裁决
+//   space     全组合枚举（5 大梁 × 4 夷门 × 4 夜路 × 4 邺城 × 2 导演）的结局与每一步的裁决
 //   golden    重放 tests/fixtures/play-scripts.mjs 的 680 个对照脚本，数结局与 null 卡在哪
-//   acceptance 每一幕每个选项（按声明的诉求 义/利/惧/恩 归类）被接受的比例，按导演、按角色拆
-//   strategy  命名策略（永远说义/利/惧/恩/等、四种人格、枚举里的最优与最差）的结局分布
+//   acceptance 每一幕每个选项被接受的比例，按导演、按角色拆；诉求标签**从场景数据里读**，不手抄
+//   strategy  命名策略（永远说义/利/惧/恩/等、四种人格）的结局分布
 //   cross     大梁 / 夷门的选择对夜里、邺城、结局的影响量
-//   dead      死选项：换一个选项、后面一切都一样的情况有多少
+//   dead      死选项：换一个选项、后面一切都一样的情况有多少（投影见 §4 口径）
 //   learn     每一幕玩家能看见的反馈（tell / 结局文案 / 追问的那句话）
 //   rhythm    每局步数与 estimateSeconds 秒数，地板 8–12 分钟满不满足
+//   matrix    九人 × 四诉求的纯矩阵 + 强度×信任扫描（MECHANICS §1：每一列 ≤ 一半）
+//   door      门前那一拍：同一串夜路只差夷门那一手，进夜时她犹不犹豫
+//   routes    12 条命名路线的重跑（与 tests/fixtures 里的金标准对得上吗）
+//   goldenDiff 旧 680 的差异分类：A 类是读数文字（t33），B 类是玩法数据（t13）
 //
 // 用法：
 //   node tools/mechanics-probe.mjs                  # 可读表格打到 stdout
 //   node tools/mechanics-probe.mjs --json           # 同一份数据以 JSON 打到 stdout
 //   node tools/mechanics-probe.mjs --json out.json  # 写到一个文件（默认不写盘）
 //   node tools/mechanics-probe.mjs --section dead   # 只看某一节
+// 也可以 import：runPlan / playNight / nightGraph / nightStartStates / hesitationScan /
+//   granaryGrid / SPACE / appealMatrix / appealScan / appealAudit / doorPair / routeCheck /
+//   hesitationPairs / goldenDiff（t24 的取样就是走这些）。
 
 import { createSession } from '../shared/engine/session.js';
 import { createPlay, estimateSeconds, ACT_ORDER, EST_SECONDS } from '../shared/engine/play.js';
+import { createMind } from '../shared/core/mind.js';
 import { NEED, ANSWERS, simulate, FLOOR_SECONDS } from '../shared/engine/simulate.js';
+import { QIFU_SCENES, QIFU_CONTROLLERS } from '../shared/scenes/qiefu.js';
+import { WEICHENG_SCENES } from '../shared/scenes/weicheng.js';
+import { QIFU_SCENES as V1_QIFU_SCENES } from '../tests/fixtures/scenes-v1-qiefu.mjs';
 import { scripts as goldenScripts, runScript } from '../tests/fixtures/play-scripts.mjs';
-import { writeFileSync } from 'node:fs';
+import { ROUTES as ROUTE_TABLE } from '../tests/fixtures/play-mechanics-v2-scripts.mjs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+const OLD_GOLDEN = new URL('../tests/fixtures/play-golden.json', import.meta.url);
 
 const PLAYER = 'actor:player';
 
@@ -35,17 +49,55 @@ const PLAYER = 'actor:player';
  * 标签：选项 → 诉求
  * ------------------------------------------------------------------ */
 
-// appeal 不在 view().options 里，所以这张表是照 shared/scenes/qiefu.js 里各选项声明的 appeal 抄的：
-//   daliang:195-200（yi 义.8 / li 利.8 / letter 义.4 / king 惧.7）、yimen:249-251（back 义.7 / fear 惧.8 / hou 义.6）、
-//   ye:143-145（yi 义.8 / en 恩.8 / ju 惧.8）；取符之夜的五个选项没有 appeal（go/wait/give）。
-// 运行时 selfCheck 会对着账本验：有 appeal 的必须给得出 accepted，没有的必须 accepted=null。
-const APPEAL = {
-  daliang: { yi: '义', li: '利', letter: '义', king: '惧' },
-  yimen: { back: '义', fear: '惧', hou: '义' },
-  night: {},
-  ye: { yi: '义', en: '恩', ju: '惧' },
-  granary: {},
+// appeal 不在 view().options 里，所以只能从场景数据里读。**不再手抄**：探针 import 时把每一幕控制器
+// 配置里带 appeal 的选项收进来（speech/lines 用 cfg.options，standing 用 cfg.targets），
+// 场景改了（比如邺城新加一个说「利」的选项）这里一个字都不用改。
+// 场景里的 appeal 是一个分布（如 {义:0.8}），探针关心的是主诉求那一个字（旧的 APPEAL 表就是这个形状）
+const dominantAppeal = (a) => {
+  if (!a || typeof a !== 'object') return null;
+  let best = null;
+  let w = -1;
+  for (const [k, v] of Object.entries(a)) if (v > w) { best = k; w = v; }
+  return best;
 };
+
+function readSceneOptions(actId) {
+  const scene = QIFU_SCENES[actId];
+  const out = new Map();
+  const eat = (list) => {
+    for (const o of list || []) {
+      if (!o || !o.id) continue;
+      out.set(o.id, {
+        id: o.id, verb: o.verb ?? null, to: o.to ?? null, item: o.item ?? null,
+        line: o.line ?? '', appeal: dominantAppeal(o.appeal), appealWeights: o.appeal ?? null,
+        needs: o.needs ? [...o.needs] : [],
+      });
+    }
+  };
+  for (const c of scene?.controllers || []) {
+    const cfg = Array.isArray(c) ? c[1] : c;
+    if (!cfg || typeof cfg !== 'object') continue;
+    eat(cfg.options);
+    eat(cfg.targets);
+  }
+  // 取符之夜自己的五个动作不在控制器配置里，问控制器要（问不到就退回一张固定表）
+  if (actId === 'night') {
+    let intents = [];
+    try { intents = QIFU_CONTROLLERS?.nightwalk?.()?.intents?.() || []; } catch { intents = []; }
+    if (!intents.length) intents = ['step', 'rush', 'token_b', 'token_a', 'wait'].map((id) => ({ id }));
+    eat(intents);
+  }
+  const wait = scene?.wait;
+  if (wait?.id && !out.has(wait.id)) out.set(wait.id, { id: wait.id, verb: wait.verb ?? 'wait', to: null, item: null, line: wait.line ?? '', appeal: null, needs: [] });
+  if (!out.has('wait')) out.set('wait', { id: 'wait', verb: 'wait', to: null, item: null, line: '', appeal: null, needs: [] });
+  return out;
+}
+
+export const SCENE_OPTIONS = Object.fromEntries(['daliang', 'yimen', 'night', 'ye'].map((a) => [a, readSceneOptions(a)]));
+export const APPEAL = Object.fromEntries(Object.entries(SCENE_OPTIONS).map(([a, m]) => [a, Object.fromEntries([...m.values()].filter((o) => o.appeal).map((o) => [o.id, o.appeal]))]));
+export const SCENE_NOTE = Object.fromEntries(Object.entries(SCENE_OPTIONS).map(([a, m]) => [a, [...m.values()].map((o) => (o.appealWeights ? `${o.id}=${Object.entries(o.appealWeights).map(([k, v]) => `${k}.${v}`).join('+')}` : o.id))]));
+/** 《窃符》这一场的九个人：从场景数据里取，不手抄（别把 session 里其他人算进来） */
+export const NINE = Object.keys(QIFU_SCENES.daliang.cast || {});
 
 // shared/engine/simulate.js:56-61 的特征表（探针抄一份，只为了说清「loyal 人格实际会挑哪一个」，
 // 因为它才是「永远说义」那条策略的真实实现）。
@@ -73,9 +125,12 @@ const NIGHTS = {
   tokenA: ['token_a'],
   slow: ['step', 'token_b', 'wait', 'step', 'wait', 'step', 'step'],
 };
-const DALIANG = ['yi', 'li', 'letter', 'king', 'wait'];
-const YIMEN = ['back', 'fear', 'hou', 'wait'];
-const YE = ['yi', 'en', 'ju', 'wait'];
+// 每一幕试哪些选项：从场景数据派生（邺城 t13 新加的 li 会自动进来，不用改这里）
+const idsOf = (act) => [...SCENE_OPTIONS[act].keys()];
+const DALIANG = idsOf('daliang');
+const YIMEN = idsOf('yimen');
+const YE = idsOf('ye');
+const NIGHT_IDS = idsOf('night');
 const MAX_STEPS = 120;
 
 /** 上一个动作没挪动就等一拍；否则一直往前挪（和 simulate.js 的 nightPick 同思路） */
@@ -300,8 +355,19 @@ const actsBrief = (run) => Object.fromEntries(Object.entries(run.acts).map(([k, 
 
 const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : null);
 
-/** 一局「后面的一切」：结局 + 关键 flag + 邺城裁决 + 如姬信任 + 粮仓批没批 */
-const sig = (run) => JSON.stringify([run.ending, run.flags?.night ?? null, run.flags?.kingSuspicious ?? null, run.acts?.ye?.accepted ?? null, run.acts?.ye?.choice ?? null, run.rujiTrust, run.acts?.granary?.verdict ?? null]);
+/** 一局「后面的一切」：MECHANICS §4 的死选项投影
+ *  [结局, 天数, 进夜时她犹不犹豫, 夜里的走法与成没成, 身份高低(公子的信任), 如姬的信任,
+ *   邺城接没接受与最后怎么选, 夜干净与否, 猜忌, 粮仓批没批]
+ *  故意**不算**：账本 hash / 序号、只有文字没有读取方的 claim、没人读的 flag。 */
+const sig = (run) => JSON.stringify([
+  run.ending, run.days,
+  run.acts?.night?.hesitant ?? null,
+  run.acts?.night ? `${run.acts.night.moves.join('>')}${run.acts.night.seen ? '|seen' : '|clean'}` : null,
+  run.xinlingTrust, run.rujiTrust,
+  run.acts?.ye?.accepted ?? null, run.acts?.ye?.choice ?? null,
+  run.flags?.night ?? null, run.flags?.kingSuspicious ?? null,
+  run.acts?.granary?.verdict ?? null,
+]);
 
 function acceptanceTable(space, granary) {
   const byKey = new Map();
@@ -452,6 +518,42 @@ function render(data) {
   for (const r of data.hesitation) {
     out.push(`   信任 ${r.trust.toFixed(2)}（夜里的恩通道 ${r.en}）→ 记着恩 权重 ${r.debtWeight} vs 顾虑被发现 权重 ${r.riskWeight} → 犹豫=${r.hesitant}；她的心思选了「${r.act}」（停层 ${r.stoppedAt}）`);
   }
+
+  sec('13. 九人 × 诉求的纯矩阵（MECHANICS §1）');
+  out.push(`人（从场景 cast 里取，共 ${data.matrix.people.length} 个）：${data.matrix.people.join(' ')}`);
+  out.push('强度 .8、各自保留初始信任，单独听一句：');
+  for (const [appeal, c] of Object.entries(data.matrix.counts)) {
+    out.push(`   ${appeal}：${c.accepted}/${c.n} = ${c.rate}%${c.who.length ? `　${c.who.join(' ')}` : ''}`);
+  }
+  out.push('', '反噬（不是被拒，是被顶回来）：');
+  for (const b of data.matrix.backlash) out.push(`   ${b.id} 听到「${b.appeal}」→ 打动 ${b.moved}（反噬 ${b.backlash}，门槛 ${b.threshold}）`);
+
+  sec('14. 强度 × 信任 扫描（每一个截面上，每一列说服了几个人）');
+  for (const c of data.scan.cells) out.push(`   强度 ${c.intensity} 信任 ${c.trust} → 义 ${c.per.义} 利 ${c.per.利} 惧 ${c.per.惧} 恩 ${c.per.恩}　最多 ${c.max}/${data.scan.n}${c.ok ? '' : ' ← 过半了'}（共 ${data.scan.n} 人）`);
+  out.push(`最坏一格：${JSON.stringify(data.scan.worst)}；每列 ≤ 一半：${data.scan.ok}`);
+  out.push(`画面自检（声明了诉求就必须给得出接受/拒绝）：查了 ${data.audit.checked} 局，对不上 ${data.audit.badCount} 处`);
+
+  sec('15. 门前那一拍（同一串夜路，只差夷门那一手）');
+  for (const r of data.door) {
+    out.push(`   ${r.yimen}｜${r.name}：进夜时犹豫=${r.hesitant}（如姬信任 ${r.rujiTrust}）→ 夜 ${r.night}，结局 ${r.ending}${r.reason ? `（${r.reason}）` : ''}`);
+  }
+  out.push('', '40 种前置（夷门那一手 → 进夜时她犹不犹豫）：');
+  for (const [k, v] of Object.entries(data.pairs.share)) out.push(`   ${k}：${v.hesitant}%（如姬信任 ${JSON.stringify(v.trust)}，${v.n} 例）`);
+  out.push(`高信任那一组与低信任那一组的差距：${data.pairs.gap} 个百分点（≥30 才算把「她犹不犹豫」做出来）`);
+
+  sec('16. 12 条命名路线（MECHANICS §5 + R 组合）');
+  for (const r of data.routes) {
+    out.push(`   ${r.ok ? '✔' : '✘'} ${r.id}：${r.ending}/${r.night} 第 ${r.days} 天 ${r.steps} 步${r.ok ? '' : `（表里期望 ${r.expect.ending}/${r.expect.night}）`}`);
+    out.push(`        ${r.why}　犹豫=${r.hesitant} 如姬 ${r.rujiTrust} 公子 ${r.xinlingTrust}${r.reason ? `｜${r.reason}` : ''}`);
+  }
+  out.push(`12 条里对不上的：${data.routes.filter((r) => !r.ok).length} 条`);
+
+  sec('17. 和旧对照组的差异分类（680 个脚本）');
+  const g = data.goldenDiff;
+  out.push(`旧金标准结局：${JSON.stringify(g.oldEndings)}（共 ${g.total} 条）`);
+  out.push(`A 类·文字（旧场景 v1 重放）：逐字段差异 ${JSON.stringify(g.v1.per)}；只有账本指纹变了 ${g.v1.ledgerHashDiff} 条 → 结局 ${JSON.stringify(g.v1.endings)}`);
+  out.push(`B 类·玩法（今天的场景 v2）：逐字段差异 ${JSON.stringify(g.v2.per)}；完全一致 ${g.v2.same} 条 → 结局 ${JSON.stringify(g.v2.endings)}`);
+  out.push('A = t33 把读数从人话里拿走（只动账本 payload.reason 的文字与指纹）；B = t13 按 MECHANICS 改了人物初值与四幕后果。');
   return out.join('\n');
 }
 
@@ -596,6 +698,15 @@ function main() {
   // 如姬犹豫的门槛：信任从 0.10 扫到 0.50，看她的心思什么时候翻面
   const hesitation = hesitationScan();
 
+  // M2（t32）：九人矩阵、强度×信任扫描、门前那一拍、12 条路线、与旧对照组的差异分类
+  const matrix = appealMatrix();
+  const scan = appealScan();
+  const audit = appealAudit(space);
+  const door = doorPair('A');
+  const routes = routeCheck();
+  const pairs = hesitationPairs();
+  const golden2 = goldenDiff();
+
   // 每种结局最少几步
   const minSteps = {};
   for (const r of space) {
@@ -621,6 +732,7 @@ function main() {
     grants, acceptance, appeals, byPerson, strategies, cross, dead,
     granary: { rows: granaryRows, byVerdict: inspectMatters, keeperReactions: Object.fromEntries(Object.entries(keeperReactions).map(([k, v]) => [k, [...v]])) },
     night, minSteps, nightStart, hesitation,
+    matrix, scan, audit, door, routes, pairs, goldenDiff: golden2,
     goldenSummary: { endings: goldenEndings, nullByStage, nullByFirstError },
     spaceSummary: { endings: space.reduce((m, r) => { const k = r.ending || 'null'; m[k] = (m[k] || 0) + 1; return m; }, {}), blocked: blockedCount, filtered: filteredCount },
     learn, rhythm,
@@ -660,7 +772,9 @@ export function nightStartStates() {
           adv();
         }
         const n = v.night || {};
-        const key = JSON.stringify({ pos: n.pos, step: n.step, lantern: n.lantern, token: n.token ?? null, aAlert: !!n.aAlert, bLooksAway: !!n.bLooksAway, rujiReady: !!n.rujiReady, hesitant: !!n.hesitant });
+        const rujiTrust = s.minds?.ruji?.state?.trust?.[PLAYER] ?? null;
+        const xinlingTrust = s.minds?.xinling?.state?.trust?.[PLAYER] ?? null;
+        const key = JSON.stringify({ pos: n.pos, step: n.step, lantern: n.lantern, token: n.token ?? null, aAlert: !!n.aAlert, bLooksAway: !!n.bLooksAway, rujiReady: !!n.rujiReady, hesitant: !!n.hesitant, rujiTrust, xinlingTrust });
         const e = states.get(key) || { state: key, n: 0, example: `${dir}|${dal}|${ym}` };
         e.n += 1;
         states.set(key, e);
@@ -709,6 +823,171 @@ export function hesitationScan() {
     });
   }
   return rows;
+}
+
+/* ------------------------------------------------------------------ *
+ * M2（t32）：九人 × 诉求的纯矩阵、门前的犹豫配对、路线表、对照差异
+ * ------------------------------------------------------------------ */
+
+const APPEALS = ['义', '利', '惧', '恩'];
+const C_MOVES = ['step', 'token_b', 'rush', 'step'];
+const R_MOVES = ['step', 'token_b', 'rush', 'wait', 'step'];      // 低信任在门口多等一拍
+const R2_MOVES = ['step', 'token_b', 'rush', ...Array(9).fill('step')];  // 同一串走法，去掉那一拍 → 天亮
+
+/** 装过 cast 之后这九个人的定义与初始信任：从真实会话里取，不手抄 */
+function castDefs() {
+  const s = createSession();
+  s.meet(ANSWERS.A, NEED);
+  const p = createPlay(s);
+  p.begin();
+  p.next();                                   // 大梁开场，cast 已经装进各人的 def
+  const out = {};
+  for (const id of NINE) {
+    const m = s.minds[id];
+    if (!m) continue;
+    out[id] = { def: m.def, trust: m.def?.trust?.[PLAYER] ?? m.state.trust?.[PLAYER] ?? 0.3 };
+  }
+  return out;
+}
+
+/** 九人纯诉求矩阵：一人一个新 Mind（保留各自的初始信任与阈值），单独听一句 .8 的诉求 */
+export function appealMatrix() {
+  const defs = castDefs();
+  const rows = [];
+  for (const [id, info] of Object.entries(defs)) {
+    for (const appeal of APPEALS) {
+      const m = createMind(info.def);
+      const r = m.hear({ [appeal]: 0.8 }, PLAYER);
+      rows.push({ id, appeal, trust: info.trust, threshold: info.def?.threshold ?? 0.35, accepted: !!r.accepted, moved: r.moved, fit: r.fit, backlash: r.backlash });
+    }
+  }
+  const counts = {};
+  for (const appeal of APPEALS) {
+    const list = rows.filter((r) => r.appeal === appeal);
+    const yes = list.filter((r) => r.accepted);
+    counts[appeal] = { accepted: yes.length, n: list.length, rate: pct(yes.length, list.length), who: yes.map((r) => r.id) };
+  }
+  const backlash = rows.filter((r) => r.backlash > 0).map((r) => ({ id: r.id, appeal: r.appeal, moved: r.moved, backlash: r.backlash, threshold: r.threshold }));
+  return { rows, counts, backlash, people: Object.keys(defs) };
+}
+
+/** 强度 × 信任 的扫描：每一个截面上，每一列最多能说服几个人 */
+export function appealScan() {
+  const defs = castDefs();
+  const n = Object.keys(defs).length;
+  const cells = [];
+  for (const intensity of [0.6, 0.8, 1]) {
+    for (const trust of [0, 0.15, 0.2, 0.3, 0.5, 0.65, 1]) {
+      const per = {};
+      for (const appeal of APPEALS) {
+        let yes = 0;
+        for (const info of Object.values(defs)) {
+          const m = createMind(info.def);
+          m.state.trust[PLAYER] = trust;
+          if (m.hear({ [appeal]: intensity }, PLAYER).accepted) yes += 1;
+        }
+        per[appeal] = yes;
+      }
+      const max = Math.max(...APPEALS.map((a) => per[a]));
+      cells.push({ intensity, trust, per, max, ok: max * 2 <= n });
+    }
+  }
+  const worst = cells.reduce((a, b) => (b.max > a.max ? b : a), cells[0]);
+  return { n, cells, worst, ok: cells.every((c) => c.ok) };
+}
+
+/** 自检：场景里声明了诉求的选项，账本必须给得出接受/拒绝；没声明的必须 accepted=null */
+export function appealAudit(space) {
+  const bad = [];
+  for (const r of space) {
+    for (const act of ['daliang', 'yimen', 'ye']) {
+      const a = r.acts[act];
+      if (!a || a.blocked || a.filtered || a.error) continue;
+      const has = !!APPEAL[act]?.[a.want];
+      if (has === (a.accepted === null)) bad.push({ id: r.plan.id, act, option: a.want, hasAppeal: has, accepted: a.accepted });
+    }
+  }
+  return { checked: space.length, badCount: bad.length, bad: bad.slice(0, 10) };
+}
+
+/** 门前那一拍成对吗：同一串夜路，只差夷门那一手（R 有那一拍 / R2 没有） */
+export function doorPair(dir = 'A') {
+  const rows = [];
+  for (const yimen of YIMEN) {
+    for (const [name, moves] of [['R（等）', R_MOVES], ['R2（不等）', R2_MOVES]]) {
+      const r = runPlan(dir, { daliang: 'yi', yimen, night: moves, ye: 'en', granary: { keeper: 'keeper_doubt', inspect: 'seal', decide: 'report' }, id: `door/${dir}/${yimen}/${name}` });
+      rows.push({ dir, yimen, name, hesitant: r.acts.night?.hesitant ?? null, rujiTrust: r.rujiTrust, night: r.flags?.night, ending: r.ending, reason: r.acts.night?.reason ?? null, yeAccepted: r.acts.ye?.accepted ?? null });
+    }
+  }
+  return rows;
+}
+
+/** 12 条命名路线在探针里重跑一遍（和 tests/fixtures 里录的金标准对得上吗） */
+export function routeCheck() {
+  return ROUTE_TABLE.map((rt) => {
+    const rec = runPlan(rt.dir, { daliang: rt.daliang, yimen: rt.yimen, night: rt.night, ye: rt.ye, granary: { keeper: 'keeper_doubt', inspect: 'seal', decide: 'report' }, id: rt.id });
+    const night = rec.flags?.night ?? null;
+    return { id: rt.id, why: rt.why, expect: rt.expect, ending: rec.ending, night, days: rec.days, steps: rec.steps, rujiTrust: rec.rujiTrust, xinlingTrust: rec.xinlingTrust, hesitant: rec.acts.night?.hesitant ?? null, reason: rec.acts.night?.reason ?? null, yeAccepted: rec.acts.ye?.accepted ?? null, ok: rec.ending === rt.expect.ending && night === rt.expect.night };
+  });
+}
+
+/** 40 种前置配对：夷门那一手把「进夜时她犹不犹豫」拉开的差距 */
+export function hesitationPairs() {
+  const rows = [];
+  for (const dir of ['A', 'B']) {
+    for (const dal of DALIANG) {
+      for (const ym of YIMEN) {
+        const r = runPlan(dir, { daliang: dal, yimen: ym, night: NIGHTS.clean, ye: 'en', granary: { keeper: 'keeper_doubt', inspect: 'seal', decide: 'report' }, id: `${dir}/${dal}/${ym}` });
+        rows.push({ dir, daliang: dal, yimen: ym, hesitant: r.acts.night?.hesitant ?? null, rujiTrust: r.rujiTrust, xinlingTrust: r.xinlingTrust, night: r.flags?.night ?? null, ending: r.ending });
+      }
+    }
+  }
+  const by = {};
+  for (const r of rows) {
+    const k = `${r.dir}/${r.yimen}`;
+    const cur = (by[k] ||= { n: 0, hesitant: 0, trust: {} });
+    cur.n += 1;
+    if (r.hesitant) cur.hesitant += 1;
+    cur.trust[r.rujiTrust] = (cur.trust[r.rujiTrust] || 0) + 1;
+  }
+  const share = Object.fromEntries(Object.entries(by).map(([k, v]) => [k, { n: v.n, hesitant: pct(v.hesitant, v.n), trust: v.trust }]));
+  const pick = (keys) => keys.map((k) => share[k]?.hesitant ?? 0);
+  const high = pick(['A/back', 'A/hou', 'B/back', 'B/hou']);
+  const low = pick(['A/fear', 'A/wait', 'B/fear', 'B/wait']);
+  const gap = Math.min(...low) - Math.max(...high);
+  return { rows, share, gap, ok: gap >= 30 };
+}
+
+/** 对照组的差异分类：旧场景（v1）与今天（v2）各跑一遍旧 680，逐字段比 */
+export function goldenDiff() {
+  const old = JSON.parse(readFileSync(OLD_GOLDEN, 'utf8'));
+  const list = goldenScripts();
+  const fields = ['stage', 'ending', 'days', 'flags', 'acts', 'logHash', 'ledgerSize', 'trail'];
+  const run = (deps) => {
+    const per = Object.fromEntries(fields.map((f) => [f, 0]));
+    let same = 0;
+    let ledger = 0;
+    const endings = {};
+    for (const sc of list) {
+      const g = old[sc.id];
+      const now = runScript(deps, sc);
+      const diffs = fields.filter((f) => JSON.stringify(now[f]) !== JSON.stringify(g[f]));
+      if (!diffs.length && now.ledgerHash === g.ledgerHash) same += 1;
+      if (now.ledgerHash !== g.ledgerHash) ledger += 1;
+      for (const f of diffs) per[f] += 1;
+      const k = now.ending || 'null';
+      endings[k] = (endings[k] || 0) + 1;
+    }
+    return { per, same, ledgerHashDiff: ledger, endings };
+  };
+  const v1 = run({ createSession, createPlay: (s) => createPlay(s, { scenes: { ...V1_QIFU_SCENES, ...WEICHENG_SCENES } }) });
+  const v2 = run({ createSession, createPlay: (s) => createPlay(s) });
+  const oldEndings = {};
+  for (const sc of list) {
+    const k = old[sc.id].ending || 'null';
+    oldEndings[k] = (oldEndings[k] || 0) + 1;
+  }
+  return { total: list.length, fields, v1, v2, oldEndings };
 }
 
 /** 走一局：大梁 yi、夷门 back、夜里按 moves、邺城 yi；用来做取符之夜的图搜索 */
