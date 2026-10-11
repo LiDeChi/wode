@@ -12,6 +12,8 @@ import { pickProvider } from './router.mjs';
 import { MockProvider } from './providers/mock.mjs';
 import { LocalAudioAdapter } from './providers/local.mjs';
 import { ElevenLabsAdapter } from './providers/elevenlabs.mjs';
+import { MonidAdapter } from './providers/monid.mjs';
+import { FalAdapter } from './providers/fal.mjs';
 
 const tails = new Map();
 async function serial(home, work) {
@@ -65,7 +67,7 @@ export function createAudioEngine(options = {}) {
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,safe(v)]));
     return value;
   };
-  const defaultProviders = [new LocalAudioAdapter(config.local),new ElevenLabsAdapter(config.providers?.elevenlabs)];
+  const defaultProviders = [new LocalAudioAdapter(config.local),new MonidAdapter(config.providers?.monid),new FalAdapter(config.providers?.fal),new ElevenLabsAdapter(config.providers?.elevenlabs)];
   if (config.mock?.enabled) defaultProviders.push(new MockProvider(config.mock));
   const registry = new ProviderRegistry(home,{providers:options.providers || defaultProviders,now,sanitize:safe});
   const budget = new AudioBudgetManager(home,{...config.budget,unknownPriceCeiling:config.unknownPriceCeiling ?? config.budget?.unknownPriceCeiling},now);
@@ -103,7 +105,7 @@ export function createAudioEngine(options = {}) {
         for (let attempt=1;attempt<=2;attempt++) {
           if (jobs.get(job.job_id).status === 'cancelled') throw new AudioError('provider','任务已取消','查看 get_job 中的取消记录');
           jobs.update(job.job_id,{attempts:attempt}); executed = true;
-          try { result = await provider.run(req,ctx); break; }
+          try { result = await provider.run(req,{...ctx,job_id:job.job_id,jobs}); break; }
           catch(err) {
             const e = normalizeError(err);
             // 免费且可重试才再执行一次，绝不换服务或重复收费。
@@ -144,7 +146,12 @@ export function createAudioEngine(options = {}) {
     async estimate(capability,input) { const req = validate(capability,input), s = await select(req); return safe({...s.estimate,provider:s.provider.id,model:s.model,why:s.why}); },
     async list_voices() { return voices.list(); },
     async list_models(capability) { return registry.list(capability,ctx,mode === 'local-only' ? registry.adapters().filter(p=>p.local && ['local','mock'].includes(p.id)) : registry.adapters()); },
-    async get_job(id) { return jobs.get(id); }, async get_usage() { return budget.get_usage(); },
+    async get_job(id) { return jobs.get(id); }, async get_usage() {
+      const usage=budget.get_usage(), monid=registry.get('monid');
+      if(mode==='local-only' || !monid?.wallet) return {...usage,wallet:null,walletReason:'本地模式或未注册 Monid'};
+      try { if(!(await monid.available({},ctx)).ok) return {...usage,wallet:null,walletReason:'未配置 MONID_API_KEY 或服务已禁用'};return {...usage,wallet:await monid.wallet(ctx)}; }
+      catch(err) { return {...usage,wallet:null,walletReason:safe(normalizeError(err).toJSON())}; }
+    },
     async get_asset(key) { return store.get(key); }, async remove_voice(id) { return voices.remove(id); },
     async probe_local() { const p = registry.get('local'); if (!p?.probe) return []; return p.probe({...ctx,fetch:async(url,init)=>rawFetch(url,{...init,redirect:'error'})}); },
     async cancel_job(id) {

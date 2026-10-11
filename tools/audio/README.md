@@ -63,6 +63,35 @@ CLI 也支持 sfx、clone --audio-file PATH --name NAME --consent-json JSON、mo
 
 ## 当前能力和限制
 
-Mock 支持 speech/music/sfx/clone，输出确定性短 wav，可编排价格、delay、failures 与错误。Local 复用 say 的实际发声检查与 ffmpeg 合成，music/sfx quality:'placeholder'；服务探活只接受 loopback URL，Qwen3-TTS/ACE-Step/Stable Audio 的生成待 P2。ElevenLabs 为可选 BYOK 直连 speech/music/sfx（价格不猜，必须配置或确认）。Monid/fal 将由独立适配器接入；STT/streaming/audio-to-audio/OAuth 未实现。
+Mock 支持 speech/music/sfx/clone，输出确定性短 wav，可编排价格、delay、failures 与错误。Local 复用 say 的实际发声检查与 ffmpeg 合成，music/sfx quality:'placeholder'；服务探活只接受 loopback URL，Qwen3-TTS/ACE-Step/Stable Audio 的生成待 P2。ElevenLabs 为可选 BYOK 直连 speech/music/sfx（价格不猜，必须配置或确认）。Monid/fal 已接入（见下文）；STT/streaming/audio-to-audio/OAuth 未实现。
 
 克隆只能 consent.subject=self|licensed 且 by/statement/at 完整；参考录音会发送给所选云端，云端保存期限按服务政策；本地只保留路径和授权。remove_voice 删除本地身份/映射并返回到供应商删除远端 Voice ID 的提示，不替用户静默删云数据。
+
+## Monid 接入
+
+设置 MONID_API_KEY 后可直接使用默认 engine 或 CLI。Adapter 向 /v1/discover 查询 ElevenLabs TTS、多角色语音、音效、音乐和 MiniMax Music，再用 /v1/inspect 读取真实 schema/价格；不拼音频端点。默认优先 ElevenLabs/MiniMax，仅接受发现结果中能确认为该能力的描述与 schema。完整结果带 discoveredAt、priceSource 缓存到 home/registry.json，默认24小时有效（cacheTtlMs 可改）。官方快照见 docs/vendor/monid/ 和 live/；旧式 inputSchema 及真实 input.body 均支持，真实 run 入参使用 input:{body:{...}}。
+
+PER_UNIT_MATRIX 的 selectors 从 body 取值并选择 variant，每个 variant 都在 list_models 中单独出现，例如 `elevenlabs:/text-to-speech#eleven_flash_v2_5`。按 schema 的默认值、req text/prompt/duration 等构造 body，检查必填、类型、枚举、范围和长度；多角色完整 inputs 可写 providers.monid.inputs[model]。已验证的定价类型为 PER_CALL、按字符/秒的 PER_UNIT，以及上述矩阵；算不出单位数量就返回未知价。价格来自 inspect 并记录时间，不把快照数字写死进适配器。sfx 的 duration 秒映射 duration_seconds，music 映射 music_length_ms；TTS 模型与 voice_id 默认值来自 inspect。
+
+```js
+const audio = createAudioEngine({mode:'cloud-quality'});
+const models = await audio.list_models('speech'); // 得到 model 后可明确选择
+await audio.generate_speech({text:'风起。',provider:'monid',model:models.find(m=>m.model.endsWith('#eleven_flash_v2_5')).model});
+await audio.generate_sfx({prompt:'木门缓缓打开',duration:3,provider:'monid'});
+await audio.generate_music({prompt:'古琴与笛子，安静的纯音乐',duration:3,instrumental:true,provider:'monid'});
+```
+
+run 处理同步200与202轮询，COMPLETED 后仍检查 providerResponse.httpStatus；401/402/408/429 分别为 auth/insufficient_balance/network/rate_limit。音频 download_link/CDN URL 立即无认证下载成 buffer，已文档化的 audio_base64 也可解码；签名链接不保存。实际费用取 cost.value 或 billing.actualCost 的 MICRO_DOLLAR（换算美元），没账单就 actual:null。get_usage 在非 local-only 且可用时加 wallet；读余额失败返回 wallet:null 与 walletReason。Monid 快照没有取消接口，超时后保留 runId 以便人工核对，绝不猜取消 URL 或重新提交。
+
+## fal.ai 接入
+
+设置 FAL_KEY；默认模型为 speech-2.8-turbo（另有hd）、voice-clone、minimax/music-3、stable-audio-3/small/sfx/text-to-audio。完整 id 来自 docs/AUDIO.md §4，所有发出的字段来自 docs/vendor/fal/ 快照。speech 用 prompt、voice_setting、audio_setting 和 output_format:url；rate 是0.5–2倍速，emotion 使用快照枚举。music 必须传 lyrics，纯音乐可传 instrumental:true（转换为文档支持的 `[instrumental]` 标签），duration 是秒；sfx 用 prompt/duration/seed。
+
+请求统一使用官方 queue.fal.run，POST提交、status_url轮询、response_url取结果、PUT cancel_url取消。附 X-Fal-No-Retry:1 禁止供应商默认重试；不自动重复收费。超时请求取消后报 network，正在执行的任务仍可能完成或收费。队列 URL 必须是官方 HTTPS 主机，拒绝向其他主机或重定向发送 Key；文件下载不带认证。默认 timeoutMs=180000、pollIntervalMs=1000，可在 providers.fal 配置。engine 对 run 额外注入 ctx.job_id/ctx.jobs，让适配器持久化远端队列标识；重启后 get_job 可定位任务，cancel_job 能用保存的 remote 取消；不会自动续跑未完成付费任务。
+
+官方快照没有可靠价格端点，所以 estimated:null。可在 providers.fal.priceOverride 填核实过的单次美元估价（数字，或 model/capability→数字）；actual 始终 null，账单须到控制台核对。不确认未知价格就停止；确认仍需 unknownPriceCeiling 及预算。克隆使用官方支持的 data URI 上传本地已授权录音，或请求 reference_url 提供公开 HTTPS 录音；不增加第三方上传服务。参考录音需至少10秒，本工具上限20MiB；10秒限制由供应商验证。返回 custom_voice_id 存为本地身份的 fal 映射，之后 generate_speech({voice_id:本地ID,provider:'fal'}) 复用。MiniMax 要求克隆后7天内至少调用一次TTS才能长期保留声线，脚本不会偷偷执行这笔调用。
+
+## 端到端脚本
+
+`node tools/audio/e2e.mjs` 无 Key 时打印钥匙串与 config 配法并退出0。有 Key 时只选择 Monid/fal 中能算出可靠单次价格的模型：默认短中文、3秒音效、3秒纯音乐各一条，先打印完整估算和总价/余额，总价须≤$0.50并满足现有预算；无法读 Monid 余额不执行 Monid。只跑最便宜的一条/能力，失败立即停，不改预算、不升级Provider、不重复生成。fal 缺价格配置就打印跳过提示，不擅自授权。输出估算/实际费用（未知记null）、本地文件路径，clone 只在 config.e2e.clone 给了录音与 consent 时执行。真实付费验收由负责人运行；开发自查只注入假 fetch/假 secrets。例子：Monid flash 的3字语音估算$0.00012，3秒音效$0.006，3秒音乐$0.0075，总价$0.01362；这些数字只是当前官方快照的复验例子，脚本始终用实时inspect或有效缓存。
+
