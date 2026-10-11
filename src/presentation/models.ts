@@ -451,7 +451,7 @@ export function buildEnvironment(kind: SceneKind, kit: AssetKit, granary?: Grana
   } else if (kind === 'night') {
     box(source, kit, 'wall', 0, 1.0, -5.25, 14.5, 2, .40, true);
     box(source, kit, 'roof', 0, 2.07, -5.25, 14.8, .15, .60);
-    for (const x of [-7.15, 7.15]) box(source, kit, 'wood', x, .38, 0, .18, .75, 10.1);
+    box(source, kit, 'wood', -7.15, .38, 0, .18, .75, 10.1);
     house(source, kit, 3.4, -6.1, 5.9, 2.0, 2.8);
     house(source, kit, -4.7, -6.0, 3.4, 2.0, 2.25);
     shrub(source, kit, -1.3, -.5, 1.5, 4.6);
@@ -467,6 +467,25 @@ export function buildEnvironment(kind: SceneKind, kit: AssetKit, granary?: Grana
     const exitMaterial = kit.material('exit-inlay', '#a9d8bd', { emissive: '#749f91', emissiveIntensity: .45 });
     part(source, kit, kit.geometry('exit-ring', () => new THREE.RingGeometry(.41, .49, 40)), exitMaterial, -5.5, .025, 4).rotation.x = -Math.PI / 2;
     for (let i = 0; i < 6; i++) box(source, kit, 'stone', -5.5, .022, 3.4 - i * .44, 1.1, .035, .19);
+    // 寝殿, the King's hall, east of the palace wall. Every piece of cover drawn here is a rect
+    // that also appears in the simulation's COVER list, and at the same coordinates - the two
+    // lists are a hand-kept pair, and a mismatch in either direction is a lie the player can walk
+    // into: cover drawn but not simulated is walked straight through, and cover simulated but not
+    // drawn is a wall nobody can see. The wall keeps its doorway at the south end (it spans
+    // z=-2.6..5.4, so the gap down to the south bound is the way in), and the roof runs the length
+    // of the palace so the hall reads as one building rather than a wall with a field behind it.
+    box(source, kit, 'wall', 18.5, 1.0, -5.25, 23.0, 2, .40, true);
+    box(source, kit, 'roof', 18.5, 2.07, -5.25, 23.3, .15, .60);
+    box(source, kit, 'wall', 7.1, 1.0, 1.4, .6, 2.0, 8.0, true);
+    box(source, kit, 'wall', 30.2, 1.0, 0, .40, 2.0, 10.4, true);
+    for (const screen of [[9.4, 1.7, 2.4, 1.2], [13.6, -3.0, 2.6, 1.1], [17.0, 1.8, 2.6, 1.2], [22.2, -3.0, 2.6, 1.1]]) {
+      box(source, kit, 'wood', screen[0], .1, screen[1], screen[2], .2, screen[3], true);
+      box(source, kit, kit.paper('screen'), screen[0], .98, screen[1], screen[2] - .14, 1.62, screen[3] - .14);
+    }
+    box(source, kit, 'wood', 25.4, .1, 1.9, 3.4, .2, 2.0, true);
+    box(source, kit, 'lacquer', 25.4, .62, 1.9, 3.2, 1.0, 1.8, true);
+    for (const x of [16.0, 23.0, 29.0]) lamp(source, kit, practicals, x, 1.6, -4.45, true);
+    table(source, kit, 27.8, -3.4, .78, .75, .62);
   } else if (kind === 'camp') {
     distantHills(source, kit);
     const tent = (x: number, z: number, width: number) => {

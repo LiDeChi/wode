@@ -16,10 +16,10 @@ export function deriveNightOutcome(view: NightView): NightOutcome {
 }
 
 export function replayNight(frames: unknown): NightGame {
-  // Every frame covers at least one tick and the run itself is capped at 5401 ticks, so
+  // Every frame covers at least one tick and the run itself is capped at 7201 ticks, so
   // this cap can never reject a recording the tick cap would accept. The two bounds are
-  // written from the same number on purpose.
-  if (!Array.isArray(frames) || frames.length > 5401) throw new Error('潜行录制过长或缺失。');
+  // written from the same number on purpose: 7201 ticks is the 240s the scene stops at.
+  if (!Array.isArray(frames) || frames.length > 7201) throw new Error('潜行录制过长或缺失。');
   let ticks = 0;
   for (const step of frames) {
     if (!step || typeof step !== 'object' || Object.keys(step).some(k => !['dx', 'dz', 'crouching', 'sprint', 'action', 'ticks'].includes(k)) || typeof step.dx !== 'number' || typeof step.dz !== 'number' || !Number.isFinite(step.dx) || !Number.isFinite(step.dz) || Math.abs(step.dx) > 1 || Math.abs(step.dz) > 1 || typeof step.crouching !== 'boolean' || typeof step.sprint !== 'boolean' || !['none', 'grab', 'throw'].includes(step.action) || !Number.isSafeInteger(step.ticks) || step.ticks < 1) throw new Error('潜行输入不是有限方向、步数与动作。');
@@ -29,7 +29,7 @@ export function replayNight(frames: unknown): NightGame {
     const length = Math.hypot(step.dx, step.dz);
     if (length !== 0 && Math.abs(length - 1) > .001) throw new Error('潜行方向未归一化。');
     ticks += step.ticks;
-    if (ticks > 5401) throw new Error('这一夜最多三分钟，录制超过范围。');
+    if (ticks > 7201) throw new Error('这一夜最多四分钟，录制超过范围。');
   }
   const game = new NightGame(() => {}, () => {});
   game.restore(frames as NightStep[]);

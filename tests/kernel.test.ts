@@ -4,7 +4,7 @@ import { createWorld } from '../src/core/seed.ts';
 import { applyIntent, getActorView, checkConsistency, replayEvents, advanceClock, getOverturnCost, proposeReversal, approveReversal, changePreferences, getGrant } from '../src/core/world.ts';
 import { evaluateMind } from '../src/core/mind.ts';
 import { buildModificationRequest, createVerificationMechanism, installMechanism, validateMechanism, runSwapBenchmark } from '../src/core/mechanisms.ts';
-import { NightGame, COVER } from '../src/game/night.ts';
+import { NightGame, COVER, SEAL } from '../src/game/night.ts';
 import { deriveNightOutcome, replayNight } from '../src/core/night-run.ts';
 import { WorldStore } from '../server/store.ts';
 import type { WorldState, Intent, Claim, Evidence } from '../src/core/types.ts';
@@ -140,8 +140,11 @@ test('night collision, sight occlusion and the cover rule produce physical outco
   // is cover for 如姬, and she has to be at the pedestal for her theft to happen at all. Both
   // halves are physical rules, so both are asserted here rather than left to the playthrough
   // suite - what that suite proves is that a real route gets her there.
+  // Placed from SEAL rather than from the coordinates it happened to have when this was written:
+  // the tally moved twice while the act grew, and a hard-coded copy of its old x silently asserted
+  // that a player standing in an empty part of the courtyard was beside it.
   const reach = new NightGame(view => { outcome = view; }, () => {});
-  reach.view.x = 5.2; reach.view.z = -4.1; reach.tick(1/30);
+  reach.view.x = SEAL.x; reach.view.z = SEAL.z - .7; reach.tick(1/30);
   assert.equal(reach.view.inReach, true, '走到兵符旁边应当在可取的范围内');
   for (let n = 0; n < 60; n++) reach.tick(1/30);
   assert.equal(reach.view.obtained, false, '只走过去、不按住取符，兵符不会自己到手');

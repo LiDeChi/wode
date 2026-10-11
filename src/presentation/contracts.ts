@@ -15,4 +15,12 @@ export interface NightView {
 }
 export interface GranaryView { stock: number; capacity: number; credential: string; keeper: string; mechanism: boolean }
 export interface TheatreOptions { onCharacterClick: (id: string) => void; onGroundClick: (x: number, z: number) => void; onTick?: (delta: number) => void }
-export interface TheatreDiagnostics { calls: number; triangles: number; geometries: number; textures: number; fps: number; dpr: number }
+// The night act's follow camera is told where to aim by the simulation - at most 30 times a second,
+// and on no frame where the 1/30s accumulator has not yet filled - while the render loop reads that
+// answer once per frame. A mismatch between the two rates costs nothing the counters above can see
+// and shows up only as a picture that shakes, so both halves are published here: `aim` is where the
+// camera has been told to point, `camera` is where it actually ended up. `camera` is the one a test
+// can hold to zero. `aim` is published to be read rather than asserted on: the clobber happens in
+// configureCamera, which runs after the easing every frame, so from outside the frame loop `aim`
+// always reads the last writer's value and cannot by itself tell the two builds apart.
+export interface TheatreDiagnostics { calls: number; triangles: number; geometries: number; textures: number; fps: number; dpr: number; camera: { x: number; y: number; z: number }; aim: { x: number; y: number; z: number } }

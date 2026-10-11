@@ -30,23 +30,37 @@ function playNightGame(): NightGame {
   const wait = (done: (v: NightView) => boolean) => {
     for (let n = 0; n < 30 * 90 && !done(game.view) && !game.view.finished; n++) step();
   };
-  // A guard facing 0 walks +z and one facing PI walks -z, so "walking away" is angle < 1.
-  const aAway = (v: NightView) => v.guards[0].z > -2.2 && v.guards[0].angle < 1;
-  const bAway = (v: NightView) => v.guards[1].z > -0.6 && v.guards[1].angle < 1;
+  // Five gates now, not two: the courtyard, the doorway, then three along the hall. Every gate
+  // reads the same way - he must be walking away from the crossing and far enough past it that a
+  // body on his line is behind him - with a threshold per guard because the beats differ in width.
+  const read = [
+    (v: NightView) => v.guards[0].z > -2.2 && v.guards[0].angle < 1,
+    (v: NightView) => v.guards[1].z > -0.6 && v.guards[1].angle < 1,
+    (v: NightView) => v.guards[2].z > -0.6 && v.guards[2].angle < 1,
+    (v: NightView) => v.guards[3].z > -0.6 && v.guards[3].angle < 1,
+    (v: NightView) => v.guards[4].z > -0.6 && v.guards[4].angle < 1
+  ];
   game.crouching = true;
   until('a', v => v.x <= -5.4);
   until('w', v => v.z <= -4.3);
-  wait(aAway);
-  until('d', v => v.x >= 2.5);
-  wait(bAway);
-  until('d', v => v.x >= 5.2);
+  for (const [gate, x] of [[0, 2.5], [1, 7.0], [2, 14.5], [3, 23.0]] as const) {
+    wait(read[gate]);
+    until('d', v => v.x >= x);
+  }
+  wait(read[4]);
+  until('s', v => v.z >= -4.3);
+  until('d', v => v.x >= 28.0);
   until('s', v => v.inReach);
   game.grab(true);
   wait(v => v.obtained);
   game.grab(false);
   until('w', v => v.z <= -4.3);
-  until('a', v => v.x <= 2.5);
-  wait(aAway);
+  until('a', v => v.x <= 23.0);
+  for (const [gate, x] of [[3, 14.5], [2, 7.0], [1, 2.5]] as const) {
+    wait(read[gate]);
+    until('a', v => v.x <= x);
+  }
+  wait(read[0]);
   until('a', v => v.x <= -5.4);
   until('s', v => v.finished);
   return game;

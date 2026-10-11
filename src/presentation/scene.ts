@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GranaryView, NightView, SceneCharacter, SceneKind, TheatreDiagnostics, TheatreOptions } from './contracts';
 import { AssetKit, buildCharacter, buildEnvironment, makeSeal, makeVisionSector, PALETTE, seeded } from './models';
 import type { CharacterModel, Environment } from './models';
-import { COMPANION_START, PEBBLES, SEAL, SIGHT_RANGE, SIGHT_RANGE_LOW } from '../game/night';
+import { COMPANION_START, EXIT, NIGHT_BOUNDS, PEBBLES, SEAL, SIGHT_RANGE, SIGHT_RANGE_LOW } from '../game/night';
 
 interface Actor { character: SceneCharacter; model: CharacterModel; moving: boolean }
 interface Guard { id: string; cone: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> }
@@ -151,7 +151,7 @@ export class Theatre {
       // The player is the retainer who escorts her, not 如姬 - she is a separate actor and takes
       // the tally herself, so the fallback must not be dressed as the woman it is escorting.
       if (!this.actors.has(this.playerId)) this.addActor({ id: this.playerId, name: '门客', color: PALETTE.jade, silhouette: 'scholar', x: -5, z: 3.8 });
-      this.seal = makeSeal(this.kit); this.seal.position.set(5.2, 0, -3.5); this.scene.add(this.seal);
+      this.seal = makeSeal(this.kit); this.seal.position.set(SEAL.x, 0, SEAL.z); this.scene.add(this.seal);
       this.updateNight({
         x: -5, z: 3.8, guards: defaultGuards, exposure: 0, obtained: false, detected: false, hiding: false, finished: false,
         noise: 0, pebbles: PEBBLES, grab: 0, inReach: false, grabbing: false, crouching: false, sprinting: false, spotted: false, pulses: [],
@@ -181,6 +181,10 @@ export class Theatre {
       player.model.root.position.set(view.x, .06, view.z);
       player.model.setOpacity(view.hiding ? .5 : 1);
       player.character.x = view.x; player.character.z = view.z;
+      // Follow the player along x, clamped so neither end of the palace leaves the frame. z stays
+      // put: the rooms are only 9m deep and the span already covers them, so tracking z would only
+      // add drift to a camera that has nothing to gain from it.
+      this.desiredTarget.set(Math.max(NIGHT_BOUNDS.xMin + 8, Math.min(NIGHT_BOUNDS.xMax - 8, view.x)), .8, -.3);
     }
     while (this.guards.length > view.guards.length) {
       const guard = this.guards.pop()!;
@@ -262,16 +266,22 @@ export class Theatre {
     if (actor) {
       this.projected.copy(actor.model.root.position); this.projected.y += actor.model.headHeight;
     } else if (this.kind === 'night' && (id === 'seal' || id === 'exit')) {
-      this.projected.set(id === 'seal' ? 5.2 : -5.5, id === 'seal' ? 1.0 : .05, id === 'seal' ? -3.5 : 4);
+      // Read from the simulation's own constants. This projection feeds the no-WebGL fallback's
+      // DOM label, and it kept a copy of the tally's old courtyard address after the mesh itself
+      // was moved - so in the fallback the 兵符 marker floated over a table the tally no longer
+      // stands on, 22.6m west of the plinth.
+      this.projected.set(id === 'seal' ? SEAL.x : EXIT.x, id === 'seal' ? 1.0 : .05, id === 'seal' ? SEAL.z : EXIT.z);
     } else return null;
     this.camera.updateMatrixWorld(); this.projected.project(this.camera);
     return { x: (this.projected.x + 1) / 2 * this.width, y: (1 - this.projected.y) / 2 * this.height };
   }
 
   getDiagnostics(): TheatreDiagnostics {
-    if (!this.renderer || this.contextLost) return { calls: 0, triangles: 0, geometries: 0, textures: 0, fps: 0, dpr: this.dpr };
+    const camera = { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z };
+    const aim = { x: this.desiredTarget.x, y: this.desiredTarget.y, z: this.desiredTarget.z };
+    if (!this.renderer || this.contextLost) return { calls: 0, triangles: 0, geometries: 0, textures: 0, fps: 0, dpr: this.dpr, camera, aim };
     const { render, memory } = this.renderer.info;
-    return { calls: render.calls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures, fps: this.fps, dpr: this.dpr };
+    return { calls: render.calls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures, fps: this.fps, dpr: this.dpr, camera, aim };
   }
 
   dispose(): void {
@@ -317,8 +327,20 @@ export class Theatre {
   private configureCamera(immediate: boolean): void {
     const aspect = this.width / this.height, portrait = window.innerWidth <= 700 || aspect < .95;
     const focus = !this.expanded && this.kind !== 'night' && this.focusedId ? this.actors.get(this.focusedId) : null;
-    this.desiredTarget.set(0, .8, -.3);
-    if (focus) this.desiredTarget.set(focus.model.root.position.x * .62, 1.0, focus.model.root.position.z * .45);
+    // Every other scene re-derives its target here, once per frame, from scratch. The night act is
+    // the exception, and getting that wrong is what made the picture shake. Its target is written by
+    // updateNight, which runs from onChange at the end of NightGame.step() - up to 30 times a
+    // second, and NOT on any frame where the 1/30s accumulator has not yet filled. configureCamera
+    // runs on every frame. So a default written here is still there when the next frame's lerp reads
+    // it: on every non-stepping frame the camera is pulled back toward the court (x=0) instead of
+    // toward the player. Followed out to x=22 that is a 1.4m swing of the whole frame, thirty times
+    // a second, and the same root makes the camera drift home whenever the simulation is paused or
+    // finished and updateNight stops being called at all. Leave the night target alone - the
+    // ownership the old comment claimed is what this branch makes true.
+    if (this.kind !== 'night') {
+      this.desiredTarget.set(0, .8, -.3);
+      if (focus) this.desiredTarget.set(focus.model.root.position.x * .62, 1.0, focus.model.root.position.z * .45);
+    }
     if (immediate) this.target.copy(this.desiredTarget);
     const spanWidth = this.kind === 'night' ? 16.1 : portrait ? 12.2 : 17.2;
     const spanHeight = Math.max(this.kind === 'night' ? 12.0 : 11.6, spanWidth / aspect);
@@ -429,7 +451,12 @@ export class Theatre {
     if (press.character) { this.options.onCharacterClick(press.character); return; }
     this.pointRay(event.clientX, event.clientY);
     const point = this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
-    if (point && Math.abs(point.x) <= 7 && Math.abs(point.z) <= 5) this.options.onGroundClick(point.x, point.z);
+    // Gated on the simulation's bounds, not on a copy of them. This test used to be the old
+    // single-room court, |x| <= 7, which silently discarded every ground tap east of x=7 - the
+    // whole of the King's hall, where the tally and three of the five guards now are. The HUD
+    // advertises 也可以点地面, and go() clamps to these same bounds anyway, so the renderer's
+    // stricter copy was not protecting anything; it was just refusing the click.
+    if (point && point.x >= NIGHT_BOUNDS.xMin && point.x <= NIGHT_BOUNDS.xMax && Math.abs(point.z) <= NIGHT_BOUNDS.zMax) this.options.onGroundClick(point.x, point.z);
   };
 
   private onPointerCancel = (): void => { this.cancelPress(); };

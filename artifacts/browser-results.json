@@ -71,7 +71,7 @@
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
         "timeout": 70000,
         "use": {
-          "baseURL": "http://127.0.0.1:4318",
+          "baseURL": "http://127.0.0.1:4319",
           "trace": "retain-on-failure",
           "screenshot": "only-on-failure",
           "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
@@ -108,7 +108,7 @@
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
         "timeout": 70000,
         "use": {
-          "baseURL": "http://127.0.0.1:4318",
+          "baseURL": "http://127.0.0.1:4319",
           "trace": "retain-on-failure",
           "screenshot": "only-on-failure",
           "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Mobile/15E148 Safari/604.1",
@@ -168,7 +168,7 @@
           "tags": [],
           "tests": [
             {
-              "timeout": 180000,
+              "timeout": 360000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "desktop",
@@ -178,12 +178,16 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 79331,
+                  "duration": 168641,
                   "errors": [],
-                  "stdout": [],
+                  "stdout": [
+                    {
+                      "text": "验收：结算在 33ms 内落定，结果 result\n"
+                    }
+                  ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:40:16.149Z",
+                  "startTime": "2026-10-11T09:42:28.688Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -193,7 +197,7 @@
           ],
           "id": "8dd14bcf966e3915d331-58af2758f6beb730838c",
           "file": "night.spec.ts",
-          "line": 78,
+          "line": 81,
           "column": 65
         },
         {
@@ -202,7 +206,7 @@
           "tags": [],
           "tests": [
             {
-              "timeout": 180000,
+              "timeout": 360000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "desktop",
@@ -212,12 +216,16 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 78213,
+                  "duration": 230997,
                   "errors": [],
-                  "stdout": [],
+                  "stdout": [
+                    {
+                      "text": "验收：结算在 33ms 内落定，结果 result\n"
+                    }
+                  ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:41:35.742Z",
+                  "startTime": "2026-10-11T09:45:17.659Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -227,7 +235,7 @@
           ],
           "id": "8dd14bcf966e3915d331-311b52f16f3a22db55b0",
           "file": "night.spec.ts",
-          "line": 78,
+          "line": 81,
           "column": 65
         },
         {
@@ -246,12 +254,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11083,
+                  "duration": 9647,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:42:53.964Z",
+                  "startTime": "2026-10-11T09:49:08.666Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -261,7 +269,45 @@
           ],
           "id": "8dd14bcf966e3915d331-36ecec97edf0c0138c04",
           "file": "night.spec.ts",
-          "line": 154,
+          "line": 189,
+          "column": 1
+        },
+        {
+          "title": "the follow camera stops moving when the player stops",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 24618,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "验收：静止 40 帧内玩家移动 0.0000m，瞄准点摆动 0.0000m，相机摆动 0.0000m\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-11T09:49:18.323Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8dd14bcf966e3915d331-3ac9ee6099cd29f9ecf1",
+          "file": "night.spec.ts",
+          "line": 233,
           "column": 1
         },
         {
@@ -280,12 +326,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4577,
+                  "duration": 7590,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:05.055Z",
+                  "startTime": "2026-10-11T09:49:42.953Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -295,7 +341,7 @@
           ],
           "id": "8dd14bcf966e3915d331-0772b3340d67f820538d",
           "file": "night.spec.ts",
-          "line": 189,
+          "line": 276,
           "column": 1
         },
         {
@@ -304,7 +350,7 @@
           "tags": [],
           "tests": [
             {
-              "timeout": 180000,
+              "timeout": 360000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "mobile",
@@ -314,12 +360,16 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 76272,
+                  "duration": 232410,
                   "errors": [],
-                  "stdout": [],
+                  "stdout": [
+                    {
+                      "text": "验收：结算在 263ms 内落定，结果 result\n"
+                    }
+                  ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:56.941Z",
+                  "startTime": "2026-10-11T09:51:01.565Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -329,7 +379,7 @@
           ],
           "id": "8dd14bcf966e3915d331-a72fd35a870c0ed410e2",
           "file": "night.spec.ts",
-          "line": 78,
+          "line": 81,
           "column": 65
         },
         {
@@ -338,7 +388,7 @@
           "tags": [],
           "tests": [
             {
-              "timeout": 180000,
+              "timeout": 360000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "mobile",
@@ -348,12 +398,16 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 82691,
+                  "duration": 223805,
                   "errors": [],
-                  "stdout": [],
+                  "stdout": [
+                    {
+                      "text": "验收：结算在 54ms 内落定，结果 result\n"
+                    }
+                  ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:45:13.303Z",
+                  "startTime": "2026-10-11T09:54:54.173Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -363,7 +417,7 @@
           ],
           "id": "8dd14bcf966e3915d331-b97dada189e7aba5594d",
           "file": "night.spec.ts",
-          "line": 78,
+          "line": 81,
           "column": 65
         },
         {
@@ -382,12 +436,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10991,
+                  "duration": 17277,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:46:36.005Z",
+                  "startTime": "2026-10-11T09:58:37.989Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -397,7 +451,45 @@
           ],
           "id": "8dd14bcf966e3915d331-ba815cf67d0fc0d7573e",
           "file": "night.spec.ts",
-          "line": 154,
+          "line": 189,
+          "column": 1
+        },
+        {
+          "title": "the follow camera stops moving when the player stops",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 22072,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "验收：静止 40 帧内玩家移动 0.0000m，瞄准点摆动 0.0000m，相机摆动 0.0000m\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-11T09:58:55.285Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8dd14bcf966e3915d331-8b924552c33a140cec89",
+          "file": "night.spec.ts",
+          "line": 233,
           "column": 1
         },
         {
@@ -416,12 +508,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4469,
+                  "duration": 5973,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:46:47.009Z",
+                  "startTime": "2026-10-11T09:59:17.374Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -431,7 +523,7 @@
           ],
           "id": "8dd14bcf966e3915d331-b663b771d83f72fa7e72",
           "file": "night.spec.ts",
-          "line": 189,
+          "line": 276,
           "column": 1
         }
       ]
@@ -458,12 +550,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 22816,
+                  "duration": 31427,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:09.654Z",
+                  "startTime": "2026-10-11T09:49:50.595Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -492,12 +584,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 12129,
+                  "duration": 17823,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:32.480Z",
+                  "startTime": "2026-10-11T09:50:22.047Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -526,12 +618,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11812,
+                  "duration": 20572,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:44.619Z",
+                  "startTime": "2026-10-11T09:50:39.887Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -560,12 +652,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 20,
+                  "duration": 22,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:43:56.437Z",
+                  "startTime": "2026-10-11T09:51:00.472Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -594,12 +686,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 29916,
+                  "duration": 32053,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:46:51.517Z",
+                  "startTime": "2026-10-11T09:59:23.370Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -628,12 +720,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 12607,
+                  "duration": 20440,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:47:21.439Z",
+                  "startTime": "2026-10-11T09:59:55.432Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -662,12 +754,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 20197,
+                  "duration": 13879,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:47:34.052Z",
+                  "startTime": "2026-10-11T10:00:15.884Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -696,12 +788,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 23,
+                  "duration": 25,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T04:47:54.273Z",
+                  "startTime": "2026-10-11T10:00:29.774Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -719,9 +811,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-11T04:40:15.616Z",
-    "duration": 459096.281,
-    "expected": 16,
+    "startTime": "2026-10-11T09:42:28.428Z",
+    "duration": 1082630.477,
+    "expected": 18,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

@@ -167,7 +167,7 @@ async function storyChoice(choice: string) {
 }
 const guardStateLabel = { patrol: '巡逻', investigate: '赶来查看', return: '归位' } as const;
 function nightHudHtml() {
-  return `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">按住 E 掩护如姬取走寝殿的兵符，再带她回到左侧门外</strong><small id="night-status">屏风能挡住视线，石台挡住脚步。走得快就响，蹲着走就静。她跟着你的脚印走，可她不能蹲下。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-gauges"><div class="night-gauge"><span>脚步</span><div class="gauge-track"><span id="noise-fill"></span></div><small id="noise-label">站着不动</small></div><div class="night-gauge"><span>守卫</span><div class="guard-watch" id="guard-watch"></div><small id="guard-note">两人都在巡逻</small></div><div class="night-gauge pebble-gauge"><span>碎瓦</span><strong id="pebble-count">×2</strong><small>掷出去把守卫引开</small></div></div><div class="grab-panel" id="grab-panel" hidden><span>按住 E 掩护如姬取符</span><div class="grab-track"><span id="grab-fill"></span></div><small>掩护时你和如姬都不能动。窗口要算两个人，她能被人看见的距离比你远。</small></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><button class="action-button" data-action="dash" aria-pressed="false">疾行</button><button class="action-button grab-button" aria-pressed="false">掩护</button><button class="action-button" data-action="throw">掷石</button><span class="keyboard-help">方向键 / WASD 移动 · Shift 放轻脚步 · 空格 疾行<br>按住 E 掩护取符 · Q 掷石 · 也可以点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`;
+  return `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">按住 E 掩护如姬取走寝殿的兵符，再带她回到左侧门外</strong><small id="night-status">屏风能挡住视线，石台挡住脚步。走得快就响，蹲着走就静。她跟着你的脚印走，可她不能蹲下。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-gauges"><div class="night-gauge"><span>脚步</span><div class="gauge-track"><span id="noise-fill"></span></div><small id="noise-label">站着不动</small></div><div class="night-gauge"><span>守卫</span><div class="guard-watch" id="guard-watch"></div><small id="guard-note">守卫在巡逻</small></div><div class="night-gauge pebble-gauge"><span>碎瓦</span><strong id="pebble-count">×2</strong><small>掷出去把守卫引开</small></div></div><div class="grab-panel" id="grab-panel" hidden><span>按住 E 掩护如姬取符</span><div class="grab-track"><span id="grab-fill"></span></div><small>掩护时你和如姬都不能动。窗口要算两个人，她能被人看见的距离比你远。</small></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><button class="action-button" data-action="dash" aria-pressed="false">疾行</button><button class="action-button grab-button" aria-pressed="false">掩护</button><button class="action-button" data-action="throw">掷石</button><span class="keyboard-help">方向键 / WASD 移动 · Shift 放轻脚步 · 空格 疾行<br>按住 E 掩护取符 · Q 掷石 · 也可以点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`;
 }
 function renderNightHud(view: NightView) {
   theatre?.updateNight(view);
@@ -189,7 +189,10 @@ function renderNightHud(view: NightView) {
   const watch = document.getElementById('guard-watch');
   if (watch) watch.innerHTML = view.guards.map(guard => `<span class="guard-dot" data-tone="${guardTone(guard.alert)}" title="${guardStateLabel[guard.state]}"></span>`).join('');
   const note = document.getElementById('guard-note');
-  if (note) note.textContent = view.guards.some(guard => guard.state === 'investigate') ? '有人朝声音走来' : view.guards.every(guard => guard.state === 'patrol') ? '两人都在巡逻' : '守卫在归位';
+  // The count comes from the view, not from the sentence. The dot strip above was generalised when
+  // guards became a list; this caption was not, so a five-guard map would draw five dots and then
+  // tell the player there were two of them.
+  if (note) note.textContent = view.guards.some(guard => guard.state === 'investigate') ? '有人朝声音走来' : view.guards.every(guard => guard.state === 'patrol') ? `${view.guards.length} 人都在巡逻` : '守卫在归位';
   const pebbles = document.getElementById('pebble-count'); if (pebbles) pebbles.textContent = `×${view.pebbles}`;
   const panel = document.getElementById('grab-panel'); if (panel) panel.hidden = !view.inReach && view.grab <= 0;
   setWidth('grab-fill', view.grab);
@@ -527,7 +530,7 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('qa')) {
         else if (name === 'pause') { work = 'night'; nightStandalone = true; nightScene(); await handleAction('play-pause', document.createElement('button')); }
         else if (name === 'fail-or-retry') {
           work = 'night'; nightStandalone = true; nightScene();
-          for (let n = 0; n < 5401 && !night!.view.finished; n++) night!.tick(1 / 30);
+          for (let n = 0; n < 7201 && !night!.view.finished; n++) night!.tick(1 / 30);
           await new Promise<void>((resolve, reject) => { const timer = setInterval(() => { if (document.querySelector('.moment-result')) { clearInterval(timer); resolve(); } else if (!busy && !nightFinished) { clearInterval(timer); reject(new Error('失败场景未成立')); } }, 50); });
         } else throw new Error(`没有这个验收状态：${name}`);
         return { state: name };

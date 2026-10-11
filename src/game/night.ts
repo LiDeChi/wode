@@ -1,17 +1,63 @@
 import type { NightGuard, NightView, GuardState } from '../presentation/contracts';
 import type { NightAction, NightStep } from '../core/types';
 
-export const SEAL = { x: 5.2, z: -3.5 };
+// Two rooms, not one. The document puts the tally in 魏王卧室 - the King's own bedchamber - so
+// 如姬 has to take it out of the room he sleeps in, not off a plinth in the yard. The night is an
+// outer court and an inner hall behind a wall, and the run is the round trip through both.
+//
+// That is also the only honest way to reach the piece's stated length. Scaling the same room up
+// uniformly would not change a single second: time is distance over pace, and scaling map and
+// speed together scales neither. Length has to be bought with distance against a fixed pace -
+// and with guard windows, which is what most of the clock is actually spent on.
+// The tally stands off the plinth guard's beat by the same 0.9m the older single-room seal kept
+// from its guard. That offset is deliberate - he never walks onto the pedestal, he only looks
+// along it - but it is measured against the wrong distance. What decides whether the theft is
+// exposed is not his gap to the pedestal, it is the player's gap to *both*, and from the lane at
+// z=-4.3 the pedestal is inside COVER_REACH: the theft can be done from the corridor, 1.8m behind
+// him. Tests/playability.test.ts records what that costs and what it would take to restore it.
+export const SEAL = { x: 27.8, z: -3.4 };
 export const EXIT = { x: -5.5, z: 4 };
-const BOUND_X = 6.6, BOUND_Z = 4.6, PAD = 0.19;
+// The court lies west of the palace wall and the hall east of it, so the bounds are not a
+// symmetric box any more: x is a [min, max] pair while z is still centred on zero.
+// The hall's length is not decorative. A guard's sight reaches 3.2m, so he owns a gate 6.4m wide,
+// and two guards closer together than that overlap: the player would need both windows at once,
+// and two independent beats mostly do not coincide. Three separated gates therefore need about
+// 19m of hall, and it is that constraint - not a taste for long rooms - that sets the size.
+const X_MIN = -6.6, X_MAX = 30.0, BOUND_Z = 4.6, PAD = 0.19;
+// Exported so the theatre can frame both rooms. The night camera used to sit fixed on the court
+// at x=0, which was correct while the whole act happened within 13m of the gate; on a 37m map it
+// would leave the entire hall - the objective and three of the five guards - off screen. The
+// theatre follows the player along x now, and clamps to these bounds so the view never drifts out
+// over empty ground at either end.
+export const NIGHT_BOUNDS = { xMin: X_MIN, xMax: X_MAX, zMax: BOUND_Z };
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n));
 
+// The wall between the court and the King's hall, split either side of the doorway. 0.6 thick on
+// purpose: the sight ray is sampled every 0.15m, so anything thinner could be stepped over.
+const WALL_X = 7.1;
 // Tall screens: they stop movement AND sight. This is the list the vision check consults.
 const SCREENS = [
+  // 外院, the outer court. Left exactly as it was: guard A and guard B's beats were measured
+  // against this floor, and moving a screen here would move windows that are already proven.
   { x: -1.3, z: -0.5, w: 1.5, d: 4.6 },
   { x: 3, z: 1.8, w: 2.6, d: 1.2 },
   { x: -4, z: -2, w: 2, d: 1.2 },
-  { x: 2, z: -3.5, w: 2, d: 1.1 }
+  { x: 2, z: -3.5, w: 2, d: 1.1 },
+  // The palace wall. Its doorway is the open southern end - the gap between the wall's south
+  // edge and the court's south bound - so the way in is the lane you were already walking. That
+  // placement is not laziness. A doorway in the middle of the wall puts the player 2.2m from B's
+  // beat, and at that range a person passing him sits on the diagonal, where B's gaze drift
+  // sweeps across them. At the south end the same wall is 5.0m from him when he is up-beat, and
+  // the lane crosses him perpendicular rather than diagonally. Measured: a mid-wall doorway was
+  // caught on every phase, and it was 如姬 - who cannot crouch - that gave the two of you away.
+  { x: WALL_X, z: 1.4, w: 0.6, d: 8.0 },
+  // 寝殿, the King's hall: the cover that makes the long eastward walk survivable. Each gate wants
+  // something to break the sight line on its far side, or a crossing is a pure timing problem.
+  { x: 9.4, z: 1.7, w: 2.4, d: 1.2 },
+  { x: 13.6, z: -3.0, w: 2.6, d: 1.1 },
+  { x: 17.0, z: 1.8, w: 2.6, d: 1.2 },
+  { x: 22.2, z: -3.0, w: 2.6, d: 1.1 },
+  { x: 25.4, z: 1.9, w: 3.4, d: 2.0 }
 ];
 // The pedestal is a low stone platform, so it stops your feet and not your eyes. It has to be
 // solid, or the objective is a painted spot you walk straight through: overshoot the step up by
@@ -19,8 +65,12 @@ const SCREENS = [
 // sight, because guards follow a noise straight to its source without pathing, so a guard who
 // walked inside a sight-blocker would be blinded by it exactly when he was about to find you -
 // which made standing over the seal as safe as crouching over it, and killed the stance trade.
-export const PEDESTAL = { x: SEAL.x, z: SEAL.z, w: 0.7, d: 0.7 };
-export const COVER = [...SCREENS, PEDESTAL];
+export const PLINTH = { x: SEAL.x, z: SEAL.z, w: 0.7, d: 0.7 };
+// The stone table in the court, where the tally used to stand. It stays where it is. It is cover
+// on both legs of the long walk, and stripping it out would leave the approach to the doorway
+// with one less thing to hide behind - the objective moved, the furniture it left behind did not.
+const COURT_TABLE = { x: 5.2, z: -3.5, w: 0.7, d: 0.7 };
+export const COVER = [...SCREENS, COURT_TABLE, PLINTH];
 
 // You have to be at the pedestal to take it: the hold has to put you somewhere you were not
 // already safe, or the climax is a formality. The distance is measured from the pedestal's own
@@ -32,9 +82,11 @@ export const COVER = [...SCREENS, PEDESTAL];
 // from the lane. Distance from the edge is 0 wherever you are touching it, so every legal
 // standing position qualifies however you came at it.
 const GRAB_REACH = 0.3;
-const pedestalGap = (x: number, z: number) => Math.hypot(
-  Math.max(0, Math.abs(x - PEDESTAL.x) - (PEDESTAL.w / 2 + PAD)),
-  Math.max(0, Math.abs(z - PEDESTAL.z) - (PEDESTAL.d / 2 + PAD))
+// Measured to the plinth in the King's hall, which is where the tally now is. The old courtyard
+// pedestal keeps its own rect in COVER but no longer answers this question.
+const plinthGap = (x: number, z: number) => Math.hypot(
+  Math.max(0, Math.abs(x - PLINTH.x) - (PLINTH.w / 2 + PAD)),
+  Math.max(0, Math.abs(z - PLINTH.z) - (PLINTH.d / 2 + PAD))
 );
 
 // Walking is a trade of time against attention. Every way of moving has a speed and a
@@ -93,8 +145,13 @@ const INVESTIGATE_SPEED = 1.7, INVESTIGATE_WAIT = 2.5, RETURN_TOLERANCE = 0.35;
 // rule can only ever bind on a chase - a motionless figure in the open, in front of a guard on
 // his beat, is caught exactly as before. What it buys is that a glimpse costs ground and time
 // instead of the run: you survive by leading him away from where he needs to be.
-const POSTS = [{ x: 0.4, z: 0 }, { x: 4.9, z: -1.2 }];
-const LEASH = [4.2, 2.7];
+// One post and one leash per guard, in patrolAt's order. Guards 0 and 1 are the court and keep
+// the posts and leashes they were measured with; 2 and 3 are the King's hall. A guard is always
+// inside his own leash while he patrols, so the leash can only ever bind on a chase - these are
+// sized to each new beat's amplitude for exactly that reason.
+// In spatial order, west to east: court, doorway, hall middle, plinth.
+const POSTS = [{ x: 0.4, z: 0 }, { x: 4.9, z: -1.2 }, { x: 10.5, z: -1.0 }, { x: 19.0, z: -1.0 }, { x: 27.5, z: -1.1 }];
+const LEASH = [4.2, 2.7, 3.2, 3.2, 2.7];
 const GIVE_UP_AT = SPOTTED_AT;
 
 // 如姬 comes into this with you. She is the one who takes the tally - the document has her steal
@@ -174,13 +231,13 @@ export class NightGame {
   private lastDir = { x: 0, z: -1 };
   private pulses: Array<{ x: number; z: number; level: number; expires: number }> = [];
   constructor(private onFinish: (view: NightView) => void, private onChange: (view: NightView) => void) {
-    this.guards = [0, 1].map(index => { const base = this.patrolAt(0, index); return { ...base, alert: 0, state: 'patrol' as GuardState, target: null, wait: 0, post: POSTS[index], leash: LEASH[index] }; });
+    this.guards = POSTS.map((_, index) => { const base = this.patrolAt(0, index); return { ...base, alert: 0, state: 'patrol' as GuardState, target: null, wait: 0, post: POSTS[index], leash: LEASH[index] }; });
     this.view.guards = this.guards.map(({ x, z, angle, alert, state }) => ({ x, z, angle, alert, state }));
     this.onChange(this.view);
   }
   key(key: string, down: boolean) { const normalized = key.toLowerCase(); if (down) this.keys.add(normalized); else this.keys.delete(normalized); }
   clearInput() { this.keys.clear(); this.target = null; this.grabHeld = false; this.pendingThrow = false; }
-  go(x: number, z: number) { this.target = { x: clamp(x, -BOUND_X, BOUND_X), z: clamp(z, -BOUND_Z, BOUND_Z) }; }
+  go(x: number, z: number) { this.target = { x: clamp(x, X_MIN, X_MAX), z: clamp(z, -BOUND_Z, BOUND_Z) }; }
   // Both actions are input only; the simulation decides what they can do. The server
   // replays these exact flags, so a claimed grab or throw cannot be invented later.
   grab(held: boolean) { this.grabHeld = held; }
@@ -215,7 +272,33 @@ export class NightGame {
     // needs 3.7s, so the faster beat left no room for a human to act on what they had read.
     // Slowing him costs nothing in threat — he still walks the pedestal's floor and still
     // turns back into it — it only makes the beat legible enough to plan against.
-    return this.sweep(elapsed, 4.9, -1.2, 1.4, 0.32);
+    if (index === 1) return this.sweep(elapsed, 4.9, -1.2, 1.4, 0.32);
+    // C holds the middle of the hall. He is A's shape moved east, for the same measured reason:
+    // a guard in the middle of a room facing along it threatens nothing, while a guard who walks
+    // down onto the line you have to cross and looks along it makes the crossing his decision.
+    // His sweep carries him to z=-3.6, about 0.8 off the hall's south wall, so hugging the wall
+    // does not do the work for you any more than hugging the lane does in the court.
+    if (index === 2) return this.sweep(elapsed, 10.5, -1.0, 2.6, 0.20);
+    // E paces the middle gate of the hall, 8.5m east of C. He is the reason the hall holds three
+    // guards and the reason it is as long as it is: two windows in the same place is one problem,
+    // not two, and a single window is a wait rather than a decision.
+    if (index === 3) return this.sweep(elapsed, 19.0, -1.0, 2.6, 0.22);
+    // D is B's shape moved east: the same 1.4 amplitude, the same 0.3 offset between his line and
+    // the table he guards, and his beat's southern extreme the same 0.9 short of it. B's beat works
+    // because the pedestal sits just off its end and he never walks onto it - he only *looks* along
+    // it on the way south, so the window is a legible question of where he is.
+    //
+    // His rate is the one thing that does NOT match B's 0.32, and it was the last thing fixed on
+    // this floor. The theft needs about 6s: the walk to the plinth plus 2.4s of standing still.
+    // At 0.32 his northward leg is 9.8s, which reads as comfortable until a player who is a fifth
+    // of a second late on every leg spends the difference - measured, that ran 12/12 caught, every
+    // phase, on the same leg. At 0.22 the leg is 14.3s and the margin survives the slop. It costs
+    // nothing in threat: he still walks the plinth's floor and still turns back into it.
+    //
+    // Measured later, and not fixed: at 14.3s the margin does not merely survive the slop, it
+    // swallows it. Swept across 0.20-0.62 the theft is never exposed at all, and the whole act
+    // comes out 12/12 clean at both slop levels. See the header of tests/playability.test.ts.
+    return this.sweep(elapsed, 27.5, -1.1, 1.4, 0.22);
   }
   private sweep(elapsed: number, x: number, centre: number, amplitude: number, rate: number) {
     // He does not stare rigidly down his own path: at a walking pace his gaze drifts across
@@ -274,7 +357,7 @@ export class NightGame {
     // is the whole gamble of the scene. It is still your gamble, but it is no longer your
     // theft: the hold is what covers 如姬 while she works, so the same key, the same
     // commitment and the same frozen seconds buy her the tally instead of you.
-    this.view.inReach = !this.view.obtained && pedestalGap(this.view.x, this.view.z) < GRAB_REACH;
+    this.view.inReach = !this.view.obtained && plinthGap(this.view.x, this.view.z) < GRAB_REACH;
     this.view.grabbing = action === 'grab' && this.view.inReach;
     if (this.view.grabbing) this.grabSeconds += dt;
     else if (!this.friend.carrying) this.grabSeconds = Math.max(0, this.grabSeconds - dt * GRAB_RELEASE_DECAY);
@@ -283,7 +366,7 @@ export class NightGame {
     if (length > 0 && !this.view.grabbing) {
       const step = dt * this.gait().speed;
       this.lastDir = { x: dx / length, z: dz / length };
-      const x = clamp(this.view.x + dx / length * step, -BOUND_X, BOUND_X);
+      const x = clamp(this.view.x + dx / length * step, X_MIN, X_MAX);
       const z = clamp(this.view.z + dz / length * step, -BOUND_Z, BOUND_Z);
       if (!this.blocked(x, this.view.z)) this.view.x = x;
       if (!this.blocked(this.view.x, z)) this.view.z = z;
@@ -299,7 +382,7 @@ export class NightGame {
         distance -= 0.35;
         landing = { x: this.view.x + this.lastDir.x * distance, z: this.view.z + this.lastDir.z * distance };
       }
-      landing.x = clamp(landing.x, -BOUND_X, BOUND_X); landing.z = clamp(landing.z, -BOUND_Z, BOUND_Z);
+      landing.x = clamp(landing.x, X_MIN, X_MAX); landing.z = clamp(landing.z, -BOUND_Z, BOUND_Z);
       this.pulses.push({ x: landing.x, z: landing.z, level: PULSE_LEVEL, expires: this.elapsed + PULSE_SECONDS });
     }
     this.pulses = this.pulses.filter(pulse => pulse.expires > this.elapsed);
@@ -377,7 +460,7 @@ export class NightGame {
     friend.x = followed.x; friend.z = followed.z;
     // The theft is hers; the cover is yours. She cannot finish while you let go.
     const atSeal = Math.hypot(friend.x - SEAL.x, friend.z - SEAL.z) < 1.2;
-    if (!friend.carrying && atSeal && pedestalGap(this.view.x, this.view.z) < COVER_REACH && action === 'grab') {
+    if (!friend.carrying && atSeal && plinthGap(this.view.x, this.view.z) < COVER_REACH && action === 'grab') {
       friend.taking += dt;
       if (friend.taking >= TAKING_SECONDS) {
         this.view.obtained = true; friend.carrying = true; friend.taking = 0; this.grabSeconds = 0;
@@ -413,7 +496,13 @@ export class NightGame {
     // She has to get out too. Leaving her behind is a way to lose the act, not a cosmetic
     // omission - otherwise the escort is scenery and the whole second body is free.
     else if (this.view.obtained && this.view.companionOut && Math.hypot(this.view.x - EXIT.x, this.view.z - EXIT.z) < 0.75) this.finish();
-    else if (this.elapsed >= 180) { this.view.detected = true; this.finish(); }
+    // The clock is a bound on the recording, not a statement of how long the piece is. It was
+    // written at 180s when the act was one small court and a clean run took 51s; the act is now a
+    // court and a hall, a clean run is ~139s, and a player who is a fifth of a second late on
+    // every leg - the slack the playability floor asserts - crosses 180s on the longer waits and
+    // was being marked `detected` by the clock, with every guard still at zero attention. It sits
+    // a clear minute above the piece's own length so that only genuinely lost runs hit it.
+    else if (this.elapsed >= 240) { this.view.detected = true; this.finish(); }
     this.onChange(this.view);
   }
   private finish() { this.view.finished = true; this.clearInput(); this.onFinish({ ...this.view }); }

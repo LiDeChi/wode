@@ -62,6 +62,9 @@ async function watch(page: import('@playwright/test').Page, label: string, condi
 // Facing is 0 for +z and PI for -z, so angle < 1 means he is walking away from the far lane.
 const A_WALKING_NORTH = (v: View) => v.guards[0].z > -2.2 && v.guards[0].angle < 1;
 const B_WALKING_NORTH = (v: View) => v.guards[1].z > -0.6 && v.guards[1].angle < 1;
+const C_WALKING_NORTH = (v: View) => v.guards[2].z > -0.6 && v.guards[2].angle < 1;
+const E_WALKING_NORTH = (v: View) => v.guards[3].z > -0.6 && v.guards[3].angle < 1;
+const D_WALKING_NORTH = (v: View) => v.guards[4].z > -0.6 && v.guards[4].angle < 1;
 
 async function setCrouch(page: import('@playwright/test').Page, mobile: boolean) {
   if (mobile) { await page.getByRole('button', { name: /放轻脚步/ }).click(); return; }
@@ -76,7 +79,10 @@ async function setGrab(page: import('@playwright/test').Page, mobile: boolean, o
 }
 
 for (const ending of ['historical', 'counterfactual'] as const) test(`real movement takes seal, survives pause and return, then writes a ${ending} ending`, async ({ page }, info) => {
-  test.setTimeout(180000);
+  // 150s of wall clock, because the night runs in real time here - the measured route is 122-151s
+  // at normal pace and the polls add a little. This is a timeout, not a budget: the route below
+  // still has to reach the exit on its own legs.
+  test.setTimeout(360000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   const mobile = info.project.name === 'mobile';
   await page.goto('/?qa=1');
@@ -101,26 +107,41 @@ for (const ending of ['historical', 'counterfactual'] as const) test(`real movem
   expect(resumed!.z).toBeCloseTo(stopped!.z, 2);
   expect(resumed!.crouching).toBe(true);
 
-  // Both guards walk their beat as a fixed function of elapsed time. The south lane is
-  // outside both cones, but A crosses it, so every crossing waits until he is walking away.
+  // Nine gates now: five going in, four coming back. Every crossing waits until its own guard is
+  // walking away from the lane - the same read the playthrough suite makes, done here through real
+  // keyboard and pointer input rather than by calling into the simulation.
   await move(page, 'a', '向左', v => v.x <= -5.4, mobile);
   await move(page, 'w', '向前', v => v.z <= -4.3, mobile);
   await watch(page, '甲转身向北', A_WALKING_NORTH);
   await move(page, 'd', '向右', v => v.x >= 2.5, mobile);
-  // Outside B's reach is the only place this floor lets you stop and think.
   await watch(page, '乙转身向北', B_WALKING_NORTH);
-  await move(page, 'd', '向右', v => v.x >= 5.2, mobile);
+  await move(page, 'd', '向右', v => v.x >= 7.0, mobile);
+  await watch(page, '丙转身向北', C_WALKING_NORTH);
+  await move(page, 'd', '向右', v => v.x >= 14.5, mobile);
+  await watch(page, '戊转身向北', E_WALKING_NORTH);
+  await move(page, 'd', '向右', v => v.x >= 23.0, mobile);
+  await watch(page, '丁转身向北', D_WALKING_NORTH);
+  // Onto the pedestal's own line before turning east, so 如姬's trailing step lands beside the
+  // tally rather than behind it - she has to be within 1.2m of it for the theft to start at all.
+  await move(page, 's', '向后', v => v.z >= -4.3, mobile);
+  await move(page, 'd', '向右', v => v.x >= 28.0, mobile);
   await move(page, 's', '向后', v => v.inReach, mobile);
   // The hold is the action the work is named for: stationary, committed, and the seal only
   // leaves the pedestal when the progress completes.
   await setGrab(page, mobile, true);
-  await expect.poll(async () => (await nightView(page))?.obtained, { timeout: 10000 }).toBe(true);
+  await expect.poll(async () => (await nightView(page))?.obtained, { timeout: 20000 }).toBe(true);
   await setGrab(page, mobile, false);
   // The tally is hers: the HUD has to say so, or the player will think they are the thief.
   await expect(page.getByText(/兵符在如姬手上/)).toBeVisible();
   await mkdir('artifacts/captures', { recursive: true });
   await page.screenshot({ path: `artifacts/captures/${info.project.name}-seal-obtained.png` });
   await move(page, 'w', '向前', v => v.z <= -4.3, mobile);
+  await move(page, 'a', '向左', v => v.x <= 23.0, mobile);
+  await watch(page, '戊再次转身向北', E_WALKING_NORTH);
+  await move(page, 'a', '向左', v => v.x <= 14.5, mobile);
+  await watch(page, '丙再次转身向北', C_WALKING_NORTH);
+  await move(page, 'a', '向左', v => v.x <= 7.0, mobile);
+  await watch(page, '乙再次转身向北', B_WALKING_NORTH);
   await move(page, 'a', '向左', v => v.x <= 2.5, mobile);
   await watch(page, '甲再次转身向北', A_WALKING_NORTH);
   await move(page, 'a', '向左', v => v.x <= -5.4, mobile);
@@ -132,7 +153,21 @@ for (const ending of ['historical', 'counterfactual'] as const) test(`real movem
   expect(escaped!.finished).toBe(true);
   expect(escaped!.pebbles).toBe(2);
 
-  await expect(page.getByRole('heading', { name: /半块兵符/ })).toBeVisible();
+  // finishNight() awaits a round trip to the server before the panel exists, and a refusal shows
+  // only as a five-second toast. Asserting after a fixed pause cannot tell "the server was slow"
+  // apart from "the server refused and the toast already expired" - it only moves the flake. Race
+  // the two, report whichever arrives, and print how long the round trip took, so this can never
+  // again fail without naming which of the two it was.
+  const settleStart = Date.now();
+  let settled = 'pending';
+  await expect.poll(async () => {
+    if (await page.locator('.moment-result h2').count()) return (settled = 'result');
+    const toast = await page.evaluate(() => document.querySelector('.toast')?.textContent?.trim() ?? '');
+    return (settled = toast ? `refused:${toast}` : 'pending');
+  }, { timeout: 30000, intervals: [100] }).not.toBe('pending');
+  console.log(`验收：结算在 ${Date.now() - settleStart}ms 内落定，结果 ${settled}`);
+  expect(settled, settled.startsWith('refused') ? `这一夜的录制被服务器拒绝：${settled.slice(8)}` : '三十秒内既没有结算面板，也没有任何提示')
+    .toBe('result');
   await page.getByRole('button', { name: '去邺城' }).click();
   await page.getByRole('button', { name: ending === 'historical' ? /让朱亥上前/ : /让晋鄙再核一次/ }).click();
   await expect(page.getByRole('heading', { name: ending === 'historical' ? '邯郸，解围了。' : '城得救了，有人活了下来。' })).toBeVisible();
@@ -184,6 +219,58 @@ test('a status toast never swallows a tap meant for the movement pad', async ({ 
   expect(errors).toEqual([]);
   await mkdir('artifacts/captures', { recursive: true });
   await page.screenshot({ path: `artifacts/captures/${info.project.name}-toast-over-pad.png` });
+});
+
+// The picture must hold still whenever the simulation is not stepping. This is not hypothetical:
+// the night camera follows the player in x, and where it aims is written from NightGame.step() - at
+// most thirty times a second, and NOT at all on a frame where the 1/30s accumulator has not yet
+// filled - while the render loop re-derived its own default once per frame. So on every
+// non-stepping frame the next easing pulled the camera back toward the court instead of toward the
+// player, and the whole frame swung at the step rate. Nothing in the node suite could see it: the
+// simulation was correct the entire way through, and only the picture was wrong. The assertion is
+// where the camera ended up rather than the code that put it there, so it survives a rewrite of the
+// follow - as long as a stopped player means a stopped picture.
+test('the follow camera stops moving when the player stops', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/?qa=1');
+  await page.getByRole('button', { name: /进入这段历史/ }).click();
+  await page.getByRole('button', { name: '跳过开场' }).click();
+  await page.getByRole('button', { name: /写进笔记，开始/ }).click();
+  await page.getByRole('button', { name: /递上赵使竹简/ }).click();
+  await page.getByRole('button', { name: /劝公子回头/ }).click();
+  await expect(page.getByRole('heading', { name: '取符之夜', exact: true })).toBeVisible();
+  // Standing still is the premise. The simulation keeps stepping and keeps writing the same answer,
+  // so anything that still moves belongs to the render loop rather than to the player. The wait
+  // lets the easing finish the approach it makes on entering the act.
+  await page.waitForTimeout(1500);
+  const samples = await page.evaluate(async () => {
+    const out: { aimX: number; cameraX: number; playerX: number }[] = [];
+    for (let n = 0; n < 40; n++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const qa = (window as any).__DIGITAL_WORLD__;
+      const diagnostics = qa.getDiagnostics();
+      out.push({ aimX: diagnostics.aim.x, cameraX: diagnostics.camera.x, playerX: qa.getNight().x });
+    }
+    return out;
+  });
+  const span = (pick: (s: { aimX: number; cameraX: number; playerX: number }) => number) => Math.max(...samples.map(pick)) - Math.min(...samples.map(pick));
+  const stayed = span(s => s.playerX), aimed = span(s => s.aimX), shaken = span(s => s.cameraX);
+  // `aimed` is reported but not asserted, and that is a correction rather than an oversight: the
+  // first version of this test asserted on it, and it passed against the broken code. The clobber
+  // happens in configureCamera, which runs after the easing on every frame, so by the time anything
+  // outside the frame loop can look, `aim` holds the same value whether or not the bug is present.
+  // Sampling it can never separate the two. What does separate them is where the camera actually
+  // ended up, so that is the assertion - measured at 0.236m of full-frame swing on the broken build
+  // and 0.0000m on the fixed one, against a 0.05m ceiling.
+  console.log(`验收：静止 40 帧内玩家移动 ${stayed.toFixed(4)}m，瞄准点摆动 ${aimed.toFixed(4)}m，相机摆动 ${shaken.toFixed(4)}m`);
+  expect(stayed, '玩家没有真的停下来，下面那一项就不是相机的账').toBeLessThan(0.02);
+  // The ceiling is deliberately far below the broken build's 0.236m and far above the fixed one's
+  // 0. It cannot be tightened much further than this: the swing scales with the gap between the
+  // player and the court, and this run stands at the west end of the map, where that gap is at its
+  // smallest - so this is the weakest case, not a comfortable one.
+  expect(shaken, `静止时相机来回摆了 ${shaken.toFixed(3)}m`).toBeLessThan(0.05);
+  expect(errors).toEqual([]);
 });
 
 test('export import, brief detail and actual audio unlock retain their stated behavior', async ({ page }) => {

@@ -1,5 +1,5 @@
 {
-  "runId": "recapture-1",
+  "runId": "camera-follow-1",
   "seed": 42,
   "captures": [
     {
@@ -7,17 +7,27 @@
       "state": "home",
       "slug": "desktop-home",
       "requestedState": "home",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/desktop-home.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/desktop-home.png",
       "diagnostics": {
         "calls": 21,
         "triangles": 2688,
         "geometries": 16,
         "textures": 9,
         "fps": 0,
-        "dpr": 1
+        "dpr": 1,
+        "camera": {
+          "x": 11.2,
+          "y": 14,
+          "z": 17.7
+        },
+        "aim": {
+          "x": 0,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -81,17 +91,27 @@
       "state": "home",
       "slug": "mobile-home",
       "requestedState": "home",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/mobile-home.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/mobile-home.png",
       "diagnostics": {
         "calls": 21,
         "triangles": 2688,
         "geometries": 16,
         "textures": 9,
         "fps": 0,
-        "dpr": 1
+        "dpr": 1,
+        "camera": {
+          "x": 3.6,
+          "y": 14,
+          "z": 21.7
+        },
+        "aim": {
+          "x": 0,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -112,7 +132,7 @@
       },
       "pixels": {
         "luminanceRange": 215,
-        "colourBuckets": 177,
+        "colourBuckets": 178,
         "blank": false
       },
       "renderBudget": {
@@ -155,17 +175,27 @@
       "state": "granary",
       "slug": "desktop-granary",
       "requestedState": "granary",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/desktop-granary.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/desktop-granary.png",
       "diagnostics": {
         "calls": 76,
         "triangles": 9470,
         "geometries": 54,
         "textures": 12,
-        "fps": 0,
-        "dpr": 1
+        "fps": 52,
+        "dpr": 1,
+        "camera": {
+          "x": 11.2,
+          "y": 14,
+          "z": 17.7
+        },
+        "aim": {
+          "x": 0,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -186,7 +216,7 @@
       },
       "pixels": {
         "luminanceRange": 250,
-        "colourBuckets": 217,
+        "colourBuckets": 222,
         "blank": false
       },
       "renderBudget": {
@@ -229,17 +259,27 @@
       "state": "granary",
       "slug": "mobile-granary",
       "requestedState": "granary",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/mobile-granary.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/mobile-granary.png",
       "diagnostics": {
         "calls": 76,
         "triangles": 9470,
         "geometries": 54,
         "textures": 12,
-        "fps": 0,
-        "dpr": 1
+        "fps": 46,
+        "dpr": 1,
+        "camera": {
+          "x": 3.6,
+          "y": 14,
+          "z": 21.7
+        },
+        "aim": {
+          "x": 0,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -259,8 +299,8 @@
         }
       },
       "pixels": {
-        "luminanceRange": 232,
-        "colourBuckets": 208,
+        "luminanceRange": 233,
+        "colourBuckets": 209,
         "blank": false
       },
       "renderBudget": {
@@ -303,17 +343,27 @@
       "state": "active-play",
       "slug": "desktop-active",
       "requestedState": "active-play",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/desktop-active.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/desktop-active.png",
       "diagnostics": {
-        "calls": 111,
-        "triangles": 10676,
-        "geometries": 78,
-        "textures": 13,
-        "fps": 0,
-        "dpr": 1
+        "calls": 138,
+        "triangles": 13892,
+        "geometries": 94,
+        "textures": 14,
+        "fps": 35,
+        "dpr": 1,
+        "camera": {
+          "x": 12.6,
+          "y": 14,
+          "z": 17.7
+        },
+        "aim": {
+          "x": 1.4000000000000004,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -333,8 +383,8 @@
         }
       },
       "pixels": {
-        "luminanceRange": 244,
-        "colourBuckets": 184,
+        "luminanceRange": 247,
+        "colourBuckets": 178,
         "blank": false
       },
       "renderBudget": {
@@ -342,25 +392,25 @@
         "rows": [
           {
             "metric": "calls",
-            "actual": 111,
+            "actual": 138,
             "limit": 300,
             "ok": true
           },
           {
             "metric": "triangles",
-            "actual": 10676,
+            "actual": 13892,
             "limit": 750000,
             "ok": true
           },
           {
             "metric": "geometries",
-            "actual": 78,
+            "actual": 94,
             "limit": 300,
             "ok": true
           },
           {
             "metric": "textures",
-            "actual": 13,
+            "actual": 14,
             "limit": 60,
             "ok": true
           }
@@ -377,17 +427,27 @@
       "state": "active-play",
       "slug": "mobile-active",
       "requestedState": "active-play",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/mobile-active.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/mobile-active.png",
       "diagnostics": {
-        "calls": 111,
-        "triangles": 10676,
-        "geometries": 78,
+        "calls": 114,
+        "triangles": 11972,
+        "geometries": 80,
         "textures": 13,
-        "fps": 0,
-        "dpr": 1
+        "fps": 44,
+        "dpr": 1,
+        "camera": {
+          "x": 5,
+          "y": 14,
+          "z": 21.7
+        },
+        "aim": {
+          "x": 1.4000000000000004,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -408,7 +468,7 @@
       },
       "pixels": {
         "luminanceRange": 230,
-        "colourBuckets": 154,
+        "colourBuckets": 158,
         "blank": false
       },
       "renderBudget": {
@@ -416,19 +476,19 @@
         "rows": [
           {
             "metric": "calls",
-            "actual": 111,
+            "actual": 114,
             "limit": 150,
             "ok": true
           },
           {
             "metric": "triangles",
-            "actual": 10676,
+            "actual": 11972,
             "limit": 300000,
             "ok": true
           },
           {
             "metric": "geometries",
-            "actual": 78,
+            "actual": 80,
             "limit": 200,
             "ok": true
           },
@@ -451,17 +511,27 @@
       "state": "pause",
       "slug": "mobile-pause",
       "requestedState": "pause",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/mobile-pause.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/mobile-pause.png",
       "diagnostics": {
-        "calls": 111,
-        "triangles": 10676,
-        "geometries": 78,
+        "calls": 114,
+        "triangles": 11972,
+        "geometries": 80,
         "textures": 13,
-        "fps": 58,
-        "dpr": 1
+        "fps": 40,
+        "dpr": 1,
+        "camera": {
+          "x": 5,
+          "y": 14,
+          "z": 21.7
+        },
+        "aim": {
+          "x": 1.4000000000000004,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -481,8 +551,8 @@
         }
       },
       "pixels": {
-        "luminanceRange": 220,
-        "colourBuckets": 56,
+        "luminanceRange": 218,
+        "colourBuckets": 58,
         "blank": false
       },
       "renderBudget": {
@@ -490,19 +560,19 @@
         "rows": [
           {
             "metric": "calls",
-            "actual": 111,
+            "actual": 114,
             "limit": 150,
             "ok": true
           },
           {
             "metric": "triangles",
-            "actual": 10676,
+            "actual": 11972,
             "limit": 300000,
             "ok": true
           },
           {
             "metric": "geometries",
-            "actual": 78,
+            "actual": 80,
             "limit": 200,
             "ok": true
           },
@@ -525,17 +595,27 @@
       "state": "fail-or-retry",
       "slug": "desktop-failure",
       "requestedState": "fail-or-retry",
-      "url": "http://127.0.0.1:4318/?qa=1",
-      "runId": "recapture-1",
+      "url": "http://127.0.0.1:4319/?qa=1",
+      "runId": "camera-follow-1",
       "seed": 42,
-      "screenshotPath": "artifacts/captures/recapture-1/desktop-failure.png",
+      "screenshotPath": "artifacts/captures/camera-follow-1/desktop-failure.png",
       "diagnostics": {
-        "calls": 111,
-        "triangles": 10676,
-        "geometries": 78,
-        "textures": 13,
-        "fps": 54,
-        "dpr": 1
+        "calls": 148,
+        "triangles": 14510,
+        "geometries": 104,
+        "textures": 15,
+        "fps": 60,
+        "dpr": 1,
+        "camera": {
+          "x": 12.6,
+          "y": 14,
+          "z": 17.7
+        },
+        "aim": {
+          "x": 1.4000000000000004,
+          "y": 0.8,
+          "z": -0.3
+        }
       },
       "gpu": {
         "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -555,8 +635,8 @@
         }
       },
       "pixels": {
-        "luminanceRange": 225,
-        "colourBuckets": 68,
+        "luminanceRange": 223,
+        "colourBuckets": 72,
         "blank": false
       },
       "renderBudget": {
@@ -564,25 +644,25 @@
         "rows": [
           {
             "metric": "calls",
-            "actual": 111,
+            "actual": 148,
             "limit": 300,
             "ok": true
           },
           {
             "metric": "triangles",
-            "actual": 10676,
+            "actual": 14510,
             "limit": 750000,
             "ok": true
           },
           {
             "metric": "geometries",
-            "actual": 78,
+            "actual": 104,
             "limit": 300,
             "ok": true
           },
           {
             "metric": "textures",
-            "actual": 13,
+            "actual": 15,
             "limit": 60,
             "ok": true
           }
