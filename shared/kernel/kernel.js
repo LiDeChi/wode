@@ -108,8 +108,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       perceive: (person, event, extra) => perceive(sceneId, world, ctx, person, event, extra),
       setTrust: (person, value, why, cause) => setTrust(ctx, person, value, why, cause),
       effect: (spec, cause) => applyEffect(ctx, spec, cause ?? [ctx._lastSeq ?? lastSeq].filter(Boolean)),
-      act: (intent, extra) => actRecord(sceneId, ctx, intent, extra),
-      move: (person, to) => moveTo(sceneId, world, person, to),
+      act: (intent, extra) => actRecord(sceneId, ctx, intent, extra),      move: (person, to) => moveTo(sceneId, world, person, to),
       attention: (person, mode) => callCtrl(sceneId, 'attention', 'set', person, mode, world),
       playWork: (workId, choice, opts) => session.playWork(workId, choice, opts),
       notice: (by, reason) => { if (!world.noticed[by]) world.noticed[by] = reason; },
@@ -408,7 +407,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
 
   return {
     grants, allowed, enter, intents, dispatch, react, watch, ask, views,
+    /** 只在账本上记一笔玩家动作，不产生反应（取符之夜里走一格就靠它） */
+    act: (sceneId, intent, extra) => actRecord(sceneId, null, intent, extra),
     perceive: (sceneId, personId, event, extra) => perceive(sceneId, worldOf(sceneId), null, personId, event, extra),
+    /** 控制器实例：需要调它的方法（不只是读它的状态）时用 */
+    ctrlOf: (sceneId, id) => instancesOf(sceneId).find((i) => i.id === id)?.ctrl ?? null,
     world: (sceneId) => worldOf(sceneId),
     days: () => root.days,
     flags: () => root.flags,
