@@ -1,0 +1,107 @@
+On this page
+POST /v1/inspect ​
+Get full details for a specific data endpoint, including its input schema, pricing, and documentation.
+Request ​
+POST /v1/inspect
+Headers ​
+HeaderRequiredDescription
+AuthorizationYesBearer <api-key>
+Content-TypeYesapplication/json
+Body ​
+FieldTypeRequiredDescription
+providerstringYesProvider slug (e.g., "apify")
+endpointstringYesEndpoint path (e.g., "/apidojo/tweet-scraper")
+Example Request ​
+curlTypeScriptPython
+bash
+curl -X POST https://api.monid.ai/v1/inspect \
+  -H "Authorization: Bearer monid_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "apify",
+    "endpoint": "/apidojo/tweet-scraper"
+  }'
+typescript
+const response = await fetch("https://api.monid.ai/v1/inspect", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer monid_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    provider: "apify",
+    endpoint: "/apidojo/tweet-scraper",
+  }),
+});
+const data = await response.json();
+python
+import requests
+response = requests.post(
+    "https://api.monid.ai/v1/inspect",
+    headers={
+        "Authorization": "Bearer monid_live_...",
+        "Content-Type": "application/json",
+    },
+    json={
+        "provider": "apify",
+        "endpoint": "/apidojo/tweet-scraper",
+    },
+)
+data = response.json()
+Response ​
+200 OK ​
+FieldTypeDescription
+idstringUnique endpoint identifier
+providerstringProvider slug
+providerNamestringProvider display name
+endpointstringEndpoint path
+descriptionstringWhat the endpoint does
+summarystring | nullDetailed overview
+inputSchemaobject | nullJSON schema of accepted input parameters
+priceobjectPricing information
+price.typestring"PER_CALL" or "PER_RESULT"
+price.amountnumberPrice in USD
+price.flatFeenumber | nullBase fee per call (PER_RESULT only)
+price.currencystring"USD"
+price.notesstring[] | nullPricing notes
+docUrlstring | nullLink to provider documentation
+notesstring[] | nullAdditional notes about the endpoint
+usageobjectUsage examples
+usage.apistringAPI usage example
+Example Response ​
+json
+{
+  "id": "apify:/apidojo/tweet-scraper",
+  "provider": "apify",
+  "providerName": "Apify",
+  "endpoint": "/apidojo/tweet-scraper",
+  "description": "Scrape tweets by search terms, hashtags, or user handles",
+  "summary": "A powerful Twitter scraping tool that allows you to extract tweets based on search queries.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "searchTerms": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of search terms to query"
+      },
+      "maxItems": {
+        "type": "number",
+        "description": "Maximum number of items to return per search term"
+      }
+    }
+  },
+  "price": {
+    "type": "PER_CALL",
+    "amount": 0.003,
+    "currency": "USD"
+  },
+  "docUrl": "https://apify.com/apidojo/tweet-scraper",
+  "notes": null,
+  "usage": {
+    "api": "POST /v1/run {\"provider\":\"apify\",\"endpoint\":\"/apidojo/tweet-scraper\",\"input\":{...}}"
+  }
+}
+Next Step ​
+Use POST /v1/run to execute the endpoint with your input.
+ 

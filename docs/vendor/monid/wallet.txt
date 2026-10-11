@@ -1,0 +1,42 @@
+On this page
+Wallet ​
+Retrieve your workspace's wallet balance.
+Get Balance ​
+GET /v1/wallet/balance
+Get the current wallet balance for your workspace.
+Headers ​
+HeaderRequiredDescription
+AuthorizationYesBearer <api-key>
+Example Request ​
+curlTypeScriptPython
+bash
+curl "https://api.monid.ai/v1/wallet/balance" \
+  -H "Authorization: Bearer monid_live_..."
+typescript
+const response = await fetch("https://api.monid.ai/v1/wallet/balance", {
+  headers: { "Authorization": "Bearer monid_live_..." },
+});
+const data = await response.json();
+python
+import requests
+response = requests.get(
+    "https://api.monid.ai/v1/wallet/balance",
+    headers={"Authorization": "Bearer monid_live_..."},
+)
+data = response.json()
+200 OK ​
+FieldTypeDescription
+balanceobjectCurrent balance
+balance.valuenumberBalance in dollars
+balance.currencystring"USD"
+Example Response ​
+json
+{
+  "balance": {
+    "value": 2.85,
+    "currency": "USD"
+  }
+}
+Top Up ​
+To add credits to your wallet, visit the Monid web app. Payments are processed via Stripe.
+ 

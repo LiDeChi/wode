@@ -1,0 +1,220 @@
+On this page
+Runs ​
+List runs and retrieve run status and results.
+List Runs ​
+GET /v1/runs
+List runs for your workspace with cursor-based pagination.
+Headers ​
+HeaderRequiredDescription
+AuthorizationYesBearer <api-key>
+Query Parameters ​
+ParameterTypeDefaultDescription
+limitnumber10Maximum runs to return (1-100)
+cursorstring--Pagination cursor from a previous response
+Example Request ​
+curlTypeScriptPython
+bash
+curl "https://api.monid.ai/v1/runs?limit=10" \
+  -H "Authorization: Bearer monid_live_..."
+typescript
+const response = await fetch("https://api.monid.ai/v1/runs?limit=10", {
+  headers: { "Authorization": "Bearer monid_live_..." },
+});
+const data = await response.json();
+python
+import requests
+response = requests.get(
+    "https://api.monid.ai/v1/runs",
+    headers={"Authorization": "Bearer monid_live_..."},
+    params={"limit": 10},
+)
+data = response.json()
+200 OK ​
+FieldTypeDescription
+itemsarrayList of run summaries
+items[].runIdstringRun identifier
+items[].callerstringCaller identifier
+items[].providerstringProvider slug
+items[].providerNamestringProvider display name
+items[].endpointstringEndpoint path
+items[].statusstring"READY", "RUNNING", "COMPLETED", or "FAILED"
+items[].providerResponseobject | nullProvider response metadata (see Provider Response)
+items[].priceobjectEndpoint pricing
+items[].costobject | nullActual cost charged
+items[].createdAtstringISO 8601 timestamp
+items[].startedAtstring | nullWhen execution started
+items[].completedAtstring | nullWhen execution finished
+cursorstring | nullCursor for the next page. null if last page.
+Example Response ​
+json
+{
+  "items": [
+    {
+      "runId": "01HXYZ1234567890ABCDEF",
+      "caller": "USER#user_abc123",
+      "provider": "apify",
+      "providerName": "Apify",
+      "endpoint": "/apidojo/tweet-scraper",
+      "status": "COMPLETED",
+      "providerResponse": {
+        "httpStatus": 200
+      },
+      "price": {
+        "type": "PER_CALL",
+        "amount": 0.003,
+        "currency": "USD"
+      },
+      "cost": {
+        "value": 0.003,
+        "currency": "USD"
+      },
+      "createdAt": "2026-03-28T10:30:00.000Z",
+      "startedAt": "2026-03-28T10:30:01.000Z",
+      "completedAt": "2026-03-28T10:30:15.000Z"
+    }
+  ],
+  "cursor": null
+}
+Get Run ​
+GET /v1/runs/:runId
+Get the status and results of a specific run.
+Headers ​
+HeaderRequiredDescription
+AuthorizationYesBearer <api-key>
+Path Parameters ​
+ParameterTypeDescription
+runIdstringThe run ID to look up
+Example Request ​
+curlTypeScriptPython
+bash
+curl "https://api.monid.ai/v1/runs/01HXYZ1234567890ABCDEF" \
+  -H "Authorization: Bearer monid_live_..."
+typescript
+const response = await fetch(
+  "https://api.monid.ai/v1/runs/01HXYZ1234567890ABCDEF",
+  {
+    headers: { "Authorization": "Bearer monid_live_..." },
+  }
+);
+const data = await response.json();
+python
+import requests
+response = requests.get(
+    "https://api.monid.ai/v1/runs/01HXYZ1234567890ABCDEF",
+    headers={"Authorization": "Bearer monid_live_..."},
+)
+data = response.json()
+200 OK ​
+FieldTypeDescription
+runIdstringRun identifier
+callerstringCaller identifier
+providerstringProvider slug
+providerNamestringProvider display name
+endpointstringEndpoint path
+statusstringRun status
+inputobjectInput parameters
+outputany | nullProvider output data (extracted from providerResponse.data)
+providerResponseobject | nullProvider response metadata (see Provider Response)
+priceobjectEndpoint pricing
+costobject | nullActual cost charged
+createdAtstringISO 8601 timestamp
+startedAtstring | nullWhen execution started
+completedAtstring | nullWhen execution finished
+Example Response ​
+json
+{
+  "runId": "01HXYZ1234567890ABCDEF",
+  "caller": "USER#user_abc123",
+  "provider": "apify",
+  "providerName": "Apify",
+  "endpoint": "/apidojo/tweet-scraper",
+  "status": "COMPLETED",
+  "input": {
+    "searchTerms": ["AI"],
+    "maxItems": 10
+  },
+  "output": [
+    {
+      "text": "The future of AI is...",
+      "author": "@user123",
+      "createdAt": "2026-03-28T09:00:00Z"
+    }
+  ],
+  "providerResponse": {
+    "httpStatus": 200
+  },
+  "price": {
+    "type": "PER_CALL",
+    "amount": 0.003,
+    "currency": "USD"
+  },
+  "cost": {
+    "value": 0.003,
+    "currency": "USD"
+  },
+  "createdAt": "2026-03-28T10:30:00.000Z",
+  "startedAt": "2026-03-28T10:30:01.000Z",
+  "completedAt": "2026-03-28T10:30:15.000Z"
+}
+Caching ​
+Terminal runs (COMPLETED or FAILED) include a Cache-Control: max-age=300 header (5 minutes). Running runs are not cached.
+Status vs Provider HTTP Status ​
+Every run has two independent indicators:
+status -- the run lifecycle status. Did the run itself complete?
+providerResponse.httpStatus -- the provider's HTTP response code. Did the data provider return good data?
+Run Status ​
+StatusMeaning
+READYQueued, waiting to start
+RUNNINGActively executing
+COMPLETEDRun finished -- the provider was called and responded
+FAILEDInfrastructure failure -- pipeline crash, timeout, or internal error (our fault)
+COMPLETED means the run lifecycle finished and the provider was called. It does not mean the data request succeeded. The provider may have returned a successful response (HTTP 2xx) or an error (HTTP 4xx/5xx).
+Provider HTTP Status ​
+When a run is COMPLETED, check providerResponse.httpStatus to determine result quality:
+HTTP StatusMeaning
+200Success -- output contains results
+400Bad request -- invalid parameters sent to provider
+404Not found -- no match for the query
+429Rate limited -- provider throttled the request
+500Provider error -- the provider's service failed
+Provider Response ​
+The providerResponse object is included in both list and detail responses:
+FieldTypeDescription
+httpStatusnumber | undefinedHTTP status code from the provider (200, 400, 404, 429, 500, etc.)
+errorobject | undefinedError body from the provider (on non-2xx responses)
+TIP
+The output field contains the provider's successful response data. For provider errors (non-2xx), output will be null and the error details are in providerResponse.error.
+Success Example ​
+json
+{
+  "runId": "01HXYZ...",
+  "status": "COMPLETED",
+  "output": [{ "name": "John Doe", "email": "john@example.com" }],
+  "providerResponse": {
+    "httpStatus": 200
+  },
+  "cost": {
+    "value": 0.003,
+    "currency": "USD"
+  }
+}
+Provider Error Example ​
+json
+{
+  "runId": "01HXYZ...",
+  "status": "COMPLETED",
+  "output": null,
+  "providerResponse": {
+    "httpStatus": 404,
+    "error": {
+      "status": 404,
+      "message": "No match found for the given query"
+    }
+  },
+  "cost": {
+    "value": 0,
+    "currency": "USD"
+  }
+}
+Provider errors are not charged -- cost.value will be 0.
+ 

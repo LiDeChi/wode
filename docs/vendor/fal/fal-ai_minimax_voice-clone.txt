@@ -1,0 +1,204 @@
+
+Try H3 Max Director
+Loading model
+fal-ai/minimax/voice-clone
+Back to Gallery
+fal-ai/minimax/voice-clone
+Schema
+LLMs
+Loading API documentation…
+Ready to transform your enterprise with AI?Contact Sales
+Learn more
+StatusAbout UsDocumentationTrust & SafetyVerify fal-Generated ContentCareersPricingBlogEnterpriseGet in touchReport ContentGrantsEventsLegalSite DirectoryPressYour Privacy ChoicesLearnGen Media Report Vol. 2
+Image ModelsSeedream 5.0GPT Image 2.5GPT Image 2Flux 2Nano Banana 2.1Nano Banana 2Ideogram 4Krea 2Nano Banana ProQwen Image 3Explore More
+Video ModelsAI Video GeneratorText to VideoSeedance 2.5Seedance 2.0Gemini OmniMiniMax H3Kling 3.0Veo 3.1Grok Imagine 1.5Happy Horse 1.1Happy OysterWan 3.0LTX 2.3PixVerse V6
+LabsBlack Forest LabsGoogleOpenAIxAIAlibabaKlingByteDanceElevenLabs
+Playgroundsfal AgentSandboxWorkflowsTrainingFree ToolsBackground RemoverImage UpscalerImage ExtenderImage Resizer
+SocialsDiscordGitHubRedditTwitterLinkedInYouTubeInstagramTikTok
+Features and Labels, 2026. All Rights Reserved. Terms of Service and Privacy Policy.
+Log-inSign-up
+Contact SalesLog-inSign-up
+Products
+Documentation
+Pricing
+Enterprise
+Resources
+MiniMax Voice Cloning Text to Speech API Docs | fal
+fal-ai/minimax/voice-clone, details and endpoints
+Clone a voice from a sample audio and generate speech from text prompts using the MiniMax model, which leverages advanced AI techniques to create high-quality text-to-speech.
+Back to Gallery
+fal-ai/minimax/voice-clone
+Voice Cloning
+Clone a voice from a sample audio and generate speech from text prompts using the MiniMax model, which leverages advanced AI techniques to create high-quality text-to-speech.
+Inference
+Commercial use
+Partner
+Schema
+LLMs
+PlaygroundAPI
+Loading API documentation…
+Table of contentsJavaScript / Node.js
+1. Calling the API
+Install the client
+Setup your API Key
+Submit a request
+2. Authentication
+API Key
+3. Queue
+Submit a request
+Fetch request status
+Get the result
+4. Files
+Data URI (base64)
+Hosted files (URL)
+Uploading files
+5. Schema
+Input
+Output
+Other
+About
+Clone a voice from an audio URL. Optionally, generate a TTS preview with the cloned voice.
+1. Calling the API#
+Install the client#
+The client provides a convenient way to interact with the model API.
+npmyarnpnpmbun
+npm install --save @fal-ai/client
+Migrate to @fal-ai/client
+The 
+@fal-ai/serverless-client package has been deprecated in favor of 
+@fal-ai/client. Install the new package and update your imports — see client setup.
+Setup your API Key#
+Set 
+FAL_KEY as an environment variable in your runtime.
+export FAL_KEY="YOUR_API_KEY"
+Submit a request#
+The client API handles the API submit protocol. It will handle the request status updates and return the result when the request is completed.
+import { fal } from "@fal-ai/client";
+const result = await fal.subscribe("fal-ai/minimax/voice-clone", {
+  input: {
+    audio_url: "https://storage.googleapis.com/falserverless/model_tests/zonos/demo_voice_zonos.wav"
+  },
+  logs: true,
+  onQueueUpdate: (update) => {
+    if (update.status === "IN_PROGRESS") {
+      update.logs.map((log) => log.message).forEach(console.log);
+    }
+  },
+});
+console.log(result.data);
+console.log(result.requestId);
+2. Authentication#
+The API uses an API Key for authentication. It is recommended you set the 
+FAL_KEY environment variable in your runtime when possible.
+API Key#
+In an environment where you cannot set environment variables, you can configure the API key manually on the client.
+import { fal } from "@fal-ai/client";
+fal.config({
+  credentials: "YOUR_FAL_KEY"
+});
+Protect your API Key
+When running code on the client-side (e.g. in a browser, mobile app or GUI applications), make sure to not expose your 
+FAL_KEY. Instead, use a server-side proxy to make requests to the API. For more information, check out our server-side integration guide.
+3. Queue#
+Long-running requests
+For long-running requests, such as training jobs or models with slower inference times, it is recommended to check the Queue status and rely on Webhooks instead of blocking while waiting for the result.
+Submit a request#
+The client API provides a convenient way to submit requests to the model.
+import { fal } from "@fal-ai/client";
+const { request_id } = await fal.queue.submit("fal-ai/minimax/voice-clone", {
+  input: {
+    audio_url: "https://storage.googleapis.com/falserverless/model_tests/zonos/demo_voice_zonos.wav"
+  },
+  webhookUrl: "https://optional.webhook.url/for/results",
+});
+Fetch request status#
+You can fetch the status of a request to check if it is completed or still in progress.
+import { fal } from "@fal-ai/client";
+const status = await fal.queue.status("fal-ai/minimax/voice-clone", {
+  requestId: "764cabcf-b745-4b3e-ae38-1200304cf45b",
+  logs: true,
+});
+Get the result#
+Once the request is completed, you can fetch the result. See the Output Schema for the expected result format.
+import { fal } from "@fal-ai/client";
+const result = await fal.queue.result("fal-ai/minimax/voice-clone", {
+  requestId: "764cabcf-b745-4b3e-ae38-1200304cf45b"
+});
+console.log(result.data);
+console.log(result.requestId);
+4. Files#
+Some attributes in the API accept file URLs as input. Whenever that's the case you can pass your own URL or a Base64 data URI.
+Data URI (base64)#
+You can pass a Base64 data URI as a file input. The API will handle the file decoding for you. Keep in mind that for large files, this alternative although convenient can impact the request performance.
+Hosted files (URL)#
+You can also pass your own URLs as long as they are publicly accessible. Be aware that some hosts might block cross-site requests, rate-limit, or consider the request as a bot.
+Uploading files#
+We provide a convenient file storage that allows you to upload files and use them in your requests. You can upload files using the client API and use the returned URL in your requests.
+import { fal } from "@fal-ai/client";
+const file = new File(["Hello, World!"], "hello.txt", { type: "text/plain" });
+const url = await fal.storage.upload(file);
+Auto uploads
+The client will auto-upload the file for you if you pass a binary object (e.g. 
+File, 
+Data).
+Read more about file handling in our file upload guide.
+5. Schema#
+Input#
+audio_url 
+string* required
+URL of the input audio file for voice cloning. Should be at least 10 seconds
+long. To retain the voice permanently, use it with a TTS (text-to-speech)
+endpoint at least once within 7 days. Otherwise, it will be
+automatically deleted.
+noise_reduction 
+boolean
+Enable noise reduction for the cloned voice
+need_volume_normalization 
+boolean
+Enable volume normalization for the cloned voice
+accuracy 
+float
+Text validation accuracy threshold (0-1)
+text 
+string
+Text to generate a TTS preview with the cloned voice (optional) Default value: 
+"Hello, this is a preview of your cloned voice! I hope you like it!"
+model 
+ModelEnum
+TTS model to use for preview. Options: speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo Default value: 
+"speech-02-hd"
+Possible enum values: 
+speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo
+{
+  "audio_url": "https://storage.googleapis.com/falserverless/model_tests/zonos/demo_voice_zonos.wav",
+  "text": "Hello, this is a preview of your cloned voice! I hope you like it!",
+  "model": "speech-02-hd"
+}
+Output#
+custom_voice_id 
+string* required
+The cloned voice ID for use with TTS
+audio 
+File
+Preview audio generated with the cloned voice (if requested)
+{
+  "custom_voice_id": "",
+  "audio": {
+    "url": "https://fal.media/files/kangaroo/kojPUCNZ9iUGFGMR-xb7h_speech.mp3"
+  }
+}
+Other types#
+File#
+url 
+string* required
+The URL where the file can be downloaded from.
+content_type 
+string
+The mime type of the file.
+file_name 
+string
+The name of the file. It will be auto-generated if not provided.
+file_size 
+integer
+The size of the file in bytes.
+Related Models
