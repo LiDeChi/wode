@@ -9,9 +9,14 @@ export const REVERSAL_THRESHOLD = 4;
 
 const keyOf = (c) => `${c.subject}|${c.predicate}`;
 
-export function createClaimGraph(ledger) {
+export function createClaimGraph(ledger, saved) {
   const claims = new Map();
   let nextId = 1;
+  // 存档重开：主张图整张带回来（claim.add 的 payload 不含证据、依赖、认可者，从账本重放会丢东西）
+  if (saved) {
+    for (const c of saved.claims || []) claims.set(c.id, JSON.parse(JSON.stringify(c)));
+    nextId = saved.nextId || claims.size + 1;
+  }
 
   function weightOf(c) {
     let w = 0;
@@ -196,5 +201,7 @@ export function createClaimGraph(ledger) {
     all: () => [...claims.values()],
     find: (pred) => [...claims.values()].filter(pred),
     rivalsOf: (id) => rivalsOf(claims.get(id)),
+    /** 存档用：和 createClaimGraph(ledger, saved) 成对 */
+    toJSON: () => ({ nextId, claims: [...claims.values()] }),
   };
 }

@@ -22,7 +22,7 @@ function seedHistory(claims) {
 
 export function createSession({ saved, speaker } = {}) {
   const ledger = saved?.ledger ? loadLedger(saved.ledger) : createLedger();
-  const claims = createClaimGraph(ledger);
+  const claims = createClaimGraph(ledger, saved?.claims);
   if (!saved) seedHistory(claims);
   const mentor = createMentor({ ledger, def: STAFF.mentor, saved: saved?.mentor });
   const directors = Object.fromEntries(STAFF.directors.map((d) => [d.id, createDirector({ ledger, def: d, mentor, saved: saved?.directors?.[d.id] })]));
@@ -101,6 +101,7 @@ export function createSession({ saved, speaker } = {}) {
   function save() {
     return {
       ledger: ledger.toJSON(),
+      claims: claims.toJSON(),
       mentor: mentor.state(),
       directors: Object.fromEntries(Object.entries(directors).map(([k, d]) => [k, d.state()])),
       minds: Object.fromEntries(Object.entries(minds).map(([k, m]) => [k, m.save()])),
