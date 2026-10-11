@@ -155,9 +155,13 @@ export function createClaimGraph(ledger, saved) {
     return { ok: true, cost, affected, seq: e.seq, newId: newClaim?.id };
   }
 
-  /** 某个 subject|predicate 当前的共识：未被推翻、认可度最高的那一条 */
-  function consensus(subject, predicate) {
-    const pool = [...claims.values()].filter((c) => c.subject === subject && c.predicate === predicate && c.status === STATUS.ACTIVE);
+  /**
+   * 某个 subject|predicate 当前的共识：未被推翻、认可度最高的那一条。
+   * only 给出时只在给定的主张 id 里找（生活循环按「本段经历 + 明确继承」取，历史不串台）；
+   * 不传就是原来的行为——旧路径一字不变。
+   */
+  function consensus(subject, predicate, only = null) {
+    const pool = [...claims.values()].filter((c) => c.subject === subject && c.predicate === predicate && c.status === STATUS.ACTIVE && (!only || only.includes(c.id)));
     pool.sort((a, b) => weightOf(b) - weightOf(a) || a.seq - b.seq);
     return pool[0];
   }

@@ -230,6 +230,16 @@ export function createDirector({ ledger, def, mentor, saved }) {
     return { ...sheet, seq };
   }
 
+  /**
+   * 生活计划（docs/design/LIVING.md §3）：这一场每一拍等不等你、隔几拍看一眼、谁可以自己动。
+   * 只有启用持续生活的会话（createPlay({living:...})）才提交，一个 beat 只提交一次；
+   * 不启用时这条路根本不会走到，680 个脚本对照组的账本一笔不变。
+   */
+  function lifeDesign({ work, beat, policy }, cause) {
+    const seq = append('director.life-design', { work, beat, policy }, cause, policy?.why, 'rule');
+    return { seq, work, beat, policy: { ...policy, sourceSeq: seq } };
+  }
+
   return {
     id: def.id,
     role,
@@ -240,6 +250,7 @@ export function createDirector({ ledger, def, mentor, saved }) {
     schedule,
     learn,
     dress,
+    lifeDesign,
     tryEditMentor,
     craft: () => ({ ...craft }),
     state: () => ({ id: def.id, role, craft: { ...craft }, mind: mind.save() }),

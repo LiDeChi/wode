@@ -80,16 +80,66 @@ export function createSession({ saved, speaker } = {}) {
     return { userSeq: u.seq, mentorSeq: learned };
   }
 
-  /** 一部作品看完：导演把所有反应和自己的预测对照，调整手艺 */
+  /**
+   * 一部作品看完：导演把所有反应和自己的预测对照，调整手艺。
+   * 开了持续生活（state.episode 存在）时只看「本段经历」的反应：
+   * 上一次走进同一部作品的反应不再算进来（docs/design/LIVING.md §7 历史不串台）。
+   */
   function wrap(presentationId) {
     const pred = state.predictions[presentationId];
     if (!pred) return null;
+    const ep = state.episode;
+    const scope = ep && ep.work === presentationId ? ep : null;
     const reactions = ledger.entries
-      .filter((e) => e.kind === 'user.react' && e.payload.scene === presentationId)
+      .filter((e) => e.kind === 'user.react' && e.payload.scene === presentationId && (!scope || e.seq >= scope.from))
       .map((e) => ({ beat: e.payload.beat, signal: e.payload.signal, seq: e.seq }));
     const r = director().learn(pred.list, reactions, [pred.seq, ...reactions.map((x) => x.seq)]);
     ledger.append({ kind: 'present.deliver', from: `presentation:${presentationId}`, to: 'user', cause: [r.seq], payload: { presentation: presentationId } });
+    if (ep) ep.to = ledger.size;
     return r;
+  }
+
+  // ---- 生活循环的「一段经历」（docs/design/LIVING.md §7）----
+  // 只在启用持续生活的会话里才有 state.episode；不启用时这个键根本不出现，存档形状一字不变。
+
+  /** 开一段经历：记下开场 seq、明确继承的主张 id；本段产出的 id 由 episodeScope() 现算 */
+  function beginEpisode({ work, inherit = [] } = {}) {
+    const prev = state.episode;
+    const ep = {
+      id: `ep${(prev?.n ?? 0) + 1}`,
+      n: (prev?.n ?? 0) + 1,
+      work: work ?? null,
+      openSeq: ledger.last((e) => e.kind === 'present.open' && e.payload.presentation === work)?.seq ?? null,
+      from: ledger.size + 1,
+      to: null,
+      inherit: inherit.slice(),
+      claimIds: [],
+      previous: prev?.id ?? null,
+    };
+    state.episode = ep;
+    return { ...ep, claimIds: [] };
+  }
+
+  /** 这一段经历能看见哪些主张：本段产出的 + 明确继承的。其余（上一局的结局、下场）不算数 */
+  function episodeScope() {
+    const ep = state.episode;
+    if (!ep) return null;
+    const all = typeof claims.all === 'function' ? claims.all() : [];
+    ep.claimIds = all
+      .filter((c) => (c.seq != null && c.seq >= ep.from) || ep.inherit.includes(c.id))
+      .map((c) => c.id);
+    return { ...ep, claimIds: ep.claimIds.slice() };
+  }
+
+  /** 导演给这一场的生活计划：一个 beat 只提交一次（恢复存档后不重复记账） */
+  function commitLifeDesign({ work, beat, policy, cause = [] } = {}) {
+    const b = state.designs?.[work]?.beats?.find((x) => x.id === beat);
+    if (b?.lifePolicy) return { seq: b.lifePolicy.sourceSeq ?? null, policy: b.lifePolicy, committed: false };
+    const d = director();
+    if (!d || typeof d.lifeDesign !== 'function') return null;
+    const r = d.lifeDesign({ work, beat, policy }, cause);
+    if (b) b.lifePolicy = { ...policy, sourceSeq: r.seq };
+    return { seq: r.seq, policy: b?.lifePolicy ?? policy, committed: true };
   }
 
   function editNote(field, value) {
@@ -129,6 +179,8 @@ export function createSession({ saved, speaker } = {}) {
     // voices 是 state.voices 的同一个对象：narrate 直接往会话上写旁注，save 也一起存
     voices: state.voices,
     meet, commission, react, wrap, editNote, director, dress, save,
+    // 生活循环（docs/design/LIVING.md §7）：一段经历的范围与导演的生活计划
+    beginEpisode, episodeScope, commitLifeDesign,
     audit: () => auditService(ledger),
     trace: (seq) => traceToUser(ledger, seq),
   };

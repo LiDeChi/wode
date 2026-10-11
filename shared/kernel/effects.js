@@ -9,6 +9,9 @@
 //   ['work', workId, choice, opts?]        调 playWork
 //   ['end', outcome]                       收幕（outcome 交给 play.js 的舞台流转）
 //   ['cite', claimId]                      沿用一条主张
+//   ['act', person, spec]                  演员自己动一次（写 actor.act，from 必须是演员，不是玩家）
+//                                          spec 里可以给 { verb, action, tick, pulseSeq, ... }；
+//                                          走这条路必须先过导演给演员的独立授予（ctx.autonomy）。
 //
 // 每个效果的 cause 由内核自动填：触发它的那次反应的 reactSeq；没有反应时用那次 user.act 的 seq。
 // 场景要显式指定 cause 时，写成 { effect: [...], cause: [...] }。
@@ -17,7 +20,7 @@ import { PLAYER, HOLDER, DEFAULT_PRESENTATION, DEFAULT_CHANNEL } from './roles.j
 const round = (v) => Math.round(v * 1000) / 1000;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-export const EFFECTS = ['trust', 'relay', 'flag', 'claim', 'clock', 'move', 'attention', 'work', 'end', 'cite'];
+export const EFFECTS = ['trust', 'relay', 'flag', 'claim', 'clock', 'move', 'attention', 'work', 'end', 'cite', 'act'];
 
 /** 设信任：payload 字段和顺序照搬旧 play.js 的 setTrust */
 export function setTrust(ctx, person, value, why, cause) {
@@ -91,6 +94,19 @@ export function applyEffect(ctx, spec, cause = []) {
   if (kind === 'cite') {
     ctx.claims.cite(args[0], args[1] ?? DEFAULT_PRESENTATION, cause);
     return { cited: args[0] };
+  }
+  if (kind === 'act') {
+    // 演员自己动一次。from 必须是演员：这条路上永远不写 user.act（不伪造玩家信号）。
+    const [person, specIn = {}] = args;
+    if (!ctx.minds[person]) throw new Error(`没有这个人：${person}`);
+    const spec = typeof specIn === 'string' ? { action: specIn } : (specIn || {});
+    const verb = spec.verb ?? 'think';
+    if (ctx.autonomy && !ctx.autonomy(person, verb)) return { refusedAct: true };
+    const seq = ctx.ledger.append({
+      kind: 'actor.act', from: `actor:${person}`, to: 'world', cause,
+      payload: { person, verb, action: spec.action ?? null, tick: spec.tick ?? ctx.tick?.() ?? null, pulseSeq: spec.pulseSeq ?? null, policySeq: spec.policySeq ?? null, ...(spec.extra || {}) },
+    }).seq;
+    return { seq, act: { person, seq } };
   }
   return {};
 }

@@ -2,7 +2,7 @@
 // 每一个决定都写进账本，并把 cause 指回用户那一条，所以“为用户服务”可以被 traceToUser 检验。
 
 import { traceToUser } from '../core/ledger.js';
-import { clamp } from '../core/mind.js';
+import { clamp, createMind } from '../core/mind.js';
 
 const TIERS = ['细演', '普通', '一笔带过'];
 // 档位即成本：细演 3、普通 2、一笔带过 1
@@ -237,9 +237,34 @@ export function createMentor({ ledger, def, budget = 10, saved } = {}) {
     return e.seq;
   }
 
+  /**
+   * 导师自己的心智（docs/design/LIVING.md §4）。
+   * 只在启用持续生活的会话里装：用的是同一份 STAFF.mentor 定义，
+   * 所以「他也会想」不是另写一个人，而是这个人真的在场。
+   */
+  let mind = null;
+  function enableMind() {
+    if (!mind) mind = createMind(def, s.mind);
+    return mind;
+  }
+
+  /**
+   * 一次观察：场中停留八秒记一次 notes.pause（保留来源「观察」），并让导师的心智真的感知一次。
+   * 不凭停留断言「你爱深层人心」——学口味要走 learn 的信号表，停顿本身学不到东西。
+   */
+  function observe(input = {}, cause = []) {
+    if (!mind) return null;
+    const tick = input.tick ?? 0;
+    const p = mind.perceive({ kind: input.kind || 'pause', signature: `${input.kind || 'pause'}:${input.scene ?? '-'}`, channels: { 停顿: 1 } });
+    const seq = setNote('pause', tick, '观察', cause, `你在这一场停到第 ${tick} 秒。`);
+    return { seq, stoppedAt: p.stoppedAt, action: p.action.act, trace: p.trace, layer: p.stoppedAt, why: `导师注意到你停了 ${tick} 秒。` };
+  }
+
   function state() {
     return JSON.parse(JSON.stringify({
       notes, chosen, spent, director, allotSeq, anchor, budget: budgetNow,
+      // 装了心智才多这一项：不开生活的会话，存档形状一字不变
+      ...(mind ? { mind: mind.save() } : {}),
     }));
   }
 
@@ -254,6 +279,9 @@ export function createMentor({ ledger, def, budget = 10, saved } = {}) {
     brief,
     learn,
     guard,
+    enableMind,
+    mind: () => mind,
+    observe,
     state,
   };
 }
