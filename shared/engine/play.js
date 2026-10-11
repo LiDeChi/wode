@@ -85,7 +85,9 @@ function freshState() {
  * 在一个已经见过导师的 session 上玩《窃符》。状态放在 session.state.play，随 session.save() 一起存。
  * 返回的每个方法都只改 session，不碰画面。
  *
- * opts（都可选，只跟「每场演多细」有关，不影响胜负）：
+ * opts（都可选）：
+ *   scenes: 换一张场景表（默认就是本文件上面那张 SCENES）。形状与 docs/KERNEL.md §2 相同；
+ *           科研台用它注入深拷贝的场景做控制变量重跑。场景表只影响「怎么演」，不影响账本里的事实顺序。
  *   tiers: {'night':'细演'} | {'night':3} | 'mentor'   —— 也可以按 beat / 按作品给；'mentor' 读导师的分配结果
  *   tierOf: (actId, scene) => 档位
  *   budget: 算力上限；不够就往下降档，降到底照常演完
@@ -95,6 +97,8 @@ export function createPlay(session, opts = {}) {
   const { ledger, claims, minds } = session;
   session.state.play ||= freshState();
   const P = () => session.state.play;
+  // 场景表可以换；本文件里所有场景查找都走这一份（createKernel / grantsOf / view / 舞台流转）
+  const scenes = opts.scenes || SCENES;
 
   // 内核的 work 效果要调 session.playWork；旧实现是直接 import playWork。这里把它接上（不进存档）。
   session.playWork = (workId, choice, opts) => playWork(session, workId, choice, opts);
@@ -102,7 +106,7 @@ export function createPlay(session, opts = {}) {
   // 内核把「天数 / 旗标 / 各场控制器的状态」放在 session.state.play.kernel（随存档走）。
   // 旧代码读写的是 s.days / s.flags / s.night，所以把它们接到同一份数据上：
   // 存档里仍然是同一个 JSON 形状，只是同一个值不会有两份。
-  const kern = createKernel(session, { scenes: SCENES, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS, tiers: opts.tiers, tierOf: opts.tierOf, budget: opts.budget });
+  const kern = createKernel(session, { scenes, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS, tiers: opts.tiers, tierOf: opts.tierOf, budget: opts.budget });
   Object.defineProperty(session.state.play, 'days', {
     configurable: true, enumerable: true,
     get: () => kern.days(),
@@ -136,11 +140,12 @@ export function createPlay(session, opts = {}) {
   };
   const actState = (id) => (P().acts[id] ||= { watched: [], asked: [], choice: null, outcome: null, done: false, signal: null });
   const openSeqOf = (work) => ledger.last((e) => e.kind === 'present.open' && e.payload.presentation === work)?.seq;
-  const workOf = (actId) => (actId === 'granary' ? 'weicheng' : 'qiefu');
+  // 一场属于哪个作品：场景数据自己说了算（注入的场景表也能带自己的 work）
+  const workOf = (actId) => scenes[actId]?.work || (actId === 'granary' ? 'weicheng' : 'qiefu');
 
   /** 导演对这一拍授予的动词。电影段 level 0 → 什么都不给 */
   function grantsOf(actId) {
-    if (!actId || !SCENES[actId]) return { verbs: [], level: 0, why: '', language: '看不见' };
+    if (!actId || !scenes[actId]) return { verbs: [], level: 0, why: '', language: '看不见' };
     return kern.grants(actId);
   }
 
@@ -212,7 +217,7 @@ export function createPlay(session, opts = {}) {
     a.done = true;
     a.signal = signalOf(a);
     const work = workOf(actId);
-    session.react(work, ACTS[actId].beat, a.signal);
+    session.react(work, scenes[actId].beat, a.signal);
   }
 
   /* ---------------- 对外的方法 ---------------- */
@@ -382,7 +387,7 @@ export function createPlay(session, opts = {}) {
     if (s.stage === 'done') {
       return { ...base, coda: s.coda, granary: s.granary, edges: worldRelations(session), acts: summarizeActs() };
     }
-    const act = ACTS[actId];
+    const act = scenes[actId];
     const a = actState(actId);
     const grants = grantsOf(actId);
     const people = (act.people || []).concat(actId === 'granary' ? [s.granary.keeper] : []).map((id) => ({
@@ -423,7 +428,7 @@ export function createPlay(session, opts = {}) {
 
   function summarizeActs() {
     const s = P();
-    return [...ACT_ORDER, 'granary'].filter((id) => s.acts[id]).map((id) => ({ id, title: ACTS[id].title, choice: s.acts[id].choice, signal: s.acts[id].signal, text: s.acts[id].outcome?.text || '' }));
+    return [...ACT_ORDER, 'granary'].filter((id) => s.acts[id]).map((id) => ({ id, title: scenes[id]?.title, choice: s.acts[id].choice, signal: s.acts[id].signal, text: s.acts[id].outcome?.text || '' }));
   }
 
   return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan() };
