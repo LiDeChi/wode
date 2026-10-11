@@ -68,8 +68,16 @@ export function oneLine(answer) {
   const s = String(answer ?? '');
   const i = s.indexOf('（');
   const head = i > 0 ? s.slice(0, i).trimEnd() : s;
-  const first = (head.match(/[^。]*。/) || [head])[0].trim();
-  return first || head;
+  const m = head.match(/[^。]*。/);
+  let end = m ? m.index + m[0].length : head.length;
+  // 别把引号切一半：「你的话说到我心里去了。」——把收尾的 」 补回来
+  const opens = (head.slice(0, end).match(/「/g) || []).length;
+  const closes = (head.slice(0, end).match(/」/g) || []).length;
+  if (opens > closes) {
+    const j = head.indexOf('」', end);
+    if (j >= 0) end = j + 1;
+  }
+  return head.slice(0, end).trim() || head;
 }
 
 /**
