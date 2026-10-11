@@ -63,6 +63,16 @@ export const VOICE_TABLE = {
 
 const NO_TEXT = '画面里不加文字、不加水印。';
 
+/**
+ * 风格锁的色板与禁手（docs/WORKSHOP.md §4.2）：跟着风格档走，
+ * 审片时拿它算画面的平均色距离，生成时拿它当 negative prompt。
+ */
+export const LOCK_TABLE = [
+  { gte: 0.15, palette: ['#1f2a2e', '#42524f', '#7d8b83', '#cfc7b4'], negative: ['厚涂油彩', '高饱和霓虹色', '现代物件', '清晰笑脸'] },
+  { gte: -0.15, palette: ['#3a3b32', '#6b7355', '#a8a389', '#e7e0cf'], negative: ['荧光色', '赛博光效', '照片写实', '硬边阴影'] },
+  { gte: -1, palette: ['#7a4b2a', '#c9813f', '#e4b97a', '#f6ead6'], negative: ['黑白灰调', '冷蓝滤镜', '静止呆板构图', '塑料质感'] },
+];
+
 /* ===================== 稳定序列化与 key ===================== */
 
 /** 键排序的稳定序列化：同一份 spec 无论键的书写顺序如何，都是同一个字符串 */
@@ -132,6 +142,31 @@ export function taste(director) {
 
 const lookText = (t) => `${t.look.style}；${t.look.palette}；${t.look.light}；${t.look.framing}。`;
 const say = (t) => `雕琢 ${t.craft.雕琢}、放开 ${t.craft.放开}、悲剧 ${t.craft.悲剧}、节奏 ${t.craft.节奏}`;
+
+/* ===================== 风格锁 ===================== */
+
+/**
+ * 风格锁（docs/WORKSHOP.md §4.2）：从口味推出来，随每张单进请求。
+ * 生成端用 palette / negative / seed 说话，审片端用 palette / loudness 判像不像。
+ */
+export function lockOf(t, work, plateKey, voices) {
+  const band = pick(LOCK_TABLE, t.craft.雕琢 - t.craft.放开);
+  return {
+    plateKey,
+    palette: band.palette.slice(),
+    negative: [...band.negative, '画面里不加文字', '不加水印'],
+    seedBase: parseInt(hashHex(stableStringify({ director: t.director, work, style: t.look.style })).slice(0, 8), 16) % 2147483647,
+    voices: { ...voices },
+    loudness: round(-17 + 3 * t.craft.放开 - 1 * t.craft.雕琢),
+    words: [t.look.style, t.look.palette, t.look.light, t.look.framing],
+  };
+}
+
+/** 同一导演、同一作品、同一张单 → 同一个 seed（§4.2，可复现） */
+export function seedFor(lock, key) {
+  const base = (lock && lock.seedBase) || 0;
+  return parseInt(hashHex(`${base}:${key}`).slice(0, 8), 16) % 2147483647;
+}
 
 /* ===================== 开单 ===================== */
 
@@ -274,5 +309,12 @@ export function dress(director, world = {}) {
 
   const counts = { image: 0, voice: 0, sfx: 0, music: 0 };
   for (const a of assets) counts[a.kind] += 1;
-  return { director: director.id, work, taste: t, plate: plate.key, counts, assets };
+
+  // 7) 风格锁：挂在这张单的每一件上（§4.2）
+  const voices = {};
+  for (const pid of portraitOrder) voices[pid] = voiceOf(people[pid] || { id: pid, name: pid }).id;
+  const lock = lockOf(t, work, plate.key, voices);
+  for (const a of assets) a.lock = lock;
+
+  return { director: director.id, work, taste: t, plate: plate.key, lock, counts, assets };
 }
