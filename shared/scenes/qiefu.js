@@ -135,12 +135,27 @@ export const QIFU_CAST = {
  * lines：递交选项，并作为 cast 的安装口（MECHANICS.md §2）。
  * 反应仍走内核「intent.to」那条路。没有 options 的 lines 不增加选项，只负责装人物。
  */
+/**
+ * 进场正文按站位二选一。句子来自本场 standing.why，不另写一套门槛。
+ * 只改玩家看见的 scene / goal，不写信任、不写旗标、不改选项台词（选项台词会进账本）。
+ */
+function applyOpening(ctx) {
+  const spec = ctx.scene?.opening;
+  if (!spec || spec.by !== 'standing') return;
+  const cfg = (ctx.scene.controllers || []).find((row) => row[0] === 'standing')?.[1] || {};
+  const which = cfg.speaker && ctx.trustOf(cfg.speaker) >= (cfg.threshold ?? 0.45) ? 'high' : 'low';
+  const why = (cfg.why || {})[which];
+  if (!why) return;
+  if (typeof spec.scene === 'string') ctx.scene.scene = spec.scene.replaceAll('{why}', why);
+  if (typeof spec.goal === 'string') ctx.scene.goal = spec.goal.replaceAll('{why}', why);
+}
+
 export function lines(cfg = {}) {
   const options = cfg.options || [];
   return {
     id: cfg.id || 'lines',
-    init(ctx) { installCast(ctx); return {}; },
-    restore(ctx) { installCast(ctx); },
+    init(ctx) { installCast(ctx); applyOpening(ctx); return {}; },
+    restore(ctx) { installCast(ctx); applyOpening(ctx); },
     intents() {
       return options.map((o, i) => ({ ...o, order: o.order ?? (cfg.order ?? 100) + i }));
     },
@@ -473,6 +488,12 @@ export const QIFU_SCENES = {
     people: ['jinbi', 'zhuhai', 'xinling'],
     goal: '晋鄙合了符，还是起疑。他要的是魏卒安全和交割手续，不是一句大义。',
     scene: '晋鄙把两半兵符并在一起，抬头看信陵君：「今吾拥十万之众，单车来代之，何如哉？」拿大义压军令，像是来夺军。',
+    // 进场时 lines 按公子信不信你，把 {why} 换成 standing.why 的高/低那一句。进场前这两句保持原样。
+    opening: {
+      by: 'standing',
+      goal: '{why}。他要的是魏卒安全和交割手续，不是一句大义。',
+      scene: '晋鄙把两半兵符并在一起，抬头看信陵君：「今吾拥十万之众，单车来代之，何如哉？」{why}。他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。',
+    },
     ambient: { kind: 'doubt', channels: { 印信: 0.7, 兵权: 0.6 } },
     cast: QIFU_CAST,
     controllers: [

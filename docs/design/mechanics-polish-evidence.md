@@ -210,3 +210,62 @@ M2 只按现行估算口径验收（达标）。
   7「夷门决定如姬犹豫（去掉 todo，改用 0.55/0.18）」、8「三种结局（生还改走恩）」按新机制改写。
 - `tests/fixtures/scenes-v1-qiefu.mjs`、`play-mechanics-v2-scripts.mjs`、`play-mechanics-v2-golden.json`：旧场景快照与新基线。
 - 未动：`shared/**` 一个字符（探针只读）、`web/**`、其他队友在飞的文件。
+
+## 11. 选之前看得见的线索（t37：把站位提示接进正文）
+
+§9 记的那条「配置里其实已经写好了提示语，只是没给玩家看」，本轮按「只改数据」的口径补上：
+`shared/scenes/qiefu.js` 的邺城多了一个 `opening` 字段，`lines` 控制器进场（`init` / `restore`）时
+按 `standing` 的同一把尺（读 `cfg.threshold`，与内核 `standingOf` 同一个来源）把正文和目标里的
+`{why}` 换成高/低那一句。**只改玩家看见的文字**：不写信任、不写旗标、不改选项台词（选项台词会进账本）。
+
+同一局（陆导 · 干净取符），只换大梁那一手：
+
+| 走到邺城的局 | 公子信任 | 进场正文（玩家第一眼看到的） |
+|---|---|---|
+| 大梁 `yi` → 夷门 `back` | 0.73（高站位） | 「…今吾拥十万之众，单车来代之，何如哉？」**公子让你上前替他说话。**他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。 |
+| 大梁 `wait` → 夷门 `hou` | 0.30（低站位） | 同一句问话 + **晋鄙不认识你这个新来的门客。**他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。 |
+
+复验：把下面这段存成 `/tmp/t37.mjs`（把两处 import 换成这个仓库的相对路径）再 `node /tmp/t37.mjs`，
+输出就是上表那两行。
+
+```js
+import { createSession } from './shared/engine/session.js';
+import { createPlay } from './shared/engine/play.js';
+const NIGHT = ['token_b', 'wait', 'step', 'step', 'step', 'wait', 'step'];
+function goToYe(daliang, yimen) {
+  const s = createSession();
+  s.meet({ wait: 0.8, polish: 0.8, depth: 0.85 }, '我想看一个人在乱世里怎么做选择');
+  const p = createPlay(s);
+  p.begin(); p.next();
+  p.choose(daliang); p.next(); p.choose(yimen); p.next();
+  for (const id of NIGHT) p.choose(id);
+  return p.next();
+}
+for (const [tag, d, y] of [['高站位', 'yi', 'back'], ['低站位', 'wait', 'hou']]) {
+  const v = goToYe(d, y);
+  console.log(`${tag}（公子信任 ${v.people.find((x) => x.id === 'xinling').trust}）：${v.scene}`);
+}
+```
+
+### 11.1 四幕「选之前」的线索表
+
+| 幕 | 选之前看得见的线索 | 指向 |
+|---|---|---|
+| 大梁 | 正文「他救赵，但不拿土地换人命。」· 目标「先看清他忌什么。」 | 救赵是他的事（说义有用）；拿土地换人命他不接（说利会被顶回来） |
+| 大梁 | `letter` / `king` 在陆导下画着「不可选」 | 看得见的闸门：这两手这一场递不上去，不是死选项 |
+| 夷门 | 正文「可行的路比漂亮的义话重。」· 目标「先看他在等什么样的话。」 | 侯嬴要可行的路（对他讲利）；空喊义话会被冷眼 |
+| 取符之夜 | 正文「甲怕失职，乙要的是令牌上的责任，不是塞钱。」 | 令牌给中庭的乙（`token_b`）；给提灯的甲会被当场拦住（`token_a`） |
+| 取符之夜 | 正文「托付未到，如姬会在门口等你定神；托付到了，她不等。」+ 走到门口那一步的画面「如姬还在门后，低声问…」 | 她拿不定主意时，到卧内门口多等一拍（`wait`）才取得干净 |
+| 邺城 | 正文/目标按站位二选一（见上表） | 公子信不信你，决定这句话有没有分量（高 0.5／低 0.15） |
+| 邺城 | 正文/目标的方向句「他在意的是十万魏卒能不能安全回去，和交割有没有手续，不是一句大义。」 | 往「让他的兵安全回去」（恩）与「交割手续清楚」（利）上说；拿大义压军令会反噬 |
+| 围城粮仓 | 检验那一步的反应文字「{神态}。{守仓人}{动作}。」（如「他皱了皱眉，看了旁人一眼。守仓人·老秦没接你的话。」） | 守仓人的反应告诉你换东西有没有戏；决定那一步照着这个反应挑说法 |
+
+四幕每幕都至少有一条（大梁 / 夷门 / 取符之夜 / 邺城），粮仓另有守仓人反应，没有一处需要再补文字数据。
+
+### 11.2 数字一个没动
+
+- `node tools/mechanics-probe.mjs` → 17 节全过，§2/§3/§17 的读数与上一轮相同（12 条路线 0 条对不上，680 差异分类不变）。
+- `node --test tests/mechanics-polish.test.js` → 6/6。
+- `node --test tests/kernel-parity.test.js` → 3/3：新基线 692 条逐字段相同；旧 golden 那 644 条「指纹变了、玩法没变」照旧。
+  正文是画面字段（`view().scene` / `view().goal`），不进 `log`、不进账本，所以 `logHash` 与 `ledgerHash` 一个都没变，
+  `tests/fixtures/play-mechanics-v2-golden.json` **不需要重录**，旧 golden 也没动。
