@@ -119,7 +119,7 @@ export function woodTag(text, opts = {}) {
   const wrapped = rest.wrap === false ? text : wrapVertical(text, 4);
   const face = textPlate(wrapped, { ...rest, color: ink, bg: 'rgba(0,0,0,0)', worldHeight: h * 0.72, weight: 500, vertical: true, size: 110, letterSpacing: 8 });
   const board = new THREE.Mesh(new THREE.BoxGeometry(face.scale.x * 1.34, h, 0.026),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color('#a4926a'), roughness: 0.95 }));
+    new THREE.MeshStandardMaterial({ color: new THREE.Color('#8a7748'), roughness: 0.95 }));
   board.castShadow = true;
   face.position.z = 0.016;
   g.add(board, face);

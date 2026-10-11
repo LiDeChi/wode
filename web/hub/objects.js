@@ -49,6 +49,25 @@ export function tigerTally({ y = 0 } = {}) {
   return { group: g, radius: 0.55 };
 }
 
+/**
+ * 一行排片的名字木签：一根立杆挑出一小片木牌，挂在实物旁边。
+ * 木牌上的字是不吃光的（画布贴图），所以台子再暗，名字也认得出。
+ */
+export function nameTag(text, { h = 0.52, pole = 0.72, ink = '#241a10', side = 1, z = -0.26 } = {}) {
+  const g = new THREE.Group();
+  const px = 0.34 * side;
+  g.add(cyl(0.022, 0.03, pole, MAT.woodDark, px, 0, z, 6));             // 立杆
+  g.add(beam(0.3 * side, 0.03, MAT.woodDark, px + 0.14 * side, pole - 0.02, z)); // 挑出来的横枝
+  const armEnd = px + 0.26 * side;
+  g.add(cyl(0.006, 0.006, 0.08, MAT.rope, armEnd, pole - 0.06, z, 5));  // 挂绳
+  const tag = woodTag(text, { h, ink });
+  tag.position.set(armEnd, pole - 0.1 - h / 2, z);
+  tag.rotation.x = -0.2;                                               // 板面往上仰一点，正对镜头
+  g.add(tag);
+  g.userData.tag = tag;
+  return g;
+}
+
 /** 一卷片：木轴 + 卷起的简，挂一片写片名的木签。 */
 export function filmScroll({ y = 0, tint = '#7a5a34', tag = '', tagColor = '#241a10' } = {}) {
   const g = new THREE.Group();
@@ -68,12 +87,12 @@ export function filmScroll({ y = 0, tint = '#7a5a34', tag = '', tagColor = '#241
   if (tag) {
     sign = new THREE.Group();
     sign.add(beam(0.03, 0.03, MAT.woodDark, 0, 0, 0));
-    const board = woodTag(tag, { h: 0.92, ink: tagColor });
-    board.position.set(0, -0.58, 0);
+    const board = woodTag(tag, { h: 1.0, ink: tagColor });
+    board.position.set(0, -0.62, 0);
     board.rotation.x = -0.3;            // 板面往上仰一点，正对镜头
-    sign.add(cyl(0.01, 0.01, 0.22, MAT.rope, 0, -0.06, 0, 6));
+    sign.add(cyl(0.01, 0.01, 0.22, MAT.rope, 0, -0.11, 0, 6));
     sign.add(board);
-    sign.position.set(0.6, y + 0.72, 0.05);
+    sign.position.set(0.66, y + 1.04, 0.05);
     sign.rotation.y = -0.5;
     g.add(sign);
   }

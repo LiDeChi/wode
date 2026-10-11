@@ -221,8 +221,9 @@ export function createFilmStage(render) {
     if (!laidOut) {
       // 三枚木牌在架上排成阶梯：主角在最左、侯嬴在最右，高度略微递降。
       const last = boardStand.children.length - 1;
+      const spread = innerHeight > innerWidth ? 0.86 : 0.62;
       boardStand.children.forEach((g, i) => {
-        g.position.set(i * 0.62, (last - i) * 0.34, 0);
+        g.position.set(i * spread, (last - i) * 0.34, 0);
       });
       laidOut = true;
     }
@@ -235,10 +236,14 @@ export function createFilmStage(render) {
     // 偏移量再除以深度：物件摆得越远，屏幕上偏得越少，位置才稳。
     const wide = Math.min(1, (innerWidth / Math.max(1, innerHeight)) / 1.7);
     const tall = 1 - wide;
+    // 竖屏：三枚木牌排开一点，免得牌面互相压住；信拉近、放大、抬到字幕带以上，
+    // 封泥才够得着（手指点下去要 ≥44px，也不能落在字幕底下）。
+    const portrait = innerHeight > innerWidth;
     placeAt(banner, 15, 0, 3.6, 8);
     placeAt(boardStand, 8, -2.6 * wide, -0.5 + 0.3 * tall, 8);
     placeAt(incense.group, 7, -1.9 * wide, -0.15 + 0.6 * tall, 8);
-    placeAt(letter.group, 12, 4.1 * wide, -1.0 - 0.35 * tall, 8);
+    placeAt(letter.group, portrait ? 9.5 : 12, (portrait ? 3.0 : 4.1) * wide, portrait ? -0.35 : -1.0 - 0.35 * tall, 8);
+    letter.group.scale.setScalar(portrait ? 1.35 : 1);
     // 信是平放的：立起来 75 度，封泥朝镜头，不然只能看见一条边。
     letter.group.rotation.x = 1.31;
     placeAt(slipHolder, 12, 4.1 * wide, 2.3 - 0.3 * tall, 8);
