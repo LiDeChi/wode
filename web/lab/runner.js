@@ -37,10 +37,14 @@ export function runOne(settings, director, personaId, seed) {
       trail.push({act,line:'换一个守仓人',text:session.minds[action.id]?.name || action.id});
     } else {
       const opt=options.find(o=>o.id===action.id);
+      const appeal=appealOf(opt);
       const out=call('choose',action.id);
       const r=out.r;
-      if(r?.accepted!==null && r?.accepted!==undefined && appealOf(opt)) attempts.push({person:r.person,name:r.name,appeal:appealOf(opt),accepted:r.accepted});
-      trail.push({act,line:opt?.line || action.id,text:out.text || r?.heard?.reason || '',person:r?.name,reason:r?.heard?.reason});
+      if(r?.accepted!==null && r?.accepted!==undefined && appeal) attempts.push({person:r.person,name:r.name,appeal,accepted:r.accepted});
+      // appeal / accepted / personId 只给呈现层用：豆子要知道这一层走的是义/利/惧/恩哪条岔道，
+      // 路过人偶时才知道该点头还是摇头。数值与演出都被 runOne 之外的代码照原样消费。
+      trail.push({act,line:opt?.line || action.id,text:out.text || r?.heard?.reason || '',person:r?.name,reason:r?.heard?.reason,appeal,
+        accepted:r?.accepted ?? null,personId:r?.person ?? null});
       v=out.view;
     }
   }
@@ -50,7 +54,7 @@ export function runOne(settings, director, personaId, seed) {
 function probe(settings) {
   const ids=['xinling','houying','ruji','weiwang','jinbi'];
   return APPEALS.map(appeal=>{
-    const rows=ids.map(id=>{const {session}=makeWorld(settings);const mind=session.minds[id];return {name:mind.name,accepted:mind.hear({[appeal]:.8},'actor:player').accepted};});
+    const rows=ids.map(id=>{const {session}=makeWorld(settings);const mind=session.minds[id];return {id,name:mind.name,accepted:mind.hear({[appeal]:.8},'actor:player').accepted};});
     return {appeal,rows,coverage:rows.filter(r=>r.accepted).length/rows.length};
   });
 }

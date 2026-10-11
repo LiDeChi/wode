@@ -1,7 +1,22 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>窃符 · 科研台</title><link rel="stylesheet" href="/lab/style.css"></head>
-<body><header><a href="/">数字世界</a><nav aria-label="观察方式"><a href="/play.html">参与这局</a><a href="/film.html">看成电影</a><span aria-current="page">科研台</span></nav></header>
-<main><section class="opening"><div><h1>同一个世界，<br>换一个条件。</h1><p>公子还会信你吗？如姬还会犹豫吗？<br>让四种玩家走同一批路，再拧一个旋钮看差别。</p></div><div class="specimen" aria-hidden="true"><div class="lamp blue"></div><div class="lamp amber"></div><span>窃符 / 四幕 + 暮色粮仓</span></div></section>
-<section class="bench" aria-labelledby="bench-title"><div class="controls"><h2 id="bench-title">设定实验</h2><div class="field"><label for="director">同一位导演</label><select id="director"><option value="lu">陆导 · 爱雕琢</option><option value="shan">单导 · 爱放开</option></select></div><div class="field"><label for="samples">每种玩家走几局</label><select id="samples"><option value="8">8 局（共 32 局）</option><option value="16">16 局（共 64 局）</option><option value="32">32 局（共 128 局）</option></select></div><p class="note">种子从 1 开始。改前和改后用同一批种子；每局都重新建世界。</p><div id="knobs"></div><button id="run" class="run">重跑，对照一下</button><button id="reset" class="reset">旋钮回到原设定</button><p id="status" role="status" aria-live="polite">正在准备第一批实验…</p></div>
-<div class="observations"><div class="result-heading"><h2>看结果怎么变</h2><span id="sample-note"></span></div><p class="difference" id="difference">先测原设定，建立一盏对照灯。</p><div class="comparison"><article id="before" class="result blue-result"></article><article id="after" class="result amber-result"></article></div><section id="representative" class="representative" hidden aria-live="polite"></section></div></section>
-<footer><p>这是机制实验，不是真人体验调查。固定策略会反复走同样的路，局数增加不等于独立玩家增多。</p><p>这里能检验条件与走法的关系；感动、归因和重玩意愿仍需要真人试玩。所有修改只在本次浏览器实验生效。</p><details id="debug" hidden><summary>调试记录</summary><pre></pre></details></footer></main><script type="module" src="/lab/main.js"></script></body></html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>窃符 · 推演机</title>
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
+<link rel="stylesheet" href="/lab/style.css">
+</head>
+<body>
+<canvas id="bench" aria-label="一台推演机：五个铜钮、一杆闸、八只陶罐、轨道边的人偶"></canvas>
+
+<a id="home" href="/">数字世界</a>
+<div id="nav"><a href="/play.html">参与这局</a><a href="/film.html">看成电影</a></div>
+
+<p id="top">正在把推演机点着…</p>
+<p id="tip" hidden></p>
+<p id="mentor" hidden></p>
+
+<details id="debug" hidden><summary>调试记录</summary><pre id="devjson"></pre></details>
+
+<script type="module" src="/lab/main.js"></script>
+</body></html>
