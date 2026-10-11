@@ -408,7 +408,7 @@ test('结局隔离：本段外的主张不进这一段，明确继承的才进',
   for (const id of scope0.claimIds) assert.equal(oldClaims.includes(id), false, '上一段的主张不算数');
 
   const fresh = session.claims.add({
-    subject: '如姬', predicate: '交出了', object: '兵符', holder: 'user', channel: '明说',
+    subject: '如姬', predicate: '交出了', object: '兵符', holder: 'user', channel: '被告知',
     evidence: [], weight: 2, note: 't49 测试里的新主张',
   }).claim;
   const scope1 = session.episodeScope();
