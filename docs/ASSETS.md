@@ -91,9 +91,11 @@ node tools/assets/run.mjs --work qiefu --director lu [--kinds image,voice] [--ma
 4. 每生成一个，立即写回 manifest（中途断了不丢）：
 
 ```json
-{ "image-3f9a…": { "kind":"image", "file":"gen/image-3f9a….png", "director":"lu", "work":"qiefu",
-  "for":{…}, "spec":{…}, "why":"…", "provider":"magpie", "model":"…", "fallback":false, "bytes":123 } }
+{ "assets": { "image-3f9a…": { "kind":"image", "file":"gen/image-3f9a….png", "director":"lu", "work":"qiefu",
+  "for":{…}, "spec":{…}, "why":"…", "provider":"magpie", "model":"…", "fallback":false, "bytes":123 } } }
 ```
+
+（2026-10-11 修订：manifest 外层包一层 `assets`，给以后的版本号/统计留位；以 t8 的实现 536e7b7 为准。`planRun(manifest, briefs, available)` 的 `available` 是 `{ magpie:{ok}, litellm:{ok}, audio:{ok,cloud,note} }` 形状的对象；计划里每个 brief 都有一条，已有正式版本的条目 `action:'skip'`，不是从计划里删掉。）
 
 适配器（`providers/<name>.mjs`，都导出 `available()` 与 `make(brief, outPath)` → `{ model, fallback }`）：
 
