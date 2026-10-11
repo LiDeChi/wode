@@ -233,7 +233,8 @@ html, body {
   bottom: 26px;
   transform: translateX(-50%);
   width: min(880px, calc(100vw - 120px));
-  z-index: 16;
+  /* 台词条连同「继续」必须压在收起的导演案（z-index 45）之上：否则玩家点「继续」点到的是导演案 */
+  z-index: 46;
   padding: 18px 26px 20px;
   background: linear-gradient(180deg, rgba(10, 9, 7, 0.72), rgba(10, 9, 7, 0.94));
   border: 1px solid var(--line);
@@ -698,10 +699,13 @@ body.life-paused #stage { filter: saturate(.55) brightness(.82); }
 .director-desk {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  top: 92px;
+  bottom: auto;
   z-index: 45;
   width: 322px;
-  max-height: 62vh;
+  /* 导演案整件都停在台词条之上：台词条的「继续」在右下角，只要案面不伸进底部那一条带，
+     收起的小签和摊开的案板就都抢不走它。留 400px 给底部（台词条 + 漏刻 + 留白）。 */
+  max-height: min(62vh, calc(100vh - 400px));
   overflow: auto;
   border: 1px solid rgba(200, 137, 47, .3);
   background: linear-gradient(180deg, rgba(30, 25, 19, .96), rgba(18, 15, 11, .96));
@@ -716,6 +720,11 @@ body.life-paused #stage { filter: saturate(.55) brightness(.82); }
   color: #eeddb6;
   border-bottom: 1px solid rgba(200, 137, 47, .22);
 }
+/* 合上是一枚小签，摊开是本幅案板；两态都不落到底部那条带（见 .director-desk 的 max-height），
+   所以台词条的「继续」无论在哪个宽度、导演案开着还是合着，鼠标都点得到。 */
+.director-desk:not([open]) { width: auto; max-width: 322px; }
+.director-desk:not([open]) > summary { border-bottom: none; }
+.director-desk[open] { width: 322px; z-index: 60; }
 .director-board { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 9px; }
 .pace-hourglass {
   width: 100%;
@@ -830,8 +839,11 @@ body.life-paused #stage { filter: saturate(.55) brightness(.82); }
 @media (max-width: 620px) {
   .life-controls { right: 10px; top: 10px; gap: 6px; }
   .life-switch { padding: 8px 11px; font-size: 12px; letter-spacing: .08em; }
-  #life-witness { left: 10px; right: 10px; top: 74px; width: auto; max-height: 30vh; overflow: auto; }
+  #life-witness { left: 10px; right: 108px; top: 74px; width: auto; max-height: 30vh; overflow: auto; }
   .body-slip { font-size: 12px; }
-  .director-desk { left: 10px; right: 10px; bottom: 10px; width: auto; max-height: 46vh; }
+  /* 手机上再接一档：小签紧贴生活开关下方，摊开的案板矮一点，同样停在台词条之上 */
+  .director-desk { top: 66px; bottom: auto; left: auto; right: 10px; max-height: min(46vh, calc(100vh - 340px)); }
+  .director-desk:not([open]) { width: auto; }
+  .director-desk[open] { width: calc(100vw - 20px); }
   .loom-ending { margin: 8px 10px 12px; }
 }
