@@ -10,6 +10,7 @@ import { clamp, explainPerception } from '../core/mind.js';
 import { PLAYER, HOLDER, DEFAULT_PRESENTATION } from './roles.js';
 import { applyEffect, setTrust, specOf } from './effects.js';
 import { firstRule, fillText, readPath, readValue } from './rules.js';
+import { DEFAULT_TIER, ELIDED_NOTE, briefText, depthLine, downgrade, normalizeTier, oneLine, watchDepth, TIER_COST } from './depth.js';
 
 export { PLAYER, HOLDER };
 
@@ -35,7 +36,7 @@ const isPlain = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
  * opts.store：内核状态放哪（默认 session.state.kernel）。play.js 薄外壳可传 session.state.play，
  *             这样 world 随 session.save() 一起走。
  */
-export function createKernel(session, { scenes = {}, controllers = {}, store, days = DEFAULT_DAYS } = {}) {
+export function createKernel(session, { scenes = {}, controllers = {}, store, days = DEFAULT_DAYS, tiers, tierOf, budget } = {}) {
   const { ledger, claims, minds } = session;
   const holder = store || session.state || (session.state = {});
   const root = holder.kernel || (holder.kernel = { days, flags: {}, worlds: {}, current: null });
@@ -50,6 +51,38 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
   const openSeqOf = (work) => ledger.last((e) => e.kind === 'present.open' && e.payload.presentation === work)?.seq;
   const name = (id) => minds[id]?.name || id;
   const trustOf = (id) => round(minds[id]?.state.trust[PLAYER] ?? 0.3);
+
+  // ---- 档位：导师手里的算力分到这一场，这一场的人就演得多细（docs/KERNEL.md §6）----
+  // 没传档位（tiers 与 tierOf 都没给）时一律「普通」，而且连状态都不碰——旧行为一笔不变。
+  //   tiers: {'night':'细演'} 或 {'night':3}；也可以按 beat 或按作品给
+  //   tierOf: (sceneId, scene) => 档位
+  //   tiers: 'mentor' 读 session 里导师的分配结果（mentor.allot 的 chosen，按 beat 记）
+  const tierSource = tierOf || tiers || null;
+  const mentorChosen = () => { try { return session.mentor?.state?.().chosen || null; } catch { return null; } };
+
+  /** 这一场演到哪一档：解析一次就记在 root.tierPlan 里（随存档走，重进不重算） */
+  function sceneTier(sceneId) {
+    if (!tierSource || !sceneId || !scenes[sceneId]) return DEFAULT_TIER;
+    const plan = root.tierPlan || (root.tierPlan = {});
+    if (plan[sceneId]) return plan[sceneId];
+    const scene = sceneOf(sceneId);
+    let want = DEFAULT_TIER;
+    if (typeof tierSource === 'function') want = normalizeTier(tierSource(sceneId, scene)) || DEFAULT_TIER;
+    else if (tierSource === 'mentor') {
+      const chosen = mentorChosen() || {};
+      want = normalizeTier(chosen[scene.beat] ?? chosen[sceneId]) || DEFAULT_TIER;
+    } else if (typeof tierSource === 'object') {
+      want = normalizeTier(tierSource[sceneId] ?? tierSource[scene.beat] ?? tierSource[scene.work]) || DEFAULT_TIER;
+    }
+    let tier = want;
+    if (budget != null) {
+      // 算力用完就往下降，降到底也照常演完——不抛错、不中断
+      while (tier !== '一笔带过' && (root.tierSpend || 0) + (TIER_COST[tier] ?? 1) > budget) tier = downgrade(tier);
+      root.tierSpend = round((root.tierSpend || 0) + (TIER_COST[tier] ?? 1));
+    }
+    plan[sceneId] = tier;
+    return tier;
+  }
 
   // ---- world：这一场共享的状态（控制器状态、最近一次反应、被谁看见了）----
   function linkWorld(w) {
@@ -302,7 +335,10 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     const who = intent.to || intent.person;
     if (owner) res = owner.ctrl.apply(intent, ctx) || null;
     // 等/看/问 没人认领时走内核自己那三条路（看与问不改世界，只读）
-    else if (intent.verb === 'watch' && who) res = { text: watch(sceneId, who).preview?.explain ?? null, readOnly: true };
+    else if (intent.verb === 'watch' && who) {
+      const w = watch(sceneId, who);
+      res = { text: w.preview?.explain ?? null, readOnly: true, depth: w.depth?.line ?? null };
+    }
     else if (intent.verb === 'ask' && who) res = { text: ask(sceneId, who).answer, readOnly: true };
     else if (intent.to) res = { r: react(sceneId, intent, resolveTo(world, intent.to), { channels: intent.channels, appeal: intent.appeal, bar: intent.bar ?? ctx.bar }) };
     const partial = normalizeResult(res);
@@ -329,6 +365,22 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       if (txt != null) outcome.text = fillText(txt, buildFacts(sceneId, world, intent, outcome.r, ctx));
       if (rule.cost !== undefined) outcome.cost = fillText(String(rule.cost), buildFacts(sceneId, world, intent, outcome.r, ctx));
     }
+    // ---- 档位只改文字厚薄与能看多深，不改胜负：结局、天数、旗标、账本一个字节都不动 ----
+    const tier = sceneTier(sceneId);
+    if (tier === '细演') {
+      const line = partial.depth || (outcome.r
+        ? depthLine({ name: outcome.r.name, mind: minds[outcome.r.person], perception: outcome.r.perception, heard: outcome.r.heard, trust: trustOf(outcome.r.person) })
+        : null);
+      if (line) {
+        outcome.depth = line;
+        outcome.text = outcome.text ? `${outcome.text} ${line}` : line;
+      }
+    } else if (tier === '一笔带过') {
+      const cut = briefText(outcome.text);
+      if (cut.cut) outcome.text = `${cut.text}（${ELIDED_NOTE}）`;
+      outcome.elided = true;
+      outcome.elidedNote = ELIDED_NOTE;
+    }
     return outcome;
   }
 
@@ -337,7 +389,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
   function normalizeResult(res) {
     if (!res) return { r: null };
     if (res.reactSeq !== undefined || res.perception !== undefined) return { r: res };   // 裸 Reaction
-    return { r: res.r ?? null, text: res.text, cost: res.cost, claims: res.claims, choice: res.choice, refused: res.refused, end: res.end, work: res.work };
+    return { r: res.r ?? null, text: res.text, cost: res.cost, claims: res.claims, choice: res.choice, refused: res.refused, end: res.end, work: res.work, depth: res.depth };
   }
 
   /** text 可以写成字符串、按意图 id 分档，或再按导演批没批分档 */
@@ -360,19 +412,22 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       if (g.verbs.length && !g.verbs.includes('watch')) throw new Error('导演这一幕没有授予「看心思」');
     }
     const world = has ? enter(sceneId) : null;
+    const tier = has ? sceneTier(sceneId) : DEFAULT_TIER;
     if (world && !world.watched.includes(personId)) world.watched.push(personId);
     const last = world?.last ?? null;
     const mine = last && last.person === personId ? last : null;
     let preview = null;
-    if (!mine && has) {
+    let look = null;
+    if (has && (!mine || tier === '细演')) {
+      // 细演时即便刚对他做过事，也再感知一次「他现在怎么看你」——只为拿到真实拉扯，
+      // 感知会写记忆，所以照旧撤回这一笔（看心思不该改人）
       const ch = sceneOf(sceneId).ambient?.channels || { 人: 0.4 };
-      const r = mind.perceive({ kind: 'look', signature: `look:${sceneId}:${personId}`, channels: ch });
-      // perceive 会写记忆；看心思不该改人，所以撤回这一笔
+      look = mind.perceive({ kind: 'look', signature: `look:${sceneId}:${personId}`, channels: ch });
       delete mind.state.memory[`look:${sceneId}:${personId}`];
       mind.state.log.pop();
-      preview = { trace: r.trace, stoppedAt: r.stoppedAt, action: r.action.act, explain: explainPerception(r, mind.name) };
+      if (!mine) preview = { trace: look.trace, stoppedAt: look.stoppedAt, action: look.action.act, explain: explainPerception(look, mind.name) };
     }
-    return {
+    const out = {
       person: personId, name: mind.name, title: mind.def.title, bio: mind.def.bio,
       temperament: mind.temperament, values: mind.def.values, resist: mind.def.resist,
       trust: trustOf(personId), stress: round(mind.state.stress),
@@ -381,6 +436,9 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       modules: mind.modules.map((m) => ({ id: m.id, label: m.label, cap: m.cap })),
       last: mine, preview,
     };
+    if (tier === '细演') out.depth = watchDepth({ name: mind.name, mind, perception: look, trust: trustOf(personId) });
+    else if (tier === '一笔带过') { out.elided = true; out.elidedNote = ELIDED_NOTE; }
+    return out;
   }
 
   function ask(sceneId, personId) {
@@ -394,6 +452,14 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     else if (last.accepted === true) answer = `${n}：「你的话说到我心里去了。」（${last.reason}；打动 ${last.moved} ≥ 门槛 ${last.bar}）`;
     else if (last.accepted === false) answer = `${n}：「你不懂我在想什么。」（${last.reason}；打动 ${last.moved} < 门槛 ${last.bar}）`;
     else answer = `${n}：「我本来就要这么做。」（${last.explain}）`;
+    const tier = has ? sceneTier(sceneId) : DEFAULT_TIER;
+    if (tier === '细演') {
+      // 答得更细：把现在真实的心思接在回答后面（他自己的目标、信任、压力）
+      const line = depthLine({ name: n, mind: minds[personId], perception: null, heard: null, trust: trustOf(personId) });
+      const goal = (minds[personId]?.def?.goals || [])[0];
+      const extra = [goal ? `他要的是「${goal}」` : null, line].filter(Boolean).join('；');
+      if (extra) answer = `${answer} ${extra}`;
+    } else if (tier === '一笔带过') answer = oneLine(answer);
     const seq = ledger.append({ kind: 'user.ask', from: 'user', to: `actor:${personId}`, cause: last ? [last.reactSeq] : [], payload: { act: scenes[sceneId] ? sceneId : null, person: personId, answer } }).seq;
     return { person: personId, answer, seq };
   }
@@ -415,6 +481,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     world: (sceneId) => worldOf(sceneId),
     days: () => root.days,
     flags: () => root.flags,
+    /** 这一场演到哪一档（细演 / 普通 / 一笔带过）；没传档位时永远是「普通」 */
+    tierOf: (sceneId) => sceneTier(sceneId),
+    /** 已经定下来的档位表与花掉的算力（随存档走） */
+    tierPlan: () => ({ ...(root.tierPlan || {}) }),
+    tierSpend: () => root.tierSpend || 0,
     root: () => root,
   };
 }
