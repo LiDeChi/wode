@@ -8,36 +8,40 @@
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
 </head>
 <body data-film-status="loading">
-<canvas id="stage" aria-label="窃符的自动放映画面"></canvas>
-<div class="shade" aria-hidden="true"></div>
-<header class="film-header">
-  <a href="/hub.html">回排片表</a>
-  <p>窃符 <span id="film-origin">一局，成为一部电影</span></p>
-  <button id="share" type="button">分享这部电影</button>
-</header>
-<main>
-  <div class="scene-title"><p id="scene-place">魏国</p><h1 id="scene-title">灯亮，戏开。</h1></div>
-  <div class="subtitles" aria-live="off">
-    <p id="choice" class="choice"></p>
-    <p id="speaker" class="speaker"></p>
-    <p id="dialogue" class="dialogue">正在装片……</p>
-    <p id="thought" class="thought"></p>
-  </div>
-  <section id="ending" class="ending" hidden>
-    <p>这一局的落幕</p><h2 id="ending-title"></h2><p id="ending-line"></p>
-    <button id="replay" type="button">再看一遍</button>
-    <a href="/play.html">回到世界，换一种选择</a>
-  </section>
-  <div id="error" class="error" role="alert" hidden><h2>这卷电影还放不了</h2><p id="error-line"></p><a href="/film.html?demo=history">看一条完整示范片</a></div>
-</main>
-<footer class="film-footer">
-  <div class="perspectives" aria-label="换一个人的视角重放">
-    <span>换眼睛看</span><button data-perspective="xinling" aria-pressed="true">主角</button><button data-perspective="ruji" aria-pressed="false">如姬</button><button data-perspective="houying" aria-pressed="false">侯嬴</button>
-  </div>
-  <p id="progress-label">自动放映，无需做选择</p><progress id="progress" value="0" max="1" aria-label="放映进度"></progress>
-</footer>
-<div id="share-box" class="share-box" hidden><label for="share-link">电影链接</label><input id="share-link" readonly><p id="share-message" role="status"></p><button id="close-share">收起</button></div>
-<details id="debug" hidden><summary>回放记录</summary><pre></pre></details>
+<canvas id="stage" aria-label="窃符的放映画面：夜里的一座戏台，台上正在演"></canvas>
+
+<!-- 银幕上的字：说出口的那句、和这一局的收尾。 -->
+<div class="subtitles" aria-live="off">
+  <p id="speaker" class="speaker"></p>
+  <p id="dialogue" class="dialogue">正在装片……</p>
+  <p id="thought" class="thought"></p>
+</div>
+
+<section id="ending" class="ending" hidden>
+  <h2 id="ending-title"></h2>
+  <p id="ending-line"></p>
+  <p class="ending-actions">
+    <a id="replay" href="#replay">再燃一根香，重看这一局</a>
+    <a href="/play.html">回世界里，换一种选择</a>
+  </p>
+</section>
+
+<!-- 分享：点了封泥，链接从右边滑进来。 -->
+<aside id="share-slip" class="share-slip" hidden aria-live="polite">
+  <p id="share-message"></p>
+  <input id="share-link" readonly aria-label="电影链接">
+</aside>
+
+<div id="error" class="error" role="alert" hidden><h2>这卷电影还放不了</h2><p id="error-line"></p><a href="/film.html?demo=history">看一条完整示范片</a></div>
+
+<!-- 木牌在场景里；这里给键盘和读屏留一份同样的入口（看不见、不占鼠标）。 -->
+<div class="sr-only" role="group" aria-label="换一个人的视角重放">
+  <button data-perspective="xinling" type="button">主角</button>
+  <button data-perspective="ruji" type="button">如姬</button>
+  <button data-perspective="houying" type="button">侯嬴</button>
+</div>
+
+<pre id="dev" class="dev" hidden></pre>
 <script type="module" src="/film/main.js"></script>
 </body>
 </html>
