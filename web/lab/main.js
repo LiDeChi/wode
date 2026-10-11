@@ -67,6 +67,9 @@ let mainLine = '', hintLine = '';
 const paintLine = () => say(mainLine + (hintLine ? `<br><small>${hintLine}</small>` : ''));
 const setTop = html => { mainLine = html; paintLine(); };
 const setHint = text => { hintLine = esc(text); paintLine(); };
+/* 凑近读竹简时，屏幕上这一行也让开（竹简自己写着这场仗怎么打的）。
+   CSS 里 #top.away 把它淡掉，竹简收起来再淡回来。 */
+const lineAway = on => $('top').classList.toggle('away', on);
 /* 导师的话不是网页上的浮动字，是他灯下那块牌：内容从账本里真读。
    读法照 film3 在 hub 里的：建一个会话，让他照这位导演的口味走一遍「见面」，
    再把账本里 from=mentor 且带 said 的原话挑出来——一句都不是这里编的。 */
@@ -246,6 +249,7 @@ function readColumn(column) {
   const at = { x: x + dir * 1.9, y: 2.35, z: 2.75 };
   scroll.show({ at, dir, lines, scale: bench.tall ? 1.7 : 1 });
   rig.showTopPlates(false);
+  lineAway(true);
   bench.focus(new THREE.Vector3(at.x - dir * .5, 2.3, 2.75),
     { dist: bench.tall ? 7.6 : 4.6, ty: 2.3, tz: 2.75 });
   const c = distribution(r);
@@ -358,6 +362,7 @@ function releaseFocus() {
   slip.hide();
   scroll.hide();
   rig.showTopPlates(true);
+  lineAway(false);
 }
 let focusTimer = 0;
 function openPot(column, slot) {
@@ -376,6 +381,7 @@ function openPot(column, slot) {
   const at = new THREE.Vector3(pot.x + dir * 1.85, 2.35, 2.75);
   scroll.show({ at, dir, lines: scrollLines(run, column), scale: bench.tall ? 1.7 : 1 });
   rig.showTopPlates(false);
+  lineAway(true);
   // 镜头对着竹简：账要凑近才读得清，罐子留在画面边上。
   bench.focus(new THREE.Vector3(at.x - dir * .6, 2.3, 2.75), { dist: bench.tall ? 7.4 : 4.4, ty: 2.3, tz: 2.75 });
   slip.show([

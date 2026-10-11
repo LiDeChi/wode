@@ -38,6 +38,9 @@ body > p, body > a, #debug { position: fixed; margin: 0; pointer-events: none; }
   color: #f2ddb0; text-shadow: 0 0 18px #000, 0 2px 10px #000c;
 }
 #top small { font-size: 12px; color: #a99a7c; letter-spacing: 0; }
+/* 凑近读竹简时这一行也让开：竹简自己写着改前/改后、结局、谁的第几局，
+   两处字叠在一起谁也不清。竹简收起来，它再浮回来。 */
+#top.away { opacity: 0; transition: opacity .3s ease; }
 
 /* 两列账不再挂在网页上：罐前木签刻数、豆子堆高、案头两炷香读数，
    整账点灯或点罐子时写在场景里的竹简上（web/lab/scroll.js）。 */
