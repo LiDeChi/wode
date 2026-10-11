@@ -1,6 +1,7 @@
 // 导演：把“这一段怎么演”定下来，并设想玩家会怎么接。
 // 所有设计规则都是确定性的；导演不改导师的规则，只能经 mentor.guard 留下拒绝记录。
 import { createMind } from '../core/mind.js';
+import * as stagecraft from './stagecraft.js';
 
 // 设计稿 §13 情感→交互
 export const TEMPLATES = { 责任: ['分配', '决策'], 亲密: ['对话'], 紧张: ['即时动作'], 好奇: ['探索'], 顿悟: ['解谜'], 悲悯: ['观看'] };
@@ -217,6 +218,18 @@ export function createDirector({ ledger, def, mentor, saved }) {
     return mentor ? mentor.guard(field, role) : null;
   }
 
+  /**
+   * 开资产单（docs/ASSETS.md §3）：画什么、配什么声音由导演的手艺决定。
+   * 只有显式调用（session.dress / 工具）才会走到这里——createPlay 的任何路径都不调它，
+   * 所以 680 个脚本对照组的账本一笔不变。
+   */
+  function dress(world, cause) {
+    const sheet = stagecraft.dress({ id: def.id, def, craft: () => ({ ...craft }) }, world);
+    const keys = sheet.assets.map((a) => a.key);
+    const seq = append('director.dress', { work: sheet.work, taste: sheet.taste, keys, counts: sheet.counts }, cause);
+    return { ...sheet, seq };
+  }
+
   return {
     id: def.id,
     role,
@@ -226,6 +239,7 @@ export function createDirector({ ledger, def, mentor, saved }) {
     grant,
     schedule,
     learn,
+    dress,
     tryEditMentor,
     craft: () => ({ ...craft }),
     state: () => ({ id: def.id, role, craft: { ...craft }, mind: mind.save() }),
