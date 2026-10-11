@@ -31,6 +31,7 @@ import { STATUS } from '../core/claims.js';
 import { explainPerception } from '../core/mind.js';
 import { playWork, worldRelations } from './works.js';
 import { createKernel } from '../kernel/kernel.js';
+import { ELIDED_NOTE } from '../kernel/depth.js';
 import CONTROLLERS from '../kernel/controllers/index.js';
 import { QIFU_SCENES, QIFU_CONTROLLERS, NIGHT_LIMIT, NIGHT_LANTERN, NIGHT_TILES } from '../scenes/qiefu.js';
 import { WEICHENG_SCENES, WEICHENG_CONTROLLERS } from '../scenes/weicheng.js';
@@ -103,8 +104,14 @@ function freshState() {
 /**
  * 在一个已经见过导师的 session 上玩《窃符》。状态放在 session.state.play，随 session.save() 一起存。
  * 返回的每个方法都只改 session，不碰画面。
+ *
+ * opts（都可选，只跟「每场演多细」有关，不影响胜负）：
+ *   tiers: {'night':'细演'} | {'night':3} | 'mentor'   —— 也可以按 beat / 按作品给；'mentor' 读导师的分配结果
+ *   tierOf: (actId, scene) => 档位
+ *   budget: 算力上限；不够就往下降档，降到底照常演完
+ * 不传档位时每一场都是「普通」，与没有档位的老行为逐字节相同（680 个脚本的对照组）。
  */
-export function createPlay(session) {
+export function createPlay(session, opts = {}) {
   const { ledger, claims, minds } = session;
   session.state.play ||= freshState();
   const P = () => session.state.play;
@@ -115,7 +122,7 @@ export function createPlay(session) {
   // 内核把「天数 / 旗标 / 各场控制器的状态」放在 session.state.play.kernel（随存档走）。
   // 旧代码读写的是 s.days / s.flags / s.night，所以把它们接到同一份数据上：
   // 存档里仍然是同一个 JSON 形状，只是同一个值不会有两份。
-  const kern = createKernel(session, { scenes: SCENES, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS });
+  const kern = createKernel(session, { scenes: SCENES, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS, tiers: opts.tiers, tierOf: opts.tierOf, budget: opts.budget });
   Object.defineProperty(session.state.play, 'days', {
     configurable: true, enumerable: true,
     get: () => kern.days(),
@@ -423,7 +430,8 @@ export function createPlay(session) {
       }
     }
     const nightView = controllers.find((c) => c.id === 'nightwalk')?.view || null;
-    return {
+    const tier = kern.tierOf(actId);
+    const out = {
       ...base, act: actId, index: actId === 'granary' ? null : s.actIndex, title: act.title, place: act.place,
       goal: act.goal, scene: act.scene, grants, people, options, done: a.done, outcome: a.outcome,
       watched: a.watched, asked: a.asked, controllers,
@@ -431,6 +439,10 @@ export function createPlay(session) {
       granary: actId === 'granary' ? { ...s.granary, keepers: KEEPERS.map((id) => ({ id, name: name(id) })) } : null,
       prediction: (session.state.predictions?.[workOf(actId)]?.list || []).find((p) => p.beat === act.beat) || null,
     };
+    // 档位：默认那一档（普通）不往画面上加任何字段，旧画面逐字段相同
+    if (tier !== '普通') out.tier = tier;
+    if (tier === '一笔带过') { out.elided = true; out.elidedNote = ELIDED_NOTE; }
+    return out;
   }
 
   function summarizeActs() {
@@ -438,7 +450,7 @@ export function createPlay(session) {
     return [...ACT_ORDER, 'granary'].filter((id) => s.acts[id]).map((id) => ({ id, title: ACTS[id].title, choice: s.acts[id].choice, signal: s.acts[id].signal, text: s.acts[id].outcome?.text || '' }));
   }
 
-  return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P };
+  return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan() };
 }
 
 /** 一局走完要多久（秒），给地板检查用 */
