@@ -84,6 +84,8 @@ export function makePlate({
   mesh.renderOrder = 3;
   return {
     mesh, canvas,
+    /** 自查用：这块牌此刻写着什么。 */
+    get lines() { return (lines !== undefined ? lines : [text ?? '']).slice(); },
     setText(next) {
       if (Array.isArray(next)) lines = next; else { lines = undefined; text = next; }
       draw();

@@ -17,7 +17,7 @@ body {
 }
 #bench { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 body > p, body > a, #debug { position: fixed; margin: 0; pointer-events: none; }
-.serif, #top, #mentor { font-family: "Songti SC", "STSong", "Source Han Serif SC", serif; }
+.serif, #top { font-family: "Songti SC", "STSong", "Source Han Serif SC", serif; }
 
 /* 左上入口、右上两个去处：三行小字 */
 #home, #nav a {
@@ -42,22 +42,7 @@ body > p, body > a, #debug { position: fixed; margin: 0; pointer-events: none; }
 /* 两列账不再挂在网页上：罐前木签刻数、豆子堆高、案头两炷香读数，
    整账点灯或点罐子时写在场景里的竹简上（web/lab/scroll.js）。 */
 
-/* 指到哪儿，哪儿浮一行字 */
-#tip {
-  top: 0; left: 0; max-width: 360px; padding: 3px 9px;
-  font-size: 12px; line-height: 1.5; color: #f0e2c4;
-  background: rgba(9, 7, 6, .58); border-radius: 2px; text-align: center;
-}
-
 /* 点开陶罐之后的逐幕账，写在场景里的竹简上（web/lab/scroll.js），不落在网页上。 */
-
-/* 导师那盏灯下的一句话 */
-#mentor {
-  left: 50%; bottom: 78px; transform: translateX(-50%);
-  width: min(560px, 84vw); text-align: center;
-  font-size: 13.5px; line-height: 1.7; color: #c9b48c; letter-spacing: .03em;
-  text-shadow: 0 1px 10px #000;
-}
 
 /* 那句诚实话刻在机器前缘的铭牌上（web/lab/rig.js 的 notePlate），不占网页。 */
 
@@ -72,6 +57,4 @@ body > p, body > a, #debug { position: fixed; margin: 0; pointer-events: none; }
 @media (max-width: 620px), (max-aspect-ratio: 19/20) {
   /* 手机上左上入口、右上两个去处占着顶排，那行字照旧压在它们下面 */
   #top { font-size: 13.5px; width: 92vw; top: max(40px, calc(env(safe-area-inset-top) + 30px)); }
-  #tip { font-size: 11px; max-width: 74vw; }
-  #mentor { font-size: 12px; bottom: 92px; }
 }

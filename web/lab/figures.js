@@ -28,7 +28,7 @@ function glowTexture() {
   return t;
 }
 
-export function createFigures(bench, { onPick } = {}) {
+export function createFigures(bench, { onPick, onLamp } = {}) {
   const group = new THREE.Group();
   bench.scene.add(group);
   const glow = glowTexture();
@@ -95,37 +95,47 @@ export function createFigures(bench, { onPick } = {}) {
     const node = { ...f, label: f.name, group: g, cloth, spot, name, hover: 0, lit: 0, pulse: 0, react: null };
     nodes.set(f.id, node);
     bench.register(g, `figure:${f.id}`, {
-      pad: [.42, .55, .28, .58],
+      pad: bench.tall ? [.84, .82, .4, .62] : [.42, .55, .28, .58],
       onHoverStart: () => { node.hot = true; },
       onHoverEnd: () => { node.hot = false; },
       onClick: () => { if (onPick) onPick(node); },
     });
   }
 
-  /* 导师的灯：一根细杆挑在左边人偶上方，灯下挂一块窄牌写他说的话。 */
-  const lamp = { pulse: 0 };
+  /* 导师的灯：一根细杆挑在左边人偶上方，灯下挂一块窄牌写他说的话。
+     点灯＝让他换一句——牌上写的是他从账本里真说过的话（main.js 读账本给他）。 */
+  const lamp = { pulse: 0, hot: false };
   {
+    const lampG = new THREE.Group();
+    group.add(lampG);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .065, 3.4, 12),
       new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: .9 }));
     pole.position.set(-4.6, 1.7, .15);
-    pole.castShadow = true; group.add(pole);
+    pole.castShadow = true; lampG.add(pole);
     const arm = new THREE.Mesh(new THREE.BoxGeometry(.62, .07, .07),
       new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: .9 }));
-    arm.position.set(-4.32, 3.38, .15); group.add(arm);
+    arm.position.set(-4.32, 3.38, .15); lampG.add(arm);
     const shade = new THREE.Mesh(new THREE.CylinderGeometry(.17, .3, .26, 18, 1, true),
       new THREE.MeshStandardMaterial({ color: '#8c6046', roughness: .7, side: THREE.DoubleSide }));
-    shade.position.set(X * -1, 3.2, .15); shade.castShadow = true; group.add(shade);
+    shade.position.set(X * -1, 3.2, .15); shade.castShadow = true; lampG.add(shade);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(.105, 16, 12),
       new THREE.MeshStandardMaterial({ color: '#ffd9a0', emissive: '#ffb060', emissiveIntensity: 1.6, roughness: .4 }));
-    bulb.position.set(X * -1, 3.1, .15); group.add(bulb);
+    bulb.position.set(X * -1, 3.1, .15); lampG.add(bulb);
     const light = new THREE.PointLight('#ffb060', 14, 9, 2);
     light.position.set(X * -1, 3.0, .15);
-    group.add(light);
+    lampG.add(light);
     const slip = makePlate({
       width: 1.05, height: 1.7, px: 480, py: 780, maxFont: 62, ink: '#f0dcb4',
       at: [X * -1, 2.16, .18], lines: ['导师还在想…'],
     });
-    group.add(slip.mesh);
+    lampG.add(slip.mesh);
+    // 手感区只罩灯罩与灯牌那一块（y 2.0 以上），别把人偶的地盘吃了。
+    bench.register(lampG, 'lamp', {
+      pad: [1.25, 1.75, .5, 2.72],
+      onHoverStart: () => { lamp.hot = true; },
+      onHoverEnd: () => { lamp.hot = false; },
+      onClick: () => { if (onLamp) onLamp(); },
+    });
     lamp.bulb = bulb; lamp.light = light; lamp.slip = slip; lamp.base = 14;
   }
 
@@ -174,9 +184,10 @@ export function createFigures(bench, { onPick } = {}) {
       }
     }
     lamp.pulse = Math.max(0, lamp.pulse - dt * .55);
-    const glowAmt = .55 + Math.sin(clock * 1.7) * .07 + lamp.pulse * 1.6;
+    const glowAmt = .55 + Math.sin(clock * 1.7) * .07 + lamp.pulse * 1.6 + (lamp.hot ? .75 : 0);
     lamp.bulb.material.emissiveIntensity = glowAmt;
-    lamp.light.intensity = lamp.base * (.85 + lamp.pulse * 1.4) + Math.sin(clock * 2.3) * .5;
+    lamp.light.intensity = lamp.base * (.85 + lamp.pulse * 1.4 + (lamp.hot ? .5 : 0)) + Math.sin(clock * 2.3) * .5;
+    lamp.slip.mesh.scale.setScalar(lamp.hot ? 1.06 : 1);
     if (arrow.t >= 0) {
       arrow.t += dt / .62;
       if (arrow.t >= 1) {
@@ -252,7 +263,7 @@ export function createProbeTiles(bench, { onPick } = {}) {
     const g = new THREE.Group();
     // 四块牌沿视线方向排开，越靠里越往左挪一点——不然排在一条线上，
     // 后一块看着压在前一块身上，手指也分不清点的是哪一块。
-    g.position.set(X - i * .17, SHELF_Y + .05, def.z);
+    g.position.set(X - i * (bench.tall ? .34 : .17), SHELF_Y + .05, def.z);
     group.add(g);
     const wood = new THREE.MeshStandardMaterial({ color: '#3c2c1d', roughness: .9 });
     const foot = new THREE.Mesh(new THREE.BoxGeometry(.44, .07, .38), wood);
@@ -278,7 +289,7 @@ export function createProbeTiles(bench, { onPick } = {}) {
     const node = { ...def, group: g, lean, dots, lit: 0, hover: 0, target: 0 };
     nodes.set(def.appeal, node);
     bench.register(g, `appeal:${def.appeal}`, {
-      pad: [.46, .4, .24, .22],
+      pad: bench.tall ? [.62, .5, .32, .24] : [.46, .4, .24, .22],
       onHoverStart: () => { node.hot = true; },
       onHoverEnd: () => { node.hot = false; },
       onClick: () => { if (onPick) onPick(def.appeal); },

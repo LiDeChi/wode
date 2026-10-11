@@ -89,7 +89,7 @@ export function createScroll(bench, { onFilm } = {}) {
     onClick: () => onFilm?.(),
   });
   bench.register(seal, 'scroll:seal', {
-    pad: [.52, .52, .3, 0],
+    pad: bench.tall ? [.8, 1.0, .32, 0] : [.52, .52, .3, 0],
     cursor: 'pointer',
     onClick: () => onFilm?.(),
   });
@@ -113,6 +113,8 @@ export function createScroll(bench, { onFilm } = {}) {
     get shown() { return group.visible; },
     /** 现在这一板写的是什么——自查脚本对着它核对逐幕账。 */
     get lines() { return state.lines; },
+    /** 自查用：现在放多大（手机竖屏要 1.7 倍才读得清）。 */
+    get scale() { return state.scale; },
     /**
      * 展开一板竹简：lines 是逐行写好的字。at 给世界坐标中心，dir=±1 决定从哪一侧滑进来。
      * scale 只在手机竖屏里放大一点——屏窄，不放大读不清。

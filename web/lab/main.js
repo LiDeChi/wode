@@ -27,8 +27,10 @@ const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); r
 const bench = createBench($('bench'));
 setPlateAnisotropy(bench.renderer.capabilities.getMaxAnisotropy());
 const rig = buildRig(bench, { variables: VARIABLES });
+// 手机窄屏上，案沿那几件会盖住身后的铜钮：换了宽度就换一套摆位。
+bench.onTallChange(on => rig.setTallLayout(on));
 const beads = createBeads(rig.beanRoot, { speed: 1 });
-const figures = createFigures(bench, { onPick: node => showPerson(node.id) });
+const figures = createFigures(bench, { onPick: node => showPerson(node.id), onLamp: () => nextMentor() });
 const tiles = createProbeTiles(bench, { onPick: appeal => runProbe(appeal) });
 const slip = createSlip(bench, { onSeal: sealLink });
 const scroll = createScroll(bench, { onFilm: () => toFilm() });
@@ -65,7 +67,35 @@ let mainLine = '', hintLine = '';
 const paintLine = () => say(mainLine + (hintLine ? `<br><small>${hintLine}</small>` : ''));
 const setTop = html => { mainLine = html; paintLine(); };
 const setHint = text => { hintLine = esc(text); paintLine(); };
-const sayMentor = text => { $('mentor').hidden = !text; $('mentor').textContent = text || ''; };
+/* 导师的话不是网页上的浮动字，是他灯下那块牌：内容从账本里真读。
+   读法照 film3 在 hub 里的：建一个会话，让他照这位导演的口味走一遍「见面」，
+   再把账本里 from=mentor 且带 said 的原话挑出来——一句都不是这里编的。 */
+let mentorLines = [], mentorAt = 0;
+async function readMentor() {
+  try {
+    const [sessionMod, formatMod] = await Promise.all([
+      import('/shared/engine/session.js'),
+      import('/film/format.js'),
+    ]);
+    const inp = formatMod.directorInput(director);
+    const session = sessionMod.createSession();
+    session.meet(inp.answers, inp.need);
+    mentorLines = session.ledger.entries.filter(e => e.from === 'mentor' && e.said).map(e => e.said);
+  } catch (e) {
+    mentorLines = [];
+    if (dev) console.warn('导师的话没从账本里读到', e);
+  }
+  mentorAt = 0;
+  paintMentor();
+}
+function paintMentor() {
+  figures.say(wrapLine(mentorLines[mentorAt] || '导师还在想…', 7).slice(0, 7));
+}
+function nextMentor() {
+  if (!mentorLines.length) return;
+  mentorAt = (mentorAt + 1) % mentorLines.length;
+  paintMentor();
+}
 /* 逐幕账不落在网页上：它写在场景里的竹简上（scroll.js）。 */
 
 function distribution(result) {
@@ -108,8 +138,8 @@ function columnLines(result, column) {
   ]);
 }
 
-/* ---------------- 每帧：豆子走路、刻字跟着物件跑 ---------------- */
-let lastHover = undefined;
+/* ---------------- 每帧：豆子走路、槽底留下走痕 ---------------- */
+let wearClock = 0;
 bench.addUpdater((dt, clock) => {
   beads.update(dt, clock);
   for (const bean of beads.beans) {
@@ -123,9 +153,29 @@ bench.addUpdater((dt, clock) => {
       bean.row++;
     }
   }
-  const hv = bench.hovered?.name ?? null;
-  if (hv !== lastHover) { lastHover = hv; paintTip(hv); }
+  // 走痕：豆子走过哪条岔路，那条槽底就染上哪只罐的釉色。落定了才算数，
+  // 所以痕迹是一点点长出来的，不是一批刷上去的。
+  wearClock += dt;
+  if (wearClock > .25) { wearClock = 0; paintWear(); }
 });
+
+/* 把已经落定的豆子按「在每一幕拐了哪个弯」数一遍，交给机架去染槽底。
+   半空中的豆子不算；豆子被倒回斗里时它还没落定，痕迹自然还没长。 */
+function paintWear() {
+  const counts = {}, totals = { before: 0, after: 0 };
+  for (const bean of beads.beans) {
+    if (bean.phase !== 'rest') continue;
+    const lanes = lanesOf(bean.run);
+    totals[bean.column]++;
+    for (let row = 0; row < TRACK.rows; row++) {
+      const byLane = counts[row] || (counts[row] = {});
+      const cell = byLane[lanes[row]] || (byLane[lanes[row]] = { before: 0, after: 0 });
+      cell[bean.column]++;
+    }
+  }
+  rig.setWear(counts, totals);
+  return counts;
+}
 
 // 一局在某一层用了什么话、对面是谁、点没点头。豆子滚过一层时问一次。
 const rowCache = new WeakMap();
@@ -144,44 +194,8 @@ function stepAtRow(run, row) {
   return arr[row];
 }
 
-function paintTip(name) {
-  const tip = $('tip');
-  let text = '';
-  if (name?.startsWith('pot:')) {
-    const [, column, slot] = name.split(':');
-    const r = column === 'before' ? baseline : changed;
-    if (r) {
-      const ending = SLOT_ENDING[Number(slot)];
-      const runs = r.runs.filter(x => (x.stuck ? 'stuck' : x.ending) === ending);
-      const who = Object.keys(PERSONAS).map(k => `${PERSONAS[k].label} ${runs.filter(x => x.persona === k).length}`).join(' · ');
-      text = `${ENDINGS[ending].label}｜${column === 'before' ? '青釉' : '酱釉'} ${runs.length} 局（${pct(runs.length / r.runs.length)}）— 点开看一局 · ${who}`;
-    } else text = '这罐还没装豆子';
-  } else if (name?.startsWith('knob:')) {
-    const v = VARIABLES.find(x => x.id === name.slice(5));
-    text = v ? `${v.label}：${v.why}` : '';
-  } else if (name?.startsWith('figure:')) {
-    text = `${personName(name.slice(7))} · 点一下看他说动没有`;
-  } else if (name?.startsWith('appeal:')) {
-    text = `点一下：向五个人各讲一遍「${name.slice(7)}」`;
-  } else if (name === 'lever') text = '拉闸：按现在的设定重跑一遍';
-  else if (name === 'bowl') text = '点一下换局数（8 / 16 / 32）';
-  else if (name === 'token') text = '点一下换一位导演';
-  else if (name === 'reset') text = '点一下：所有铜钮拧回改前设定';
-  else if (name === 'seal') text = '点一下抄走一份链接';
-  else if (name === 'scroll') text = '这一局逐幕怎么走的 · 点右下角封泥拍成电影';
-  else if (name === 'scroll:seal') text = '点一下：把这局拍成电影';
-  else if (name === 'incense') text = '两炷香：烧掉的长度就是那一列的平均戏内时长 · 点一下看整账';
-  else if (name === 'lamp:before') text = '改前这一列 · 点一下念一遍账';
-  else if (name === 'lamp:after') text = '改后这一列 · 点一下念一遍账';
-  tip.hidden = !text;
-  tip.textContent = text;
-  if (text) {
-    const p = bench.screenOf(name);
-    // 陶罐的锚点在罐身上，字要浮在它上方；别的实物都浮在它下沿。
-    const up = name.startsWith('pot:');
-    if (p) tip.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y + (up ? -14 : 26))}px) translate(-50%,${up ? '-100%' : '0'})`;
-  }
-}
+/* 说明不再是浮在画面上的框：铜钮前面的木牌翻过来就写着它管什么，
+   罐口的木签翻过来写着谁走到这儿，灯与香自己也刻着字（rig.js）。 */
 
 /* ---------------- 一件件东西被摸了之后 ---------------- */
 rig.handlers.onKnob = (id, value) => {
@@ -216,6 +230,7 @@ rig.handlers.onToken = d => {
   rig.setLamp('before', false); rig.setLamp('after', false);
   figures.setCounts({});
   setTop(`换成了${d === 'lu' ? '陆导（爱雕琢）' : '单导（爱放开）'}。导演换了，对照要重做，拉闸开始。`);
+  readMentor();
 };
 rig.handlers.onRun = () => run();
 rig.handlers.onPot = (column, slot) => openPot(column, slot);
@@ -286,18 +301,28 @@ function spawnColumn(result, column) {
 }
 
 /* ---------------- 结账：罐子上的刻字、两盏灯、上面那句话 ---------------- */
+/* 木签翻过来要写得下：人的名字缩成两个字，一行一个人。 */
+const SHORT_PERSONA = { curious: '心思', hasty: '动手', loyal: '讲义', contrarian: '违反', patient: '沉住' };
+const shortPersona = k => SHORT_PERSONA[k] || String(PERSONAS[k]?.label || k).slice(0, 2);
 function paint() {
   for (const column of ['before', 'after']) {
     const r = column === 'before' ? baseline : changed;
     rig.setLamp(column, !!r);
     if (!r) {
-      for (let slot = 0; slot < 4; slot++) rig.setPotLabel(column, slot, [ENDINGS[SLOT_ENDING[slot]].label, '— 局']);
+      for (let slot = 0; slot < 4; slot++) {
+        rig.setPotLabel(column, slot, [ENDINGS[SLOT_ENDING[slot]].label, '— 局']);
+        rig.setPotBack(column, slot, ['还没走到这儿', '']);
+      }
       continue;
     }
     const counts = distribution(r);
     for (let slot = 0; slot < 4; slot++) {
       const key = SLOT_ENDING[slot], n = counts[key];
       rig.setPotLabel(column, slot, [ENDINGS[key].label, `${n} 局 · ${pct(n / r.runs.length)}`]);
+      // 翻过来：这一罐里，五种玩家各走了几局。
+      const runs = r.runs.filter(x => (x.stuck ? 'stuck' : x.ending) === key);
+      const who = PERSONA_KEYS.map(k => `${shortPersona(k)} ${runs.filter(x => x.persona === k).length}`).join(' · ');
+      rig.setPotBack(column, slot, ['谁走到这儿', ...wrapLine(who)]);
     }
   }
   // 两炷香的长度 = 两列的平均戏内时长。
@@ -431,7 +456,7 @@ function sealLink() {
 /* ---------------- 开场：先把原设定跑出来 ---------------- */
 paint();
 setHint('正在准备第一批实验…');
-sayMentor(`先看看原世界：什么都不改，${PERSONA_KEYS.length} 种玩家各走 ${rig.samples} 局。`);
+readMentor();
 run();
 if (dev) window.__lab = {
   bench, rig, beads, figures, tiles, slip, scroll, incense,
@@ -441,4 +466,10 @@ if (dev) window.__lab = {
     after: changed ? distribution(changed) : null,
   }),
   run: config => measure(config),
+  /* 打磨期的自查口：机器占屏多少、槽底走痕深浅、木签翻到几度、导师现在念哪句。 */
+  coverage() { return bench.coverage(rig.machine); },
+  wear: () => ({ at: (row, lane, column) => rig.wearOf(row, lane, column), counts: paintWear() }),
+  pot: (column, slot) => ({ flip: rig.potFlip(column, slot), back: rig.potBackLines(column, slot) }),
+  mentor: () => ({ at: mentorAt, lines: mentorLines.slice(), shown: mentorLines[mentorAt] || null }),
+  lanes: run => lanesOf(run),
 };

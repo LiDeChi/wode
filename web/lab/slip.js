@@ -43,7 +43,8 @@ export function createSlip(bench, { onSeal } = {}) {
   const seal = { press: 0, sealed: false };
   {
     const g = new THREE.Group();
-    g.position.set(2.5, 0, FRONT_Z);
+    // 竖屏上封泥也在最右一列，跟着闸杆一起往里收。
+    g.position.set(bench.tall ? 1.7 : 2.5, 0, FRONT_Z);
     group.add(g);
     const tray = new THREE.Mesh(new THREE.BoxGeometry(.72, .05, .72),
       new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: .9 }));
@@ -65,7 +66,7 @@ export function createSlip(bench, { onSeal } = {}) {
     group.add(tag.mesh);
     seal.node = g; seal.stamp = stamp; seal.clay = clayMat; seal.tag = tag;
     bench.register(g, 'seal', {
-      pad: [.95, .6, .7],
+      pad: bench.tall ? [1.05, .75, .8] : [.95, .6, .7],
       onHoverStart: () => { seal.hot = true; },
       onHoverEnd: () => { seal.hot = false; },
       onClick: () => { seal.press = 1; onSeal?.(); },

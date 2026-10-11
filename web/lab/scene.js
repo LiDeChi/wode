@@ -59,7 +59,12 @@ export function createBench(canvas) {
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hovered = null, dragging = null, orbiting = false, moved = 0, lastX = 0, lastY = 0, pointerId = null;
-  let emptyDrag = null, tall = false;
+  // 竖屏的一条窄缝里，机器只能往右让出一点：取景中心固定在 REST_TX_TALL，
+  // 手指拖出来的位移记在 panX 上（不能直接加减 want.tx，restFrame 每帧都会重算，会越加越多）。
+  const REST_TX_TALL = .15;
+  let panX = 0;
+  let emptyDrag = null, tall = false, restYaw = -.08;
+  const tallWatchers = [];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function register(object, name, handlers = {}) {
@@ -124,7 +129,8 @@ export function createBench(canvas) {
     moved += Math.abs(dx) + Math.abs(dy);
     if (dragging) { dragging.onDrag?.(dx, dy, event); return; }
     if (orbiting) {
-      if (tall) want.tx = clamp(want.tx - dx * .014, -6.4, 6.4);
+      if (tall) panX = clamp(panX - dx * .014, -6.4, 6.4);
+      if (tall) want.tx = clamp(panX + REST_TX_TALL, -6.4, 6.4);
       else want.yaw = clamp(want.yaw - dx * .0045, -.75, .75);
       want.pitch = clamp(want.pitch + dy * .0035, .06, .72);
       idle = 0;
@@ -163,17 +169,20 @@ export function createBench(canvas) {
     return { w, h, aspect: w / h };
   }
 
-  /** 竖屏把镜头拉远、抬高，并且允许左右推移——否则一台机器塞不进一块竖屏。 */
+  /** 竖屏：把机器转成侧前方四分之三视角、镜头推近——竖屏只有一条窄缝，正对着看，机器就只剩一小块。 */
   function restFrame() {
     const aspect = resize().aspect;
+    const wasTall = tall;
     tall = aspect < .95;
+    // 宽高比换了就通知一次：竖屏上案沿那几件得换个摆位（见 rig.setTallLayout）。
+    if (tall !== wasTall) for (const fn of tallWatchers) fn(tall);
     if (focused) return;
-    want.dist = tall ? 30 : 15.6;
-    want.ty = tall ? 2.6 : 2.1;
-    want.tx = tall ? clamp(want.tx, -6.4, 6.4) : 0;
-    want.tz = tall ? 1.8 : 1.3;
-    want.yaw = -.08;
-    want.pitch = tall ? .3 : .33;
+    want.dist = tall ? 20.2 : 15.6;
+    want.ty = tall ? 2.5 : 2.1;
+    want.tx = tall ? clamp(panX + REST_TX_TALL, -6.4, 6.4) : 0;
+    want.tz = tall ? 1.9 : 1.3;
+    want.yaw = restYaw = tall ? -.5 : -.08;
+    want.pitch = tall ? .34 : .33;
   }
 
   const updaters = [];
@@ -182,7 +191,7 @@ export function createBench(canvas) {
     const dt = Math.min((now - last) / 1000, .05); last = now;
     for (const fn of updaters) fn(dt, now / 1000);
     idle += dt;
-    if (idle > 7 && !dragging && !orbiting) want.yaw = -.08 + Math.sin(now / 2600) * .06;
+    if (idle > 7 && !dragging && !orbiting) want.yaw = restYaw + Math.sin(now / 2600) * .06;
     place(dt);
     key.position.set(view.tx + 9, 17, view.tz + 11);
     lamp.position.set(view.tx, 6.4, view.tz + 2.6);
@@ -200,6 +209,8 @@ export function createBench(canvas) {
     scene, camera, renderer, register, unregister,
     addUpdater: fn => updaters.push(fn),
     resize, restFrame,
+    /** 宽高比跨过竖屏那条线时叫一次（登记时先立刻叫一次，省得开局摆错）。 */
+    onTallChange(fn) { tallWatchers.push(fn); fn(tall); },
     get tall() { return tall; },
     get hovered() { return hovered; },
     /** 空手拖：交给控件去用（比如「点中铜钮后上下拖」）。传 null 收回。 */
@@ -226,6 +237,42 @@ export function createBench(canvas) {
       p.project(camera);
       const r = renderer.domElement.getBoundingClientRect();
       return { x: r.left + (p.x * .5 + .5) * r.width, y: r.top + (-p.y * .5 + .5) * r.height, onScreen: p.z < 1 };
+    },
+    /** 自查用：每件实物的手感区在屏幕上占多大一块（按整屏比例），
+     *  手机竖屏要求每一块都不小于 44×44 个 CSS 像素，量出来才算数。 */
+    pads() {
+      const shown = o => { for (let n = o; n; n = n.parent) if (n.visible === false) return false; return true; };
+    return registry.map(e => ({ name: e.name, shown: shown(e.object), hit: e.padNode ? this.coverage(e.padNode) : null }));
+    },
+    /** 屏幕上一件东西（或一组东西）占多宽多高，按整屏比例算。自查用：
+     *  竖屏要求机器至少占满屏宽 90%、屏高 60%，就得量出来，不能凭眼睛说「够了」。 */
+    coverage(objects) {
+      const list = Array.isArray(objects) ? objects : [objects];
+      const v = new THREE.Vector3();
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, any = false;
+      const take = (n, i) => {
+        const bb = n.geometry.boundingBox || (n.geometry.computeBoundingBox(), n.geometry.boundingBox);
+        v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
+        v.applyMatrix4(n.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+        if (v.z > -.1) return;        // 相机后面或贴到镜头上的点，投影出来会翻号，丢掉。
+        v.applyMatrix4(camera.projectionMatrix);
+        minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+        minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+        any = true;
+      };
+      const walk = o => {
+        // 逐件量各自的 bbox 角，而不是整组的 union 角：整组的盒子会把近处那几只角算得极大，
+        // 竖屏上量出来「机器占 222% 屏宽」就是这么来的（真值约 123%）。
+        if (o.isMesh && o.geometry) { for (let i = 0; i < 8; i++) take(o, i); return; }
+        for (const c of o.children) walk(c);
+      };
+      for (const o of list) if (o) { o.updateWorldMatrix(true, true); walk(o); }
+      if (!any) return null;
+      return {
+        w: (maxX - minX) / 2, h: (maxY - minY) / 2,
+        cx: (minX + maxX) / 4 + .5, cy: (minY + maxY) / 4 + .5,
+        left: minX * .5 + .5, right: maxX * .5 + .5, top: .5 - maxY * .5, bottom: .5 - minY * .5,
+      };
     },
   };
 }
