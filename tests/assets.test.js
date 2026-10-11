@@ -201,7 +201,7 @@ test('createPlay 走完整一局不会开单：账本里没有 director.dress', 
 });
 
 /* 8. 生成工具的纯逻辑 */
-test('生成工具只补缺的、替身要重做（run.mjs 没有可测的纯逻辑就跳过）', async (t) => {
+test('生成工具只补缺的、替身要重做、图片没有替身（run.mjs 没有可测的纯逻辑就跳过）', async (t) => {
   let mod;
   try {
     mod = await import('../tools/assets/run.mjs');
@@ -214,18 +214,36 @@ test('生成工具只补缺的、替身要重做（run.mjs 没有可测的纯逻
     t.skip('run.mjs 没有导出 planRun，纯逻辑在别处，跳过');
     return;
   }
+
   const briefs = [
     { key: 'image-have', kind: 'image', for: { work: 'qiefu' }, spec: {}, why: '已有' },
     { key: 'image-fallback', kind: 'image', for: { work: 'qiefu' }, spec: {}, why: '上次是替身' },
     { key: 'image-missing', kind: 'image', for: { work: 'qiefu' }, spec: {}, why: '还没生成' },
   ];
+  // 修订后的形状（docs/ASSETS.md §4，以 run.mjs 的 planRun 为准）：
+  // manifest 外层包一层 assets；available 是「通道名 → 探活结果」的对象，不是服务名数组。
   const manifest = {
-    'image-have': { kind: 'image', file: 'gen/image-have.png', fallback: false },
-    'image-fallback': { kind: 'image', file: 'gen/image-fallback.png', fallback: true },
+    assets: {
+      'image-have': { kind: 'image', file: 'gen/image-have.png', director: 'lu', work: 'qiefu', provider: 'magpie', fallback: false },
+      'image-fallback': { kind: 'image', file: 'gen/image-fallback.png', director: 'lu', work: 'qiefu', provider: 'magpie', fallback: true },
+    },
   };
-  const plan = planRun(manifest, briefs, ['magpie', 'elevenlabs', 'synth']);
-  const text = JSON.stringify(plan);
-  assert.ok(text.includes('image-missing'), '缺的 key 要进计划');
-  assert.ok(text.includes('image-fallback'), '替身要在正式服务可用时重做');
-  assert.ok(!text.includes('image-have'), '已有且不是替身的 key 不该再生成');
+  const byKey = (plan, key) => plan.find((row) => row.key === key);
+
+  // 正式服务可用：litellm 探活通过、magpie 不通
+  const plan = planRun(manifest, briefs, { litellm: { ok: true }, magpie: { ok: false }, audio: { ok: false } });
+
+  assert.equal(plan.length, briefs.length, '计划与单子一一对应，已有的条目不是从计划里删掉');
+  assert.equal(byKey(plan, 'image-have').action, 'skip', '已有且不是替身的 key 直接跳过，不再生成');
+  assert.equal(byKey(plan, 'image-fallback').action, 'substitute', '替身在正式服务可用时要重做');
+  assert.equal(byKey(plan, 'image-missing').action, 'generate', '还没有的 key 现在开一张');
+  assert.equal(byKey(plan, 'image-missing').provider, 'litellm', '走探活通过的那个服务');
+
+  // 所有通道都不通：图片没有替身，只能记 unavailable；也不许标成 fallback:true
+  const down = planRun(manifest, briefs, { litellm: { ok: false }, magpie: { ok: false }, audio: { ok: false } });
+  assert.equal(byKey(down, 'image-missing').action, 'unavailable', '图片这一类型没有替身，缺通道就报告');
+  assert.notEqual(byKey(down, 'image-fallback').action, 'substitute', '通道不通时不许假装重做');
+  for (const row of down.filter((r) => r.kind === 'image')) {
+    assert.notEqual(row.fallback, true, `图片不该有替身：${row.key}`);
+  }
 });
