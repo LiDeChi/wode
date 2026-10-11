@@ -473,6 +473,11 @@ function render(data) {
     { t: '与 wait 无差别', f: (r) => `${r.sameDiff.same}/${r.sameDiff.total}` }, { t: '导演没给', f: (r) => r.blocked }, { t: '画面没收', f: (r) => r.filtered },
     { t: '文案数', f: (r) => r.texts }, { t: '结局分布', f: (r) => JSON.stringify(r.endings) },
   ]));
+  if (data.deadSummary) {
+    out.push('', `死意图（有诉求、不是被导演挡住、但挑了它和挑「等」后面一模一样）：${data.deadSummary.counts.dead} 个${data.deadSummary.dead.length ? ` → ${data.deadSummary.dead.join(' ')}` : ''}`);
+    out.push(`   被导演全程挡住的（看得见的闸门，不算死）：${data.deadSummary.gated.join(' ')}（${data.deadSummary.gated.length} 个）`);
+    out.push(`   查了 ${data.deadSummary.counts.checked} 格（每一幕每个带诉求的选项，四种夜路各一遍）`);
+  }
 
   sec('6. 结局与 null（对照脚本 / 枚举）');
   out.push('对照脚本：', JSON.stringify(data.goldenSummary.endings));
@@ -600,32 +605,13 @@ function main() {
     }
   }
 
-  // 死选项
-  const dead = [];
-  for (const dir of ['A', 'B']) {
-    const runs = space.filter((r) => r.dir === dir);
-    const index = new Map(runs.map((r) => [JSON.stringify([r.plan.daliang, r.plan.yimen, r.plan.ye, r.plan.night]), r]));
-    for (const act of ['daliang', 'yimen', 'ye']) {
-      for (const option of (act === 'daliang' ? DALIANG : act === 'yimen' ? YIMEN : YE)) {
-        let same = 0; let total = 0; let blocked = 0; let filtered = 0; const endings = {}; const texts = new Set();
-        for (const d of DALIANG) for (const y of YIMEN) for (const e of YE) {
-          const want = { daliang: d, yimen: y, ye: e, [act]: option };
-          const base = index.get(JSON.stringify([want.daliang, want.yimen, want.ye, NIGHTS.clean]));
-          if (!base) continue;
-          total += 1;
-          if (base.acts[act]?.blocked) blocked += 1;
-          if (base.acts[act]?.filtered) filtered += 1;
-          if (base.acts[act]?.text) texts.add(base.acts[act].text);
-          const ref = { daliang: d, yimen: y, ye: e };
-          ref[act] = 'wait';
-          const waitRun = index.get(JSON.stringify([ref.daliang, ref.yimen, ref.ye, NIGHTS.clean]));
-          if (waitRun && sig(base) === sig(waitRun)) same += 1;
-          endings[base.ending || 'null'] = (endings[base.ending || 'null'] || 0) + 1;
-        }
-        dead.push({ dir, act, option, sameDiff: { same, total }, blocked, filtered, endings, texts: texts.size, appeal: APPEAL[act]?.[option] ?? null });
-      }
-    }
-  }
+  // 死选项 + 「死意图」（有诉求、不是被挡、但挑了和等一样）
+  const dead = deadOptions(space);
+  const deadSummary = (() => {
+    const padded = space.filter((r) => r.plan.night.join('>') === NIGHTS.clean.join('>'));
+    const di = deadIntents(padded);
+    return { counts: di.counts, dead: di.dead.map((r) => `${r.dir}/${r.act}:${r.option}`), gated: di.rows.filter((r) => r.appeal && r.blocked === r.sameDiff.total).map((r) => `${r.dir}/${r.act}:${r.option}`) };
+  })();
 
   const goldenEndings = {}; const nullByStage = {}; const nullByFirstError = {};
   for (const r of golden) {
@@ -656,9 +642,10 @@ function main() {
         const key = `${a.want}${a.accepted === true ? '✓' : a.accepted === false ? '✗' : a.accepted === null ? '(无诉求)' : ''}${a.blocked ? '(挡)' : a.filtered ? '(没给出)' : ''}`;
         texts[key] = a.text;
       }
+      // 两个选项各问一遍：一个多半被接受、一个多半被拒，标签由实际结果决定
       const probes = [
-        ...askProbes(dir, act, act === 'daliang' ? 'yi' : act === 'yimen' ? 'back' : 'yi', '(被接受)'),
-        ...askProbes(dir, act, REFUSED_OPTION[act], '(被拒)'),
+        ...askProbes(dir, act, act === 'daliang' ? 'yi' : act === 'yimen' ? 'back' : 'yi'),
+        ...askProbes(dir, act, REFUSED_OPTION[act]),
       ];
       learn.push({ dir, act, texts, tells: [...new Set(space.filter((x) => x.dir === dir).map((r) => r.acts[act]?.tell).filter(Boolean))], probes });
     }
@@ -732,7 +719,7 @@ function main() {
     grants, acceptance, appeals, byPerson, strategies, cross, dead,
     granary: { rows: granaryRows, byVerdict: inspectMatters, keeperReactions: Object.fromEntries(Object.entries(keeperReactions).map(([k, v]) => [k, [...v]])) },
     night, minSteps, nightStart, hesitation,
-    matrix, scan, audit, door, routes, pairs, goldenDiff: golden2,
+    matrix, scan, audit, door, routes, pairs, goldenDiff: golden2, deadSummary,
     goldenSummary: { endings: goldenEndings, nullByStage, nullByFirstError },
     spaceSummary: { endings: space.reduce((m, r) => { const k = r.ending || 'null'; m[k] = (m[k] || 0) + 1; return m; }, {}), blocked: blockedCount, filtered: filteredCount },
     learn, rhythm,
@@ -927,7 +914,7 @@ export function routeCheck() {
   return ROUTE_TABLE.map((rt) => {
     const rec = runPlan(rt.dir, { daliang: rt.daliang, yimen: rt.yimen, night: rt.night, ye: rt.ye, granary: { keeper: 'keeper_doubt', inspect: 'seal', decide: 'report' }, id: rt.id });
     const night = rec.flags?.night ?? null;
-    return { id: rt.id, why: rt.why, expect: rt.expect, ending: rec.ending, night, days: rec.days, steps: rec.steps, rujiTrust: rec.rujiTrust, xinlingTrust: rec.xinlingTrust, hesitant: rec.acts.night?.hesitant ?? null, reason: rec.acts.night?.reason ?? null, yeAccepted: rec.acts.ye?.accepted ?? null, ok: rec.ending === rt.expect.ending && night === rt.expect.night };
+    return { id: rt.id, why: rt.why, expect: rt.expect, ending: rec.ending, night, days: rec.days, steps: rec.steps, seconds: rec.seconds, rujiTrust: rec.rujiTrust, xinlingTrust: rec.xinlingTrust, hesitant: rec.acts.night?.hesitant ?? null, reason: rec.acts.night?.reason ?? null, yeAccepted: rec.acts.ye?.accepted ?? null, ok: rec.ending === rt.expect.ending && night === rt.expect.night };
   });
 }
 
@@ -988,6 +975,46 @@ export function goldenDiff() {
     oldEndings[k] = (oldEndings[k] || 0) + 1;
   }
   return { total: list.length, fields, v1, v2, oldEndings };
+}
+
+/** 死选项：挑了它、后面的一切与「等」一样（投影按 MECHANICS §4，见 sig） */
+export function deadOptions(space) {
+  const rows = [];
+  for (const dir of ['A', 'B']) {
+    const runs = space.filter((r) => r.dir === dir);
+    const key = (daliang, yimen, ye, night) => JSON.stringify([daliang, yimen, ye, night.join('>')]);
+    const index = new Map(runs.map((r) => [key(r.plan.daliang, r.plan.yimen, r.plan.ye, r.plan.night), r]));
+    for (const act of ['daliang', 'yimen', 'ye']) {
+      for (const option of (act === 'daliang' ? DALIANG : act === 'yimen' ? YIMEN : YE)) {
+        let same = 0; let total = 0; let blocked = 0; let filtered = 0; const endings = {}; const texts = new Set();
+        for (const d of DALIANG) for (const y of YIMEN) for (const [nk, moves] of Object.entries(NIGHTS)) for (const e of YE) {
+          if (act === 'daliang' && d !== option) continue;
+          if (act === 'yimen' && y !== option) continue;
+          if (act === 'ye' && e !== option) continue;
+          const base = index.get(key(d, y, e, moves));
+          if (!base) continue;
+          total += 1;
+          if (base.acts[act]?.blocked) blocked += 1;
+          if (base.acts[act]?.filtered) filtered += 1;
+          if (base.acts[act]?.text) texts.add(base.acts[act].text);
+          const ref = { daliang: d, yimen: y, ye: e };
+          ref[act] = 'wait';
+          const waitRun = index.get(key(ref.daliang, ref.yimen, ref.ye, moves));
+          if (waitRun && sig(base) === sig(waitRun)) same += 1;
+          endings[base.ending || 'null'] = (endings[base.ending || 'null'] || 0) + 1;
+        }
+        rows.push({ dir, act, option, sameDiff: { same, total }, blocked, filtered, endings, texts: texts.size, appeal: APPEAL[act]?.[option] ?? null });
+      }
+    }
+  }
+  return rows;
+}
+
+/** 声音一样的「死意图」：有诉求、又不是每次都被导演挡住、但挑它和挑「等」后面一模一样 */
+export function deadIntents(space) {
+  const rows = deadOptions(space);
+  const dead = rows.filter((r) => r.appeal && r.blocked < r.sameDiff.total && r.sameDiff.same === r.sameDiff.total);
+  return { rows, dead, counts: { checked: rows.length, dead: dead.length, gated: rows.filter((r) => r.appeal && r.blocked === r.sameDiff.total).length } };
 }
 
 /** 走一局：大梁 yi、夷门 back、夜里按 moves、邺城 yi；用来做取符之夜的图搜索 */
@@ -1055,7 +1082,7 @@ export function nightGraph(dir, cap = 2000) {
 }
 
 /** 追问能问出什么：动手前 / 选完某个选项之后，对同一个人 ask（文本层唯一的数值解释） */
-export function askProbes(dir, act, option, note) {
+export function askProbes(dir, act, option) {
   const person = { daliang: 'xinling', yimen: 'houying', ye: 'jinbi' }[act];
   const plan = { daliang: 'yi', yimen: 'back', ye: 'yi', night: NIGHTS.clean };
   const s = createSession();
@@ -1070,9 +1097,13 @@ export function askProbes(dir, act, option, note) {
   let idx = 0; let guard = 0;
   while (v.stage === 'act' && guard++ < 40) {
     if (v.act === act) {
-      ask(`动手前 ${note}`);
-      try { v = p.choose(option).view; } catch (e) { out.push({ when: `选 ${option}`, person, answer: `被挡：${e.message}` }); break; }
-      ask(`选 ${option} 之后 ${note}`);
+      ask('动手前');
+      let res;
+      try { res = p.choose(option); } catch (e) { out.push({ when: `选 ${option}`, person, answer: `被挡：${e.message}` }); break; }
+      v = res.view;
+      // 标签照这一次真实的接受与否写，不按「第一个选项一定被接受」猜
+      const acc = res.r && res.r.accepted;
+      ask(`选 ${option} 之后${acc === true ? '(被接受)' : acc === false ? '(被拒)' : '(无诉求)'}`);
       adv();
       continue;
     }
