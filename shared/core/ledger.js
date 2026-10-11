@@ -139,7 +139,7 @@ export function descendants(ledger, seq) {
 }
 
 /** 决定类的记录：导师和导演做出的、需要对用户负责的那些 */
-export const DECISION_KINDS = ['mentor.allot', 'mentor.brief', 'mentor.note', 'mentor.learn', 'director.design', 'director.predict', 'director.grant', 'director.schedule', 'director.learn'];
+export const DECISION_KINDS = ['mentor.allot', 'mentor.brief', 'mentor.note', 'mentor.learn', 'director.design', 'director.predict', 'director.grant', 'director.schedule', 'director.learn', 'director.approve', 'director.refuse'];
 
 /**
  * 服务审计：每一个决定都必须能追到用户。

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>數字世界 · 一個世界，四部作品</title>
+<link rel="stylesheet" href="/world.css" />
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="seal">世</span>
+    <div><h1>一個世界，四部作品</h1>
+      <p>邯鄲之戰。每部作品只講它看得見的那一面；它們之間的線，是從同一張主張圖裡長出來的。</p></div>
+  </div>
+  <div id="director" class="director" title="為你排戲的導演"></div>
+  <a class="back" href="/">← 信息流</a>
+</header>
+
+<section id="meet" class="meet" hidden>
+  <h2>初見</h2>
+  <p>導師先聽你說，再替你挑導演。導演的性情，會決定這個世界裡哪些舊說法推得動。</p>
+  <div id="prefs" class="prefs"></div>
+  <input id="need" maxlength="60" placeholder="你想看什麼？例：我想看一個人在亂世裡怎麼做選擇" />
+  <button id="go" class="btn primary" type="button">走進邯鄲之戰</button>
+</section>
+
+<main id="world" hidden>
+  <div id="fit" class="fit">
+    <div id="stage" class="stage">
+      <svg id="threads" viewBox="0 0 1200 560" aria-hidden="true">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+          </marker>
+        </defs>
+        <g id="ghosts"></g>
+        <g id="lines"></g>
+      </svg>
+      <div id="posters"></div>
+    </div>
+  </div>
+  <p id="narration" class="narration" aria-live="polite"></p>
+  <div class="legend">
+    <span class="lg t-承接"><i></i>承接：前一部長出的說法，被後一部接著往下</span>
+    <span class="lg t-引用"><i></i>引用：後一部沿用，舊說法更難推翻</span>
+    <span class="lg t-并行"><i></i>並行：同一件事兩種說法，都站得住</span>
+    <span class="lg t-争议"><i></i>爭議：衝突了，但推不動</span>
+    <span class="lg t-反转"><i></i>反轉：舊共識被推翻，留作「曾經的共識」</span>
+  </div>
+  <section id="former" class="former" hidden></section>
+  <section id="studio" class="studio"></section>
+</main>
+
+<aside id="slip" class="slip" hidden>
+  <button id="slip-close" class="x" type="button" aria-label="收起">×</button>
+  <div id="slip-body"></div>
+</aside>
+
+<script type="module" src="/world.js"></script>
+</body>
+</html>
