@@ -32,6 +32,8 @@ import { playWork, worldRelations } from './works.js';
 import { createKernel } from '../kernel/kernel.js';
 import { ELIDED_NOTE } from '../kernel/depth.js';
 import CONTROLLERS from '../kernel/controllers/index.js';
+import { designLife } from '../life/plan.js';
+import { createLife } from '../life/life.js';
 import { QIFU_SCENES, QIFU_CONTROLLERS, NIGHT_LIMIT, NIGHT_LANTERN, NIGHT_TILES } from '../scenes/qiefu.js';
 import { WEICHENG_SCENES, WEICHENG_CONTROLLERS } from '../scenes/weicheng.js';
 // 两个新组合（docs/KERNEL.md §7）住在各自的文件里，只是加进同一张场景表，不改上面两部作品
@@ -92,6 +94,31 @@ function freshState() {
 }
 
 /**
+ * 持续生活的存档形状（只在 createPlay({living:...}) 时才建）。
+ * 逻辑拍、已处理的输入、真实感知片段、记忆存储、导演的生活计划都在这里，随 session.save() 一起走。
+ * 不启用生活的会话里，state.play 里连这个键都没有。
+ */
+function freshLifeState() {
+  return {
+    v: 1,
+    seed: null,            // 唯一随机入口：调用方传进来并存下来
+    episodeId: 'ep1',
+    tick: 0,
+    sceneId: null,
+    policies: {},
+    processed: {},         // 输入 id → { tick, op }（重复 id 只跑一次）
+    pendingInputs: [],
+    queue: [],
+    perceptions: {},       // 反应 seq → 感知当时留下的真实片段
+    experiences: {},
+    store: null,           // 记忆存储的存档
+    paused: false,
+    ended: false,
+    pause: { sinceTick: 0, recorded: null },
+  };
+}
+
+/**
  * 在一个已经见过导师的 session 上玩《窃符》。状态放在 session.state.play，随 session.save() 一起存。
  * 返回的每个方法都只改 session，不碰画面。
  *
@@ -110,13 +137,30 @@ export function createPlay(session, opts = {}) {
   // 场景表可以换；本文件里所有场景查找都走这一份（createKernel / grantsOf / view / 舞台流转）
   const scenes = opts.scenes || SCENES;
 
+  // ---- 持续生活（docs/design/LIVING.md §9）：显式打开才有 ----
+  // 不传 opts.living（默认）时 life 是 null：这一份文件后面所有生活相关的分支都不进，
+  // 存档形状、账本、view() 的字段与 680 个脚本的对照组逐字节相同。
+  const living = opts.living === 'director' || opts.living === true ? 'director' : null;
+  const lifeState = living ? (session.state.play.life ||= freshLifeState()) : null;
+  if (living) session.mentor?.enableMind?.();
+
   // 内核的 work 效果要调 session.playWork；旧实现是直接 import playWork。这里把它接上（不进存档）。
   session.playWork = (workId, choice, opts) => playWork(session, workId, choice, opts);
 
   // 内核把「天数 / 旗标 / 各场控制器的状态」放在 session.state.play.kernel（随存档走）。
   // 旧代码读写的是 s.days / s.flags / s.night，所以把它们接到同一份数据上：
   // 存档里仍然是同一个 JSON 形状，只是同一个值不会有两份。
-  const kern = createKernel(session, { scenes, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS, tiers: opts.tiers, tierOf: opts.tierOf, budget: opts.budget });
+  const kern = createKernel(session, { scenes, controllers: { ...CONTROLLERS, ...SCENE_CONTROLLERS }, store: session.state.play, days: START_DAYS, tiers: opts.tiers, tierOf: opts.tierOf, budget: opts.budget, perceptions: lifeState?.perceptions });
+
+  // 生活循环：一秒一个整数逻辑拍。input 走原来那几条路（choose/watch/ask/…），
+  // 所以玩家做的事在账本上还是同一种记录，生活只是替它挑了个拍子。
+  let lifePlanCache = null;
+  let lifePlanKey = null;
+  const lifePlanRef = { get policies() { return lifePlan().policies; } };
+  const life = living ? createLife({
+    session, kernel: kern, plan: lifePlanRef, seed: opts.seed ?? 'life',
+    store: lifeState, scenes, input: (inp) => runInput(inp),
+  }) : null;
   Object.defineProperty(session.state.play, 'days', {
     configurable: true, enumerable: true,
     get: () => kern.days(),
@@ -170,7 +214,11 @@ export function createPlay(session, opts = {}) {
   }
 
   function find(subject, predicate) {
-    return claims.consensus(subject, predicate) || claims.find((c) => c.subject === subject && c.predicate === predicate && c.status !== STATUS.FORMER).slice(-1)[0];
+    // 开了持续生活时只看「本段经历 + 明确继承」里的主张：上一局的结局、下场不参与这一段的计算
+    const scope = session.episodeScope?.() ?? null;
+    const only = scope ? scope.claimIds : null;
+    return claims.consensus(subject, predicate, only)
+      || claims.find((c) => c.subject === subject && c.predicate === predicate && c.status !== STATUS.FORMER && (!only || only.includes(c.id))).slice(-1)[0];
   }
 
   function trustOf(personId) {
@@ -438,6 +486,79 @@ export function createPlay(session, opts = {}) {
     return { r: out.r, text: out.text, view: view() };
   }
 
+  /* ---------------- 持续生活：导演的生活计划与逻辑拍（只在 living 打开时走到） ---------------- */
+
+  /** 导演给每一场每一拍的生活计划。纯函数，不写状态；真正的提交只发生在 lifePolicyFor。 */
+  function lifePlan() {
+    const designs = session.state.designs || {};
+    // 导演案可能晚于 createPlay 才落（先 meet 再 begin）：案一变就重算
+    const key = Object.keys(designs).sort().map((w) => `${w}:${(designs[w].beats || []).map((b) => b.id).join(',')}`).join('|');
+    if (!lifePlanCache || lifePlanKey !== key) {
+      const director = session.director?.() ?? null;
+      const works = [...new Set(Object.values(scenes).map((s) => s.work).filter(Boolean))];
+      const policies = {};
+      const decisions = [];
+      for (const w of works) {
+        const got = designLife({ director, design: designs, work: w, scenes, seed: opts.seed ?? 'life' });
+        Object.assign(policies, got.policies);
+        decisions.push(...got.decisions);
+      }
+      lifePlanCache = { policies, decisions };
+      lifePlanKey = key;
+    }
+    return lifePlanCache;
+  }
+
+  /** 一个 beat 只提交一次生活计划（第二次进这一场直接读存档里的那份） */
+  function lifePolicyFor(sceneId) {
+    const scene = scenes[sceneId];
+    if (!scene) return null;
+    const work = workOf(sceneId);
+    const beat = scene.beat ?? sceneId;
+    const planned = lifePlan().policies[beat] || lifePlan().policies[sceneId];
+    if (!planned) return null;
+    const done = session.commitLifeDesign({ work, beat, policy: planned, cause: [openSeqOf(work)].filter(Boolean) });
+    return done?.policy ?? planned;
+  }
+
+  function lifeEnter(sceneId) {
+    if (!life) return null;
+    const id = sceneId || currentActId();
+    if (!id || !scenes[id]) return null;
+    life.enter(id, lifePolicyFor(id));
+    return id;
+  }
+
+  /** 这一拍走完，舞台可能已经翻到下一场：把生活循环挪过去（同一 beat 不重复提交） */
+  function syncLifeScene() {
+    if (!life) return null;
+    const id = currentActId();
+    if (id && scenes[id] && id !== life.state().sceneId) lifeEnter(id);
+    return life.state().sceneId;
+  }
+
+  /** 玩家做的事仍然走原来那几条路：账本、反应、文字一字不变，只是由逻辑拍来触发 */
+  function runInput(inp) {
+    const a = inp?.args || {};
+    if (inp?.op === 'choose') return choose(a.id ?? a.option);
+    if (inp?.op === 'watch') return watch(a.person ?? a.id);
+    if (inp?.op === 'ask') return ask(a.person ?? a.id);
+    if (inp?.op === 'chooseKeeper') return chooseKeeper(a.id ?? a.keeper);
+    if (inp?.op === 'granary') return granaryChoose(a.id ?? a.choice);
+    if (inp?.op === 'begin') return begin();
+    if (inp?.op === 'next') return next();
+    return null;
+  }
+
+  /** 推进到某一拍：同一 toTick 重复调用、同一 input id 重复提交都只发生一次 */
+  function advance(args = {}) {
+    if (!life) return null;
+    lifeEnter(life.state().sceneId || currentActId());
+    const r = life.advance(args);
+    syncLifeScene();
+    return r;
+  }
+
   /** 画面需要的一切：现在在哪、能做什么、为什么只能做这些 */
   function view() {
     const s = P();
@@ -484,6 +605,11 @@ export function createPlay(session, opts = {}) {
     // 档位：默认那一档（普通）不往画面上加任何字段，旧画面逐字段相同
     if (tier !== '普通') out.tier = tier;
     if (tier === '一笔带过') { out.elided = true; out.elidedNote = ELIDED_NOTE; }
+    // 开了持续生活才多这一项：现在第几拍、导演给这一场的生活计划
+    if (life) {
+      const ls = life.state();
+      out.life = { tick: ls.tick, scene: ls.sceneId, paused: ls.paused, ended: ls.ended, policy: life.policy?.(ls.sceneId) ?? null };
+    }
     return out;
   }
 
@@ -492,7 +618,19 @@ export function createPlay(session, opts = {}) {
     return [...ACT_ORDER, 'granary'].filter((id) => s.acts[id]).map((id) => ({ id, title: scenes[id]?.title, choice: s.acts[id].choice, signal: s.acts[id].signal, text: s.acts[id].outcome?.text || '' }));
   }
 
-  return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan(), enterExtra, extraScenes: () => EXTRA_IDS.slice() };
+  return {
+    begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan(), enterExtra, extraScenes: () => EXTRA_IDS.slice(),
+    // 开了持续生活才多这几条；默认关闭时返回对象与旧实现逐字段相同
+    ...(life ? {
+      life,
+      kernel: () => kern,
+      advance,
+      lifeEnter,
+      lifeRead: (sceneId) => { const id = sceneId || life.state().sceneId; return id ? life.read(id) : null; },
+      lifeTrace: (seq) => life.trace(seq),
+      lifeRecall: (q) => life.recall(q),
+    } : {}),
+  };
 }
 
 /** 一局走完要多久（秒），给地板检查用 */
