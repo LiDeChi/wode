@@ -5,15 +5,19 @@
 // 所以内核抽完之后、以及后面两个新组合（被偷听、押粮）接进来之后，
 // 同一套地板检查自动把它们也覆盖到——只要那个场景经 createPlay 出场。
 //
-// 四种玩家不是四段写死的脚本，而是四条“看着 view().options 做决定”的规则，
+// 玩家不是几段写死的脚本，而是几条“看着 view().options 做决定”的规则，
 // 判断只靠选项自己的 id / verb / line 这些确定性特征：
 //   curious    先看心思再动：这一幕的人没看全就先看，看完再问一句，最后才动手
 //   hasty      直接动手：第一个能选的（wait 除外）就选，不看心思也不追问
 //   loyal      总选讲义的：选项里读得出「义」的就选它；读不出来走稳妥路线（夜里先递令牌再挪）
 //   contrarian 总选反着来：反过来挑最后一个能选的；进粮仓先把守仓人换成另一个
+//   patient    沉得住气的：有 wait 又有“自己会动的东西”（守卫 / 时钟 / 有人在盯）时，
+//              先等一两步看局面怎么变，再照 curious 的偏好动手
+// 前四种是分幕地板的对照组（BASE_PERSONAS），它们的结局分布必须一字不变；
+// patient 是后加的第五种，只报数、不进那四种的对照。
 //
 // 两个新组合（被偷听、押粮）走的是另一条进场路：createPlay(session).enterExtra(id)。
-// 同一条 walk 多收一个 enter 回调就能驱动它们，四种玩家、指纹去重、有限深度枚举全部照旧复用
+// 同一条 walk 多收一个 enter 回调就能驱动它们，同一套玩家、指纹去重、有限深度枚举全部照旧复用
 // （见下面「两个新组合」那一节），所以新场景接进来不用再写一套模拟器。
 //
 // 地板（§6）：
@@ -21,7 +25,7 @@
 //   三种结局都走得到      history / jinbi-lives / broken（外加对取符之夜做有限深度枚举）
 //   一种诉求说服不了所有人 sameAppealWinsAll 必须是 false
 //   一局 8–12 分钟        estimateSeconds 的 min/max 落在这个区间
-//   新组合也守地板        每个新组合：四种玩家 × 两位导演 × 若干种子都不卡（stuck=0）、
+//   新组合也守地板        每个新组合：五种玩家 × 两位导演 × 若干种子都不卡（stuck=0）、
 //                         枚举出来的每个结局至少有一条路走到、任何局面都留着一个能推进时间的选项
 //                         （不会出现“只会被拒、又永远不耗时间”的死循环）
 
@@ -186,8 +190,34 @@ function walk(createSession, answers, step, shouldStop, enter) {
 }
 
 /* ------------------------------------------------------------------ *
- * 四种玩家
+ * 玩家
  * ------------------------------------------------------------------ */
+
+/** 分幕地板的对照组就是这四种：它们的结局分布必须一字不变（patient 只加在它们旁边） */
+export const BASE_PERSONAS = ['curious', 'hasty', 'loyal', 'contrarian'];
+
+/** 沉得住气的：一个场面最多先等这么多步，看局面自己怎么变 */
+const PATIENT_WAITS = 2;
+
+/**
+ * 这一场有没有「自己会动的东西」——不等也在变，等一拍就换一个样：
+ *   · 带格子的一夜：守卫与巡灯自己会走，门口那位也要等她定神（wait 在这里是实质决定，不是兜底）；
+ *   · 有人在盯着（attention 里有人 on）：你不动，他也会换班走开；
+ *   · 时钟在走（clock）：等也是耗时间的一种走法。
+ * 都没有的场面（大梁、夷门、邺城、粮仓）等也白等，那就照 curious 的偏好来。
+ */
+function selfChanging(v) {
+  if (v.night) return true;
+  return (v.controllers || []).some((c) => {
+    const kind = c.view && c.view.kind;
+    if (kind === 'clock') return true;
+    if (kind === 'attention') return (c.view.on || []).length > 0;
+    return false;
+  });
+}
+
+/** 带格子的一幕里「门口」是倒数第二格（后门前那一格）：在那儿等，等的才是门里的人定神 */
+const doorOf = (night) => (night.tiles || []).length - 2;
 
 export const PERSONAS = {
   curious: {
@@ -231,6 +261,24 @@ export const PERSONAS = {
         if (other) { memo.switchedKeeper = true; return { op: 'keeper', id: other.id }; }
       }
       return { op: 'choose', id: pickLast(opts).id };
+    },
+  },
+  patient: {
+    id: 'patient',
+    label: '沉得住气的：先等一两步',
+    next(v, opts, play, memo) {
+      const scene = v.act || v.stage;
+      if (memo.patientScene !== scene) { memo.patientScene = scene; memo.patientWaits = 0; }
+      const wait = opts.find((o) => o.verb === 'wait');
+      if (wait && selfChanging(v) && memo.patientWaits < PATIENT_WAITS) {
+        // 带格子的一夜只在门口等：在别处空等只是白烧一拍（灯还在走），门口那位定神了也不必再等
+        const atDoor = !!v.night && v.night.pos === doorOf(v.night) && !v.night.rujiReady;
+        if (!v.night || atDoor) {
+          memo.patientWaits += 1;
+          return { op: 'choose', id: wait.id };
+        }
+      }
+      return PERSONAS.curious.next(v, opts, play, memo);
     },
   },
 };
@@ -558,11 +606,13 @@ function enumerateNight(createSession, answers) {
 
 /**
  * 把地板逐条跑一遍：
- *   两套导演偏好 × 四种玩家 × 若干种子走满一局；再对带格子的那一幕做有限深度枚举；
- *   两个新组合各走一遍（四种玩家 × 两位导演 × 若干种子 + 每个结局的见证路径重放）。
- * 返回 { deadEnds, endings, sameAppealWinsAll, seconds:{min,max}, extras, stalls, ok }。
- * endings 是走到的次数（> 0 就是走得到；有限枚举至少记 1 次）。
- * extras[场景 id] = { runs, endings, reachable, missing, stalls, refused, seconds, ok }：
+ *   两套导演偏好 × 四种玩家（BASE_PERSONAS）× 若干种子走满一局；再对带格子的那一幕做有限深度枚举；
+ *   两个新组合各走一遍（五种玩家 × 两位导演 × 若干种子 + 每个结局的见证路径重放）。
+ * 返回 { deadEnds, endings, sameAppealWinsAll, seconds:{min,max}, patient, extras, stalls, ok }。
+ * endings 是走到的次数（> 0 就是走得到；有限枚举至少记 1 次）；这四个字段是加 patient 之前的老读数，
+ * 加第五种玩家也不能动它们 —— patient 单独报在自己那一栏里。
+ * patient = { persona, runs, endings, seconds }：沉得住气的整局结局分布（t32 量数字要看这个）。
+ * extras[场景 id] = { runs, endings, byPersona, reachable, missing, witnessOnly, stalls, refused, seconds, ok }：
  * 一局的 8–12 分钟地板只管原作整局，新组合是单场，秒数单独报，不混进 seconds。
  */
 export function floorChecks(createSession) {
@@ -572,7 +622,7 @@ export function floorChecks(createSession) {
   const stalls = [];
 
   for (const dir of ['A', 'B']) {
-    for (const persona of Object.keys(PERSONAS)) {
+    for (const persona of BASE_PERSONAS) {
       for (const seed of SEEDS) {
         const r = simulate(createSession, { answers: ANSWERS[dir], persona, seed });
         if (r.stuck) deadEnds.push({ answers: dir, persona, seed, where: r.path[r.path.length - 1] || null, path: r.path.slice(-4) });
@@ -580,6 +630,26 @@ export function floorChecks(createSession) {
         seconds.push(r.seconds);
       }
     }
+  }
+
+  /* ---------------- 第五种玩家（沉得住气的）：只报数，不进上面那四种的对照 ---------------- */
+
+  // 上面那四种的 endings / seconds 是地板的老读数，加了 patient 也不能动它们；
+  // patient 单独跑一遍（两位导演 × 若干种子）报在这里，t32 量数字时连同它一起看。
+  const patient = { persona: 'patient', runs: 0, endings: { history: 0, 'jinbi-lives': 0, broken: 0 }, seconds: { min: 0, max: 0 } };
+  {
+    const secs = [];
+    for (const dir of ['A', 'B']) {
+      for (const seed of SEEDS) {
+        const r = simulate(createSession, { answers: ANSWERS[dir], persona: 'patient', seed });
+        patient.runs += 1;
+        if (patient.endings[r.ending] !== undefined) patient.endings[r.ending] += 1;
+        secs.push(r.seconds);
+        // 沉得住气也不能走进死路：真卡住了照样进 deadEnds（四种玩家没卡的话这个数组仍是空的）
+        if (r.stuck) deadEnds.push({ answers: dir, persona: 'patient', seed, where: r.path[r.path.length - 1] || null, path: r.path.slice(-4) });
+      }
+    }
+    patient.seconds = { min: Math.min(...secs), max: Math.max(...secs) };
   }
 
   const night = enumerateNight(createSession, ANSWERS.B);
@@ -594,12 +664,15 @@ export function floorChecks(createSession) {
   for (const sceneId of EXTRA_IDS) {
     const runs = [];
     const reached = {};
+    const byPersona = {}; // 每个玩家走到的结局（见证重放不算，用来查“只有见证走得到”的结局）
     for (const dir of ['A', 'B']) {
       for (const persona of Object.keys(PERSONAS)) {
         for (const seed of SEEDS) {
           const r = simulateExtra(createSession, sceneId, { answers: ANSWERS[dir], persona, seed });
           runs.push({ answers: dir, persona, seed, ...r });
-          if (r.ending) reached[r.ending] = (reached[r.ending] || 0) + 1;
+          const bp = byPersona[persona] || (byPersona[persona] = { runs: 0, endings: {} });
+          bp.runs += 1;
+          if (r.ending) { reached[r.ending] = (reached[r.ending] || 0) + 1; bp.endings[r.ending] = (bp.endings[r.ending] || 0) + 1; }
           if (r.stuck) deadEnds.push({ answers: dir, persona, seed, scene: sceneId, where: r.path[r.path.length - 1] || null, path: r.path.slice(-4) });
         }
       }
@@ -626,12 +699,16 @@ export function floorChecks(createSession) {
     }
     const reachable = scan.endings;
     const missing = reachable.filter((e) => !reached[e]);
+    // 只有见证重放走得到的结局：枚举说它走得到，可玩家一次都没走到（被低估的那条路）
+    const witnessOnly = reachable.filter((e) => !Object.values(byPersona).some((bp) => bp.endings[e]));
     const secs = runs.map((r) => r.seconds);
     extras[sceneId] = {
       runs: runs.length,
-      endings: reached,      // 四种玩家 + 见证重放各走到结局几次
+      endings: reached,      // 玩家 + 见证重放各走到结局几次
+      byPersona,             // 每个玩家（不含见证）走到的结局次数
       reachable,             // 枚举证明走得到的结局（每一个都配一条见证路径）
       missing,               // 枚举走得到、但一次都没被走到的结局（应当为空）
+      witnessOnly,           // 只有见证走到、玩家没走到的结局（不该有：说明玩家低估了这条玩法）
       stalls: scan.stalls,
       refused: scan.refused, // 出现过 allowed:false 选项的局面数（押粮粮袋出手后就是这种局面）
       seconds: { min: Math.min(...secs), max: Math.max(...secs) },
@@ -655,5 +732,5 @@ export function floorChecks(createSession) {
     && sec.max <= FLOOR_SECONDS.max
     && extrasOk;
 
-  return { deadEnds, endings, sameAppealWinsAll, seconds: sec, extras, stalls, ok };
+  return { deadEnds, endings, sameAppealWinsAll, seconds: sec, patient, extras, stalls, ok };
 }
