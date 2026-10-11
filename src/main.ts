@@ -3,10 +3,10 @@ import { WorldApi } from './ui/api';
 import { icon, escapeHtml as h } from './ui/icons';
 import { Theatre } from './presentation/scene';
 import { TheatreAudio } from './presentation/audio';
-import type { GranaryView, SceneCharacter, SceneKind } from './presentation/contracts';
+import type { GranaryView, NightView, SceneCharacter, SceneKind } from './presentation/contracts';
 import { GRAIN_CAPACITY } from './data/rules';
 import { ACTS, PROLOGUE, WORKS } from './game/story';
-import { NightGame } from './game/night';
+import { NightGame, guardTone } from './game/night';
 import { getMind, getActorView, checkConsistency, getOverturnCost, replayEvents } from './core/world';
 import { createWorld } from './core/seed';
 import { runSwapBenchmark, buildModificationRequest } from './core/mechanisms';
@@ -165,30 +165,78 @@ async function storyChoice(choice: string) {
   toast(result.message || '这句话已经留在他心里。');
   playAct();
 }
+const guardStateLabel = { patrol: '巡逻', investigate: '赶来查看', return: '归位' } as const;
+function nightHudHtml() {
+  return `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">按住 E 取走寝殿的兵符，再回到左侧门外</strong><small id="night-status">屏风能挡住视线，石台挡住脚步。走得快就响，蹲着走就静。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-gauges"><div class="night-gauge"><span>脚步</span><div class="gauge-track"><span id="noise-fill"></span></div><small id="noise-label">站着不动</small></div><div class="night-gauge"><span>守卫</span><div class="guard-watch" id="guard-watch"></div><small id="guard-note">两人都在巡逻</small></div><div class="night-gauge pebble-gauge"><span>碎瓦</span><strong id="pebble-count">×2</strong><small>掷出去把守卫引开</small></div></div><div class="grab-panel" id="grab-panel" hidden><span>按住 E 取符</span><div class="grab-track"><span id="grab-fill"></span></div><small>取符时不能走动。有人看着你，就会被认出来。</small></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><button class="action-button" data-action="dash" aria-pressed="false">疾行</button><button class="action-button grab-button" aria-pressed="false">取符</button><button class="action-button" data-action="throw">掷石</button><span class="keyboard-help">方向键 / WASD 移动 · Shift 放轻脚步 · 空格 疾行<br>按住 E 取符 · Q 掷石 · 也可以点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`;
+}
+function renderNightHud(view: NightView) {
+  theatre?.updateNight(view);
+  const setWidth = (id: string, value: number) => { const element = document.getElementById(id); if (element) element.style.width = `${Math.max(0, Math.min(1, value)) * 100}%`; };
+  setWidth('exposure-fill', view.exposure);
+  const exposure = document.getElementById('exposure-label');
+  if (exposure) exposure.textContent = view.exposure >= 0.5 ? '有人认出了你' : view.exposure > 0.02 ? '有人望向这里' : view.hiding ? '藏在屏风后' : '无人看见';
+  // Loudness is a bar rather than a word so the trade the player is making — walk fast and
+  // be heard, or creep and be slow — stays visible while they are making it.
+  setWidth('noise-fill', view.noise / 1.8);
+  const noise = document.getElementById('noise-label');
+  if (noise) noise.textContent = view.noise >= 1.5 ? '脚步很响' : view.noise > 0.8 ? '走路的声音' : view.noise > 0 ? '很轻' : '站着不动';
+  const watch = document.getElementById('guard-watch');
+  if (watch) watch.innerHTML = view.guards.map(guard => `<span class="guard-dot" data-tone="${guardTone(guard.alert)}" title="${guardStateLabel[guard.state]}"></span>`).join('');
+  const note = document.getElementById('guard-note');
+  if (note) note.textContent = view.guards.some(guard => guard.state === 'investigate') ? '有人朝声音走来' : view.guards.every(guard => guard.state === 'patrol') ? '两人都在巡逻' : '守卫在归位';
+  const pebbles = document.getElementById('pebble-count'); if (pebbles) pebbles.textContent = `×${view.pebbles}`;
+  const panel = document.getElementById('grab-panel'); if (panel) panel.hidden = !view.inReach && view.grab <= 0;
+  setWidth('grab-fill', view.grab);
+  const goal = document.getElementById('night-goal'); if (goal && view.obtained) goal.textContent = '兵符在手。沿来路回到左侧门外。';
+  const status = document.getElementById('night-status');
+  if (status) status.textContent = view.spotted ? '有人看清了你，这一环会留下缺口。'
+    : view.obtained ? '拿到了。剩下的只有一件事：别被看见。'
+    : view.hiding ? '屏风挡住了视线，慢慢挪。'
+    : '屏风与石台能挡住视线。走得快就响，蹲着走就静。';
+}
 function nightScene() {
   currentScene = 'night'; nightFinished = false;
-  playShell('取符之夜', '大梁 · 魏宫', ['ruji', 'player'], 'night', `<div class="night-objective"><div><span class="objective-seal">${icon('seal')}</span><strong id="night-goal">取走寝殿的兵符，再回到左侧门外</strong><small id="night-status">避开灯光，屏风与石台能遮住你。</small></div><div class="exposure"><span id="exposure-label">无人看见</span><div><span id="exposure-fill"></span></div></div></div><div class="night-controls"><div class="touch-pad" aria-label="移动方向"><button data-key="arrowup" aria-label="向前">↑</button><button data-key="arrowleft" aria-label="向左">←</button><button data-key="arrowdown" aria-label="向后">↓</button><button data-key="arrowright" aria-label="向右">→</button></div><button class="crouch-button" data-action="crouch" aria-pressed="false">${icon('moon')}放轻脚步</button><span class="keyboard-help">方向键 / WASD 移动<br>Shift 放轻脚步 · 也可点地面</span><button class="text-button" data-action="night-wait">留在门外</button></div>`);
-  night = new NightGame(view => { void finishNight(view.detected, view.obtained); }, view => {
-    theatre?.updateNight(view);
-    const fill = document.getElementById('exposure-fill'); if (fill) fill.style.width = `${view.exposure * 100}%`;
-    const label = document.getElementById('exposure-label'); if (label) label.textContent = view.exposure > 0.02 ? '有人望向这里' : view.hiding ? '藏在屏风后' : '无人看见';
-    const goal = document.getElementById('night-goal'); if (goal && view.obtained) goal.textContent = '兵符在手。沿来路回到左侧门外。';
-  });
+  playShell('取符之夜', '大梁 · 魏宫', ['ruji', 'player'], 'night', nightHudHtml());
+  night = new NightGame(view => { void finishNight(view); }, renderNightHud);
   const saved = state().nightRun;
-  if (saved && saved.workId === (nightStandalone ? 'night' : 'qiefu') && !saved.finished) night.restore(saved.frames);
-  theatre?.updateNight(night.view);
+  if (saved && saved.workId === (nightStandalone ? 'night' : 'qiefu') && !saved.finished) {
+    night.restore(saved.frames);
+    // Coming back should not silently stand the player up. The stance is restored only in the
+    // safe direction: creeping is a defensive choice, whereas resuming into a sprint would be
+    // restoring a hazard the player never re-chose.
+    if (saved.frames.at(-1)?.crouching) night.crouching = true;
+  }
+  renderNightHud(night.view);
   document.querySelectorAll<HTMLElement>('[data-key]').forEach(button => {
     button.addEventListener('pointerdown', event => { event.preventDefault(); button.setPointerCapture(event.pointerId); night?.key(button.dataset.key!, true); });
     for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(eventName, () => night?.key(button.dataset.key!, false));
   });
+  // The grab button is a hold, not a click, so it is driven by pointer events alone and
+  // deliberately carries no data-action — a click fires after pointerup and would latch the
+  // hold on forever. Holding it out of range is harmless and useful: you keep walking until
+  // the seal is in reach, and then the hold starts by itself.
+  const grabButton = document.querySelector<HTMLElement>('.grab-button');
+  if (grabButton) {
+    const hold = (held: boolean) => { night?.grab(held); grabButton.setAttribute('aria-pressed', String(held)); };
+    grabButton.addEventListener('pointerdown', event => { event.preventDefault(); hold(true); });
+    // Release is listened for on the window rather than by capturing the pointer: a captured
+    // pointer can be lost mid-drag, and a stranded grab would leave the player unable to walk.
+    for (const eventName of ['pointerup', 'pointercancel']) window.addEventListener(eventName, () => {
+      if (grabButton.getAttribute('aria-pressed') === 'true') hold(false);
+    });
+  }
 }
-async function finishNight(detected: boolean, obtained: boolean) {
+async function finishNight(view: NightView) {
   if (nightFinished) return;
   nightFinished = true; if (night) night.paused = true;
-  const result = await operation('night-run', { frames: night?.frames() || [], workId: nightStandalone ? 'night' : 'qiefu', finish: true, abandoned: !night?.view.finished });
+  const result = await operation('night-run', { frames: night?.frames() || [], workId: nightStandalone ? 'night' : 'qiefu', finish: true, abandoned: !view.finished });
   if (!result) { nightFinished = false; if (night) night.paused = false; return; }
-  audio.cue(detected ? 'alarm' : 'seal');
-  showOverlay(`<div class="moment-result"><span class="large-seal">${detected ? '痕' : obtained ? '符' : '等'}</span><h2>${detected ? '有人看见了这一夜' : obtained ? '半块兵符，终于到了你手里' : '这一夜，你留在门外'}</h2><p>${h(result.message || (detected ? '这不是终止。你的迟疑，会成为别人的记忆。' : '如姬的名字，留在了这段经历里。'))}</p><p class="muted">${detected || !obtained ? '成因链已经改变。接下来的，是本作的历史。' : '兵符会去往邺，那里仍有一个人在等证据。'}</p><button class="primary" data-action="${nightStandalone ? 'night-result-home' : 'next-act'}">${nightStandalone ? '回作品墙看后果' : '去邺城'}${icon('arrow')}</button><button class="text-button" data-action="night-retry">从门外再来一次</button></div>`, false);
+  // Three endings, not two: escaping with the seal while a guard had clearly recognised you
+  // keeps the object but loses the secret, so it gets its own words instead of being folded
+  // into either a clean win or a total failure.
+  const clean = view.obtained && !view.detected && !view.spotted;
+  audio.cue(view.detected ? 'alarm' : view.spotted ? 'choice' : 'seal');
+  showOverlay(`<div class="moment-result"><span class="large-seal">${view.detected ? '痕' : view.spotted ? '隙' : view.obtained ? '符' : '等'}</span><h2>${view.detected ? '有人看见了这一夜' : view.spotted ? '兵符到手，可有人看清了这一程' : view.obtained ? '半块兵符，终于到了你手里' : '这一夜，你留在门外'}</h2><p>${h(result.message || (view.detected ? '这不是终止。你的迟疑，会成为别人的记忆。' : view.spotted ? '器物可以补，走漏的消息补不回来。' : '如姬的名字，留在了这段经历里。'))}</p><p class="muted">${clean ? '兵符会去往邺，那里仍有一个人在等证据。' : '成因链已经改变。接下来的，是本作的历史。'}</p><button class="primary" data-action="${nightStandalone ? 'night-result-home' : 'next-act'}">${nightStandalone ? '回作品墙看后果' : '去邺城'}${icon('arrow')}</button><button class="text-button" data-action="night-retry">从门外再来一次</button></div>`, false);
 }
 function siegeSquare() {
   currentScene = 'siege-square'; work = 'siege';
@@ -366,7 +414,9 @@ async function handleAction(action: string, element: HTMLElement) {
   else if (action === 'next-act') { closeOverlay(); playAct(); }
   else if (action === 'night-retry') { const result = await operation('night-run', { frames: [], workId: nightStandalone ? 'night' : 'qiefu' }); if (result) { closeOverlay(); nightScene(); } }
   else if (action === 'crouch') { if (night) { night.crouching = !night.crouching; element.setAttribute('aria-pressed', String(night.crouching)); } }
-  else if (action === 'night-wait') await finishNight(false, false);
+  else if (action === 'dash') { if (night) { night.sprinting = !night.sprinting; element.setAttribute('aria-pressed', String(night.sprinting)); } }
+  else if (action === 'throw') night?.throwPebble();
+  else if (action === 'night-wait') { if (night) await finishNight(night.view); }
   else if (action === 'play-pause') { if (night) { night.paused = true; night.clearInput(); } theatre?.setPaused(true); audio.pause(true); showOverlay(`<span class="mini-label">人还在，戏可以等</span><h2>这一场，先停在这里。</h2><p>进度已经记下。你可以继续，也可以回到作品墙。</p><button class="primary" data-action="resume">继续这场戏 ${icon('play')}</button><button class="text-button" data-action="home">回到作品墙</button>`, false); }
   else if (action === 'resume') { closeOverlay(); theatre?.setPaused(false); audio.pause(false); }
   else if (action === 'relief') {
@@ -424,13 +474,22 @@ document.addEventListener('click', event => {
 window.addEventListener('keydown', event => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   if (event.key === 'Escape') { if (document.querySelector('.overlay-close')) closeOverlay(); return; }
-  if (night && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'Shift'].includes(event.key)) { event.preventDefault(); night.key(event.key, true); }
+  // Compare on the lowercased key: holding Shift to creep turns 'd' into 'D', and matching
+  // the raw value would silently stop movement exactly when the player crouches.
+  const pressed = event.key.toLowerCase();
+  if (night && ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'shift', ' '].includes(pressed)) { event.preventDefault(); night.key(pressed, true); }
+  // Grab is a hold, throw is a press: repeating a held Q would spend both pebbles at once.
+  if (night && pressed === 'e') { event.preventDefault(); night.grab(true); }
+  if (night && pressed === 'q' && !event.repeat) night.throwPebble();
   if (event.key === 'Tab' && document.querySelector('.overlay-sheet')) {
     const focusable = [...document.querySelectorAll<HTMLElement>('.overlay-sheet button:not([disabled]), .overlay-sheet input, .overlay-sheet textarea, .overlay-sheet a, .overlay-sheet summary')];
     const first = focusable[0], last = focusable.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }
 });
-window.addEventListener('keyup', event => night?.key(event.key, false));
+window.addEventListener('keyup', event => {
+  night?.key(event.key.toLowerCase(), false);
+  if (event.key.toLowerCase() === 'e') night?.grab(false);
+});
 window.addEventListener('pagehide', () => {
   if (!night || nightFinished) return;
   navigator.sendBeacon('/api/night-run', new Blob([JSON.stringify({ baseVersion: state().version, frames: night.frames(), workId: nightStandalone ? 'night' : 'qiefu' })], { type: 'application/json' }));

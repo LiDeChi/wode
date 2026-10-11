@@ -6,7 +6,7 @@ import { assertClaimReferences, clampUnit, copyWorld, dependentClaims, evidenceE
 import { installMechanism, rollbackMechanism, validateMechanism } from './mechanisms';
 import { preparePresentation, recordCall, renewBudget } from './presentation';
 import { resetWorld, anchorImport } from './lifecycle';
-import { recordNightRun, replayNight } from './night-run';
+import { deriveNightOutcome, recordNightRun, replayNight } from './night-run';
 import { distributeRelief } from './siege';
 
 const works = ['prologue', 'qiefu', 'siege', 'night', 'studio', 'replay'];
@@ -15,7 +15,7 @@ const modernKnowledge = /互联网|网络服务器|手机|电脑|人工智能|�
 const storyActions: Record<string, Record<string, Intent['verb'][]>> = {
   court: { petition: ['say', 'persuade'], gift: ['give', 'say'], wait: ['wait'] },
   gate: { return: ['say', 'persuade', 'escort'], rush: ['say', 'persuade', 'escort'], listen: ['say', 'persuade', 'wait'] },
-  night: { escape: ['escort', 'steal'], detected: ['escort', 'steal'] },
+  night: { escape: ['escort', 'steal'], spotted: ['escort', 'steal'], detected: ['escort', 'steal'] },
   camp: { verify: ['verify', 'say', 'persuade'], force: ['command', 'say'], appeal: ['say', 'persuade'] },
 };
 
@@ -50,8 +50,7 @@ function validateIntent(state: WorldState, intent: Intent): string | undefined {
     if (!state.nightRun?.finished || state.nightRun.workId !== intent.workId) return '请由潜行入口提交实际移动记录，不能直接宣告取符成功。';
     try {
       const view = replayNight(state.nightRun.frames).view;
-      const actualChoice = view.detected ? 'detected' : 'escape';
-      const actualAmount = view.finished && view.obtained && !view.detected ? 1 : 0;
+      const { choice: actualChoice, amount: actualAmount } = deriveNightOutcome(view);
       if ((!view.finished && !state.nightRun.abandoned) || intent.choice !== actualChoice || intent.amount !== actualAmount) return '取符声明与实际移动结果不符。';
     } catch { return '潜行录制未通过。'; }
   }
@@ -184,18 +183,24 @@ export function applyIntent(state: WorldState, intent: Intent): ActionResult {
     } else if (choice && intent.sceneId === 'night') {
       const ruji = think('ruji', '取符护送');
       const guard = think('palace-guard', '观察');
-      const obtained = choice === 'escape' && intent.amount === 1;
+      // Three ways out, not two. Being seen and still getting away keeps the seal but
+      // loses the secret, so the cause link breaks even though nothing was caught.
+      const spotted = choice === 'spotted';
+      const obtained = (choice === 'escape' || spotted) && intent.amount === 1;
       const detected = choice === 'detected';
       const affectsStory = !draft.story.completed;
       if (affectsStory) {
         draft.story.sealObtained = obtained;
-        draft.story.nightDetected = detected;
+        draft.story.nightDetected = detected || spotted;
         draft.entities.seal.location = obtained ? 'player' : 'palace';
-        setLink('ruji-seal', obtained && !detected);
+        setLink('ruji-seal', obtained && !detected && !spotted);
         draft.story.choices.push(`night:${choice}:${obtained ? 1 : 0}`);
       }
-      summary = detected ? '守卫发现了这一程，如姬未能带出兵符。取符之环断了，这次失败会成为本作的历史。' : obtained ? '如姬带着半符出了宫门，你的护送留下了亲历凭证。兵符能合上，却未必能让晋鄙放下责任。' : '你走到了出口，但如姬手中没有兵符。脱身已被记下，取符这一环仍未完成。';
-      const result = emit('ruji', `night.${eventId}`, obtained ? 'seal-escaped' : detected ? 'detected' : 'escaped-without-seal', summary, ['player', 'ruji', ...(detected ? ['palace-guard'] : [])], [], 'witnessed');
+      summary = detected ? '守卫发现了这一程，如姬未能带出兵符。取符之环断了，这次失败会成为本作的历史。'
+        : spotted ? '兵符出了宫，但有人看清了那一程。器物到手，秘密没有守住，这一环留下缺口。'
+        : obtained ? '如姬带着半符出了宫门，你的护送留下了亲历凭证。兵符能合上，却未必能让晋鄙放下责任。'
+        : '你走到了出口，但如姬手中没有兵符。脱身已被记下，取符这一环仍未完成。';
+      const result = emit('ruji', `night.${eventId}`, spotted ? 'seal-escaped-spotted' : obtained ? 'seal-escaped' : detected ? 'detected' : 'escaped-without-seal', summary, ['player', 'ruji', ...(detected || spotted ? ['palace-guard'] : [])], [], 'witnessed');
       emit('ruji', `reason.${eventId}`, ruji.action, ruji.reason, ['ruji'], [result.id], 'told');
       if (detected) emit('palace-guard', `reason.${eventId}`, guard.action, guard.reason, ['palace-guard'], [result.id], 'told');
       if (affectsStory && draft.story.act === 3) { stepDay(draft); draft.story.act = 4; draft.entities.player.location = 'ye'; draft.entities.xinling.location = 'ye'; }

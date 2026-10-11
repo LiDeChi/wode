@@ -5,6 +5,7 @@ import { applyIntent, getActorView, checkConsistency, replayEvents, advanceClock
 import { evaluateMind } from '../src/core/mind.ts';
 import { buildModificationRequest, createVerificationMechanism, installMechanism, validateMechanism, runSwapBenchmark } from '../src/core/mechanisms.ts';
 import { NightGame, COVER } from '../src/game/night.ts';
+import { deriveNightOutcome, replayNight } from '../src/core/night-run.ts';
 import { WorldStore } from '../server/store.ts';
 import type { WorldState, Intent, Claim, Evidence } from '../src/core/types.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -132,10 +133,65 @@ test('night collision, sight occlusion, pickup and exit produce physical outcome
   game.key('d', true); for (let n = 0; n < 600; n++) game.tick(1/60); game.key('d', false);
   assert.ok(game.view.x <= 6.6);
   assert.ok(COVER.every(r => !(Math.abs(game.view.x-r.x)<r.w/2 && Math.abs(game.view.z-r.z)<r.d/2)));
-  const pickup = new NightGame(view => { outcome = view; }, () => {});
-  pickup.view.x = 5.2; pickup.view.z = -3.5; pickup.tick(1/30);
-  assert.equal(pickup.view.obtained, true);
-  pickup.view.x = -5.5; pickup.view.z = 4; pickup.tick(1/30);
-  assert.equal(pickup.view.finished, true);
+  // Standing on the seal is not taking it any more: the grab is a committed hold, so
+  // walking over the pedestal has to leave the seal where it is.
+  const reach = new NightGame(view => { outcome = view; }, () => {});
+  reach.view.x = 5.2; reach.view.z = -4.1; reach.tick(1/30);
+  assert.equal(reach.view.inReach, true, '走到兵符旁边应当在可取的范围内');
+  for (let n = 0; n < 60; n++) reach.tick(1/30);
+  assert.equal(reach.view.obtained, false, '只走过去、不按住取符，兵符不会自己到手');
+  reach.grab(true);
+  for (let n = 0; n < 120 && !reach.view.obtained; n++) reach.tick(1/30);
+  reach.grab(false);
+  assert.equal(reach.view.obtained, true, '按住取符足够久应当拿到兵符');
+  reach.view.x = -5.5; reach.view.z = 4; reach.tick(1/30);
+  assert.equal(reach.view.finished, true);
   assert.ok(outcome);
+});
+test('crouching shortens what a guard can see, which is what the drawn cone shows', () => {
+  // Guard B stands at (4.9, -1.2) facing +z on the first tick, so a player 2.8 away on that
+  // line sits inside walking sight (3.2) and outside crouched sight (2.45).
+  const exposure = (crouch: boolean) => {
+    const game = new NightGame(() => {}, () => {});
+    game.view.x = 4.9; game.view.z = 1.6; game.crouching = crouch;
+    for (let n = 0; n < 5; n++) game.tick(1/30);
+    return game.view.exposure;
+  };
+  assert.ok(exposure(false) > 0, '站着的门客在这个距离上会被看见');
+  assert.equal(exposure(true), 0, '蹲下时同一位置落在缩短后的视距之外');
+});
+test('walking loudness trades speed for noise, and the pebble is a single spent action', () => {
+  const noise = (crouch: boolean, sprint: boolean) => {
+    const game = new NightGame(() => {}, () => {});
+    game.crouching = crouch; game.sprinting = sprint;
+    game.key('d', true); for (let n = 0; n < 30; n++) game.tick(1/30);
+    game.key('d', false); return game.view.noise;
+  };
+  assert.ok(noise(true, false) < noise(false, false), '放轻脚步比走路安静');
+  assert.ok(noise(false, false) < noise(false, true), '疾行比走路响');
+
+  const thrower = new NightGame(() => {}, () => {});
+  thrower.view.x = 4; thrower.view.z = -3;
+  thrower.key('d', true); for (let n = 0; n < 10; n++) thrower.tick(1/30); thrower.key('d', false);
+  assert.equal(thrower.view.pebbles, 2);
+  thrower.throwPebble(); thrower.tick(1/30);
+  assert.equal(thrower.view.pebbles, 1, '掷出一块碎瓦后手上少了一块');
+  assert.equal(thrower.view.pulses.length, 1, '碎瓦落地会留下可以被听见的响动');
+  // A throw occupies exactly one tick, so replaying the recording cannot spend one pebble
+  // twice — the frame is unmergeable because the next tick's action is 'none'.
+  const thrown = thrower.frames().at(-1)!;
+  assert.equal(thrown.action, 'throw');
+  assert.equal(thrown.ticks, 1);
+  assert.equal(replayNight(thrower.frames()).view.pebbles, 1);
+  assert.throws(() => replayNight([{ dx: 0, dz: 0, crouching: false, sprint: false, action: 'throw', ticks: 2 }]), /掷石必须只占一步/);
+  assert.throws(() => replayNight([{ dx: 0, dz: 0, crouching: false, sprint: false, action: 'steal', ticks: 1 }]), /潜行输入/);
+});
+test('the night outcome has three shapes and one derivation', () => {
+  const view = new NightGame(() => {}, () => {}).view;
+  assert.deepEqual(deriveNightOutcome({ ...view, detected: true }), { choice: 'detected', amount: 0 });
+  assert.deepEqual(deriveNightOutcome({ ...view, finished: true, obtained: true }), { choice: 'escape', amount: 1 });
+  // Seen but away with the seal: the object is taken, the secret is not, so it is neither
+  // of the other two and the cause chain is what pays for it.
+  assert.deepEqual(deriveNightOutcome({ ...view, finished: true, obtained: true, spotted: true }), { choice: 'spotted', amount: 1 });
+  assert.deepEqual(deriveNightOutcome(view), { choice: 'escape', amount: 0 });
 });

@@ -1,13 +1,31 @@
 import type { ActionResult, NightStep, WorldState } from './types';
+import type { NightView } from '../presentation/contracts';
 import { NightGame } from '../game/night';
 import { copyWorld, failAction, finishOperation, systemIntent } from '../data/audit';
 import { applyIntent } from './world';
 
+export interface NightOutcome { choice: 'detected' | 'spotted' | 'escape'; amount: 0 | 1 }
+// What a replayed night physically amounts to. This lives in one place on purpose: when
+// the rule was written out twice, the copy inside the validator knew only detected/escape
+// and so rejected every run that ended seen-but-escaped — the third outcome could be
+// played but never recorded. Both callers now ask this function.
+export function deriveNightOutcome(view: NightView): NightOutcome {
+  if (view.detected) return { choice: 'detected', amount: 0 };
+  if (view.finished && view.obtained) return { choice: view.spotted ? 'spotted' : 'escape', amount: 1 };
+  return { choice: 'escape', amount: 0 };
+}
+
 export function replayNight(frames: unknown): NightGame {
-  if (!Array.isArray(frames) || frames.length > 5400) throw new Error('潜行录制过长或缺失。');
+  // Every frame covers at least one tick and the run itself is capped at 5401 ticks, so
+  // this cap can never reject a recording the tick cap would accept. The two bounds are
+  // written from the same number on purpose.
+  if (!Array.isArray(frames) || frames.length > 5401) throw new Error('潜行录制过长或缺失。');
   let ticks = 0;
   for (const step of frames) {
-    if (!step || typeof step !== 'object' || Object.keys(step).some(k => !['dx', 'dz', 'crouching', 'ticks'].includes(k)) || typeof step.dx !== 'number' || typeof step.dz !== 'number' || !Number.isFinite(step.dx) || !Number.isFinite(step.dz) || Math.abs(step.dx) > 1 || Math.abs(step.dz) > 1 || typeof step.crouching !== 'boolean' || !Number.isSafeInteger(step.ticks) || step.ticks < 1) throw new Error('潜行输入不是有限方向与步数。');
+    if (!step || typeof step !== 'object' || Object.keys(step).some(k => !['dx', 'dz', 'crouching', 'sprint', 'action', 'ticks'].includes(k)) || typeof step.dx !== 'number' || typeof step.dz !== 'number' || !Number.isFinite(step.dx) || !Number.isFinite(step.dz) || Math.abs(step.dx) > 1 || Math.abs(step.dz) > 1 || typeof step.crouching !== 'boolean' || typeof step.sprint !== 'boolean' || !['none', 'grab', 'throw'].includes(step.action) || !Number.isSafeInteger(step.ticks) || step.ticks < 1) throw new Error('潜行输入不是有限方向、步数与动作。');
+    // A throw is a single event, never a state held across ticks; accepting a longer run
+    // would let one recorded pebble be spent many times on replay.
+    if (step.action === 'throw' && step.ticks !== 1) throw new Error('掷石必须只占一步。');
     const length = Math.hypot(step.dx, step.dz);
     if (length !== 0 && Math.abs(length - 1) > .001) throw new Error('潜行方向未归一化。');
     ticks += step.ticks;
@@ -32,5 +50,8 @@ export function resolveNight(state: WorldState, workId: 'qiefu' | 'night', frame
   const recorded = recordNightRun(state, workId, frames, true, abandoned);
   if (!recorded.ok) return recorded;
   const physical = replayNight(recorded.state.nightRun!.frames).view;
-  return applyIntent(recorded.state, { verb: 'escort', actorId: 'player', targetId: 'ruji', itemId: 'seal', choice: physical.detected ? 'detected' : 'escape', amount: physical.finished && physical.obtained && !physical.detected ? 1 : 0, sceneId: 'night', workId });
+  // Being seen clearly and getting away is not the same as never being seen: the seal
+  // still leaves the palace, but the secret does not, so it is its own outcome.
+  const { choice, amount } = deriveNightOutcome(physical);
+  return applyIntent(recorded.state, { verb: 'escort', actorId: 'player', targetId: 'ruji', itemId: 'seal', choice, amount, sceneId: 'night', workId });
 }

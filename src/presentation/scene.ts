@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GranaryView, NightView, SceneCharacter, SceneKind, TheatreDiagnostics, TheatreOptions } from './contracts';
 import { AssetKit, buildCharacter, buildEnvironment, makeSeal, makeVisionSector, PALETTE, seeded } from './models';
 import type { CharacterModel, Environment } from './models';
+import { PEBBLES, SIGHT_RANGE, SIGHT_RANGE_LOW } from '../game/night';
 
 interface Actor { character: SceneCharacter; model: CharacterModel; moving: boolean }
 interface Guard { id: string; cone: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> }
@@ -11,9 +12,15 @@ const sceneNames: Record<SceneKind, string> = {
   city: '邯郸 · 围城', court: '大梁 · 漆木厅堂', gate: '夷门 · 城门与桥',
   night: '取符之夜 · 宫廷庭院', camp: '邺 · 军营', granary: '围城 · 粮仓', studio: '片场 · 分镜桌',
 };
+// The placeholder the night scene shows before the first simulation tick; it mirrors
+// NightGame.patrolAt(0, i) so the guards do not visibly jump on frame one.
 const defaultGuards = [
-  { x: -4.8, z: .1, angle: .8 }, { x: 1.8, z: 3.1, angle: -1.9 }, { x: 4.8, z: -.5, angle: 2.5 },
+  { x: .4, z: 0, angle: 0, alert: 0, state: 'patrol' as const },
+  { x: 4.9, z: -1.2, angle: 0, alert: 0, state: 'patrol' as const },
 ];
+const GUARD_CALM = new THREE.Color('#d8bd7b');
+const GUARD_ALERTED = new THREE.Color('#e0a35c');
+const GUARD_CAUGHT = new THREE.Color('#dc8c68');
 
 export class Theatre {
   private readonly kit = new AssetKit();
@@ -39,6 +46,7 @@ export class Theatre {
   private environment: Environment | null = null;
   private seal: THREE.Group | null = null;
   private guards: Guard[] = [];
+  private pulses: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = [];
   private kind: SceneKind = 'city';
   private playerId = 'player';
   private paused = false;
@@ -128,6 +136,8 @@ export class Theatre {
     this.actors.clear();
     for (const guard of this.guards) { this.scene.remove(guard.cone); guard.cone.material.dispose(); }
     this.guards = [];
+    for (const pulse of this.pulses) { this.scene.remove(pulse); pulse.material.dispose(); }
+    this.pulses = [];
     if (this.environment) { this.scene.remove(this.environment.root); this.environment.dispose(); }
     if (this.seal) this.scene.remove(this.seal);
     for (const child of [...this.scene.children]) if (child.userData.characterId) this.scene.remove(child);
@@ -140,7 +150,10 @@ export class Theatre {
       this.playerId = player?.id ?? 'player';
       if (!this.actors.has(this.playerId)) this.addActor({ id: this.playerId, name: '如姬', color: PALETTE.jade, silhouette: 'lady', x: -5, z: 3.8 });
       this.seal = makeSeal(this.kit); this.seal.position.set(5.2, 0, -3.5); this.scene.add(this.seal);
-      this.updateNight({ x: -5, z: 3.8, guards: defaultGuards, exposure: 0, obtained: false, detected: false, hiding: false, finished: false });
+      this.updateNight({
+        x: -5, z: 3.8, guards: defaultGuards, exposure: 0, obtained: false, detected: false, hiding: false, finished: false,
+        noise: 0, pebbles: PEBBLES, grab: 0, inReach: false, grabbing: false, crouching: false, sprinting: false, spotted: false, pulses: []
+      });
     } else this.seal = null;
     const moon = kind === 'night';
     this.key.color.set(moon ? '#b6d2ed' : '#ffdcac'); this.key.intensity = moon ? 2.25 : 3.0;
@@ -184,10 +197,35 @@ export class Theatre {
       actor.model.root.position.set(position.x, .06, position.z); actor.model.root.rotation.y = position.angle;
       actor.character.x = position.x; actor.character.z = position.z;
       guard.cone.position.set(position.x, 0, position.z); guard.cone.rotation.y = position.angle;
-      guard.cone.material.color.set(view.detected ? '#dc8c68' : '#d8bd7b');
-      guard.cone.material.opacity = .105 + THREE.MathUtils.clamp(view.exposure, 0, 1) * .14;
+      // The cone is drawn at walking sight range, so crouching shrinks it by exactly the
+      // ratio the simulation uses. What you see is what the guard can actually see.
+      guard.cone.scale.setScalar(view.crouching ? SIGHT_RANGE_LOW / SIGHT_RANGE : 1);
+      guard.cone.material.color.copy(GUARD_CALM)
+        .lerp(GUARD_ALERTED, Math.min(1, position.alert * 1.4))
+        .lerp(GUARD_CAUGHT, Math.max(0, position.alert - .6) / .4);
+      guard.cone.material.opacity = (.105 + position.alert * .17) * (position.state === 'patrol' ? .8 : 1);
     });
-    if (this.seal) this.seal.visible = !view.obtained;
+    // A thrown pebble is only useful if you can see where it landed and when it goes
+    // quiet, so each pulse keeps a ring on the floor that fades over its own lifetime.
+    while (this.pulses.length > view.pulses.length) { const pulse = this.pulses.pop()!; this.scene.remove(pulse); pulse.material.dispose(); }
+    while (this.pulses.length < view.pulses.length) {
+      const material = new THREE.MeshBasicMaterial({ color: '#e8d8a6', transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false });
+      const ring = new THREE.Mesh(this.kit.geometry('noise-pulse', () => new THREE.RingGeometry(.34, .48, 30)), material);
+      ring.rotation.x = -Math.PI / 2; ring.position.y = .03; ring.renderOrder = 2;
+      this.scene.add(ring); this.pulses.push(ring);
+    }
+    view.pulses.forEach((pulse, index) => {
+      const ring = this.pulses[index];
+      ring.position.set(pulse.x, .03, pulse.z);
+      ring.scale.setScalar(1 + (1 - pulse.life) * 1.6);
+      ring.material.opacity = .52 * pulse.life;
+    });
+    if (this.seal) {
+      this.seal.visible = !view.obtained;
+      // The halo swells as the hand closes on it, so "I can take this now" is visible in
+      // the scene and not only in the button row.
+      this.seal.scale.setScalar(1 + view.grab * .22);
+    }
     if (this.fallback) this.positionFallback();
   }
 

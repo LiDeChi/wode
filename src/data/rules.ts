@@ -46,7 +46,7 @@ export const SCENES: Record<string, SceneRule> = {
   },
   night: {
     grant: { sceneId: 'night', verbs: ['visit', 'observe', 'steal', 'escort', 'wait'], language: 'hidden', actorIds: ['player', 'ruji', 'palace-guard'], preconditions: ['主线第三幕，或独立取符之夜', '动作层只提交已发生的护送结果'] },
-    location: 'palace', works: ['qiefu', 'night'], act: 3, items: ['seal'], destinations: ['palace'], choices: ['escape', 'detected'], defaultTarget: 'ruji',
+    location: 'palace', works: ['qiefu', 'night'], act: 3, items: ['seal'], destinations: ['palace'], choices: ['escape', 'spotted', 'detected'], defaultTarget: 'ruji',
   },
   camp: {
     grant: { sceneId: 'camp', verbs: ['visit', 'give', 'say', 'persuade', 'observe', 'verify', 'command', 'wait'], language: 'selected', actorIds: ['player', 'xinling', 'jinbi', 'zhuhai', 'soldier'], preconditions: ['第四幕', '取符与侯嬴托付的结果共同决定是否能夺军'] },

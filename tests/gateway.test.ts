@@ -14,6 +14,43 @@ import { preparePresentation, recordCall, renewBudget } from '../src/core/presen
 import { continueImport, resetWorld } from '../src/core/lifecycle.ts';
 import { NightGame } from '../src/game/night.ts';
 import { recordNightRun, resolveNight, replayNight } from '../src/core/night-run.ts';
+import type { NightView } from '../src/presentation/contracts.ts';
+
+// Play the night for real, reading the guards the way a player has to. Fixed tick counts
+// would encode one lucky timing and quietly stop meaning anything the next time the tuning
+// moves; waiting on where the guards actually are is the thing the scene asks of a player.
+function playNightGame(): NightGame {
+  const game = new NightGame(() => {}, () => {});
+  const step = () => game.tick(1 / 30);
+  const until = (key: string, done: (v: NightView) => boolean) => {
+    game.key(key, true);
+    for (let n = 0; n < 30 * 90 && !done(game.view) && !game.view.finished; n++) step();
+    game.key(key, false);
+  };
+  const wait = (done: (v: NightView) => boolean) => {
+    for (let n = 0; n < 30 * 90 && !done(game.view) && !game.view.finished; n++) step();
+  };
+  // A guard facing 0 walks +z and one facing PI walks -z, so "walking away" is angle < 1.
+  const aAway = (v: NightView) => v.guards[0].z > -2.2 && v.guards[0].angle < 1;
+  const bAway = (v: NightView) => v.guards[1].z > -0.6 && v.guards[1].angle < 1;
+  game.crouching = true;
+  until('a', v => v.x <= -5.4);
+  until('w', v => v.z <= -4.3);
+  wait(aAway);
+  until('d', v => v.x >= 2.5);
+  wait(bAway);
+  until('d', v => v.x >= 5.2);
+  until('s', v => v.inReach);
+  game.grab(true);
+  wait(v => v.obtained);
+  game.grab(false);
+  until('w', v => v.z <= -4.3);
+  until('a', v => v.x <= 2.5);
+  wait(aAway);
+  until('a', v => v.x <= -5.4);
+  until('s', v => v.finished);
+  return game;
+}
 
 const handoff = { actorId: 'player', targetId: 'keeper-suspicious', verb: 'give', itemId: 'seal', choice: 'seal', amount: 2, workId: 'siege', sceneId: 'granary' } as const;
 test('gateway records actual usage, rejects unavailable identity, caches, and never drops failed attempts', async () => {
@@ -61,11 +98,9 @@ test('gateway records actual usage, rejects unavailable identity, caches, and ne
 });
 test('physical night inputs survive save/replay and arbitrary success declarations fail', () => {
   const initial = createWorld(42);
-  const game = new NightGame(() => {}, () => {});
-  for (const [key, ticks] of [['d', 140], ['w', 92], ['a', 12], ['d', 12], ['s', 92], ['a', 146]] as const) {
-    game.key(key, true); for (let n = 0; n < ticks; n++) game.tick(1 / 30); game.key(key, false);
-  }
+  const game = playNightGame();
   assert.equal(game.view.finished, true); assert.equal(game.view.detected, false); assert.equal(game.view.obtained, true);
+  assert.equal(game.view.spotted, false, '这一条路线应当一路无人看清');
   assert.deepEqual(replayNight(game.frames()).view, game.view);
   const s = recordNightRun(initial, 'night', game.frames()).state;
   assert.deepEqual(replayEvents(initial, s.events), s);
@@ -82,8 +117,7 @@ test('siege relief and army selection preserve real resource totals and primary-
   assert.equal(applyIntent(distributed.state, { actorId: 'player', verb: 'give', targetId: 'pingyuan', itemId: 'pledge', choice: 'distribute', sceneId: 'siege-square', workId: 'siege' }).ok, false);
   let s = applyIntent(initial, { actorId: 'player', verb: 'persuade', targetId: 'xinling', choice: 'petition', sceneId: 'court', workId: 'qiefu' }).state;
   s = applyIntent(s, { actorId: 'player', verb: 'say', targetId: 'houying', choice: 'return', sceneId: 'gate', workId: 'qiefu' }).state;
-  const game = new NightGame(() => {}, () => {});
-  for (const [key, ticks] of [['d', 140], ['w', 92], ['a', 12], ['d', 12], ['s', 92], ['a', 146]] as const) { game.key(key, true); for (let n = 0; n < ticks; n++) game.tick(1/30); game.key(key, false); }
+  const game = playNightGame();
   s = resolveNight(s, 'qiefu', game.frames()).state;
   const alive = applyIntent(s, { actorId: 'player', verb: 'verify', targetId: 'jinbi', itemId: 'seal', choice: 'verify', sceneId: 'camp', workId: 'qiefu' });
   assert.equal(alive.ok, true, alive.message); assert.equal(alive.state.story.ending, 'counterfactual'); assert.equal(alive.state.story.jinbiFate, 'alive');

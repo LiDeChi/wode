@@ -155,6 +155,26 @@ p { overflow-wrap: anywhere; }
 .crouch-button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); }
 .keyboard-help { color: var(--fog); font-size: 10px; }
 .night-controls>.text-button { margin-left: auto; font-size: 10px; }
+/* The three things a player must be able to read at a glance while walking: how loud they
+   are, whether either guard has noticed anything, and whether a pebble is still in hand. */
+.night-gauges { display: flex; gap: 26px; align-items: flex-start; margin-top: 18px; }
+.night-gauge { min-width: 96px; }
+.night-gauge>span { display: block; font-size: 10px; color: var(--fog); margin-bottom: 7px; }
+.night-gauge>small { display: block; font-size: 10px; color: var(--fog); margin-top: 7px; }
+.gauge-track { height: 3px; background: var(--line); }
+#noise-fill { display: block; height: 3px; width: 0; background: var(--jade); }
+.guard-watch { display: flex; gap: 7px; align-items: center; height: 3px; }
+.guard-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--line); background: rgba(145,184,167,.08); touch-action: none; }
+.guard-dot[data-tone="wary"] { border-color: var(--gold); background: rgba(216,189,123,.5); }
+.guard-dot[data-tone="spotted"] { border-color: var(--danger); background: var(--danger); }
+.pebble-gauge strong { display: block; font-family: var(--display); font-size: 18px; color: var(--gold); line-height: 1; }
+.grab-panel { margin-top: 18px; display: flex; align-items: center; gap: 13px; }
+.grab-panel>span { font-size: 11px; color: var(--gold); }
+.grab-panel>small { font-size: 10px; color: var(--fog); }
+.grab-track { width: 132px; height: 5px; background: var(--line); }
+#grab-fill { display: block; height: 5px; width: 0; background: var(--gold); }
+.action-button { border: 1px solid var(--line); min-height: 44px; padding: 9px 15px; border-radius: 4px; font-size: 12px; color: var(--bone); touch-action: none; }
+.action-button:active, .action-button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); background: rgba(216,189,123,.1); }
 #overlay-root:empty { display: none; }
 .overlay-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(4,15,20,.7); backdrop-filter: blur(7px); display: flex; justify-content: center; align-items: center; padding: 30px 16px; overflow-y: auto; }
 .overlay-sheet { position: relative; width: min(600px,100%); max-height: 90dvh; overflow-y: auto; background: #203a43; border: 1px solid #48605e; border-radius: 3px 20px 3px 20px; box-shadow: 0 24px 90px rgba(0,0,0,.3); padding: 42px; }
@@ -320,7 +340,11 @@ blockquote { color: var(--fog); border-left: 1px solid var(--gold); padding-left
 .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; gap: 25px; padding: 35px; }
 .loading-screen h1 { font-size: 28px; }
 .loading-screen p { color: var(--fog); font-size: 13px; }
-.toast { position: fixed; z-index: 50; bottom: calc(25px + env(safe-area-inset-bottom,0px)); left: 50%; transform: translateX(-50%); max-width: min(650px,calc(100% - 32px)); background: #314d53; color: var(--bone); border: 1px solid #688375; box-shadow: 0 8px 30px rgba(0,0,0,.25); border-radius: 3px 9px; padding: 13px 22px; font-size: 12px; }
+/* A toast is a status line, never a control: it is text and nothing to click. It sits low and
+   wide, which on a phone puts it straight over the movement pad for its whole five seconds, so
+   without pointer-events it swallows the taps meant for the pad and the player meets a dead
+   arrow key. It stays above the pad visually, and role="status" still announces it. */
+.toast { position: fixed; z-index: 50; bottom: calc(25px + env(safe-area-inset-bottom,0px)); left: 50%; transform: translateX(-50%); max-width: min(650px,calc(100% - 32px)); background: #314d53; color: var(--bone); border: 1px solid #688375; box-shadow: 0 8px 30px rgba(0,0,0,.25); border-radius: 3px 9px; padding: 13px 22px; font-size: 12px; pointer-events: none; }
 .busy [data-action="story-choice"],.busy [data-action="grain-choice"],.busy button[type="submit"] { opacity: .55; pointer-events: none; }
 @media(min-width:1450px) { .hero-theatre { right: -80px; } }
 @media(max-width:1000px) {
@@ -342,6 +366,7 @@ blockquote { color: var(--fog); border-left: 1px solid var(--gold); padding-left
   .play-bottom { padding-top: 17px; }.dialogue { gap: 10px; }.dialogue>span { font-size: 10px; }.dialogue p { font-size: 15px; }.choice-table { gap: 8px; margin: 17px 0 9px; }.object-choice { padding: 12px 5px 10px; gap: 5px; min-height: 126px; border-radius: 2px 9px; }.object-illustration .icon { width: 30px; height: 30px; }.object-choice strong { font-size: 11px; }.object-choice small { font-size: 8px; }.play-footnote { gap: 7px; font-size: 8px; }.play-footnote>.text-button { font-size: 9px; }.play-footnote>span { width: 100%; }.play-footnote>.text-button:first-of-type { margin-left: 0; }
   .perspective-switch { gap: 3px; margin-bottom: 14px; }.perspective-switch button { padding: 4px 6px; font-size: 9px; }.perspective-switch .icon { width: 12px; }
   .night-objective { gap: 12px; }.night-objective>div:first-child { padding-left: 31px; }.objective-seal .icon { width: 24px; height: 24px; }.night-objective strong { font-size: 12px; }.night-objective small { font-size: 9px; }.exposure { width: 72px; }.exposure>span { font-size: 8px; }.night-controls { gap: 13px; margin-top: 18px; }.touch-pad { grid-template-columns: repeat(3,44px); grid-template-rows: repeat(2,44px); gap: 3px; }.crouch-button { padding: 8px; font-size: 10px; gap: 5px; }.crouch-button .icon { width: 16px; }.keyboard-help { display: none; }.night-controls>.text-button { font-size: 9px; }
+  .night-gauges { gap: 14px; flex-wrap: wrap; }.night-gauge { min-width: 66px; }.night-gauge>span, .night-gauge>small { font-size: 8px; }.pebble-gauge strong { font-size: 15px; }.grab-panel { gap: 8px; }.grab-panel>span { font-size: 10px; }.grab-panel>small { display: none; }.grab-track { width: 96px; }.action-button { padding: 8px 10px; font-size: 10px; }
   .film-copy { left: 7%; right: 7%; bottom: 19%; }.film-copy h1 { font-size: 45px; }.film-copy p { font-size: 17px; }.film-top { left: 14px; right: 14px; top: calc(15px + env(safe-area-inset-top,0px)); }.film-controls { left: 5%; right: 5%; gap: 12px; bottom: calc(20px + env(safe-area-inset-bottom,0px)); flex-wrap: wrap; }.film-controls .text-button { font-size: 10px; }.film-track { max-width: 115px; }.film-skip { flex-basis: 100%; text-align: right; justify-content: flex-end; }.replay-page .film-copy>small { font-size: 10px; }
   .overlay-backdrop { padding: 15px 16px; align-items: center; }.overlay-sheet { padding: 35px 23px 26px; max-height: 92dvh; }.overlay-sheet h2 { font-size: 24px; }.overlay-sheet .mind-entry h2 { font-size: 30px; }.overlay-sheet .primary { font-size: 12px; padding: 13px 18px; }.overlay-sheet>p { font-size: 12px; }.mind-thought p { font-size: 14px; }.mind-entry>.muted { font-size: 11px; }.layer-glyph { width: 40px; height: 40px; }.mind-channel:before { left: 20px; }.mind-layer { gap: 12px; }.mind-action strong { font-size: 14px; }
   .folio-page { padding: 30px 20px 40px; }.folio-heading h1 { font-size: 33px; }.folio-heading>p { font-size: 11px; }.folio-heading { margin-bottom: 25px; }.wiki-layout { grid-template-columns: 1fr; gap: 22px; }.person-roster { flex-direction: row; flex-wrap: wrap; gap: 3px; max-height: 167px; overflow-y: auto; }.person-roster>button { gap: 5px; padding: 5px 9px; min-height: 39px; font-size: 10px; }.person-mark { width: 21px; height: 27px; }.person-heading { gap: 15px; }.person-avatar { width: 57px; height: 70px; font-size: 35px; }.person-heading h2 { font-size: 27px; }.person-heading p { font-size: 10px; }.person-skills p { font-size: 15px; }.claim-entry summary { gap: 9px; font-size: 11px; }.claim-entry summary small { font-size: 8px; }.person-folio h3 { font-size: 19px; }

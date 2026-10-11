@@ -1,12 +1,12 @@
 {
   "config": {
     "argv": [
-      "<home>/.nvm/versions/node/v26.2.0/bin/node",
-      "<repo>/node_modules/.bin/playwright",
+      "/Users/lidechi/.nvm/versions/node/v26.2.0/bin/node",
+      "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/node_modules/.bin/playwright",
       "test"
     ],
-    "configFile": "<repo>/playwright.config.ts",
-    "rootDir": "<repo>/tests/browser",
+    "configFile": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/playwright.config.ts",
+    "rootDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -22,7 +22,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "<repo>/test-results",
+        "outputDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -30,7 +30,7 @@
         },
         "id": "desktop",
         "name": "desktop",
-        "testDir": "<repo>/tests/browser",
+        "testDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -38,7 +38,7 @@
         "timeout": 70000
       },
       {
-        "outputDir": "<repo>/test-results",
+        "outputDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -46,7 +46,7 @@
         },
         "id": "mobile",
         "name": "mobile",
-        "testDir": "<repo>/tests/browser",
+        "testDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -58,15 +58,15 @@
       {
         "grep": {},
         "grepInvert": null,
-        "outputDir": "<repo>/test-results",
+        "outputDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
           "actualWorkers": 1
         },
         "name": "desktop",
-        "testDir": "<repo>/tests/browser",
-        "snapshotDir": "<repo>/tests/browser",
+        "testDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
+        "snapshotDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
         "testIgnore": [],
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
         "timeout": 70000,
@@ -95,15 +95,15 @@
       {
         "grep": {},
         "grepInvert": null,
-        "outputDir": "<repo>/test-results",
+        "outputDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
           "actualWorkers": 1
         },
         "name": "mobile",
-        "testDir": "<repo>/tests/browser",
-        "snapshotDir": "<repo>/tests/browser",
+        "testDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
+        "snapshotDir": "/Users/lidechi/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3/tests/browser",
         "testIgnore": [],
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
         "timeout": 70000,
@@ -178,12 +178,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 38592,
+                  "duration": 82263,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:45:42.684Z",
+                  "startTime": "2026-10-11T03:06:45.199Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -193,7 +193,7 @@
           ],
           "id": "8dd14bcf966e3915d331-58af2758f6beb730838c",
           "file": "night.spec.ts",
-          "line": 45,
+          "line": 78,
           "column": 65
         },
         {
@@ -212,12 +212,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 43945,
+                  "duration": 81312,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:46:21.546Z",
+                  "startTime": "2026-10-11T03:08:07.765Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -227,8 +227,42 @@
           ],
           "id": "8dd14bcf966e3915d331-311b52f16f3a22db55b0",
           "file": "night.spec.ts",
-          "line": 45,
+          "line": 78,
           "column": 65
+        },
+        {
+          "title": "a status toast never swallows a tap meant for the movement pad",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 70000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8820,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-11T03:09:29.087Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8dd14bcf966e3915d331-36ecec97edf0c0138c04",
+          "file": "night.spec.ts",
+          "line": 153,
+          "column": 1
         },
         {
           "title": "export import, brief detail and actual audio unlock retain their stated behavior",
@@ -246,12 +280,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 7333,
+                  "duration": 5469,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:47:05.504Z",
+                  "startTime": "2026-10-11T03:09:37.916Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -261,7 +295,7 @@
           ],
           "id": "8dd14bcf966e3915d331-0772b3340d67f820538d",
           "file": "night.spec.ts",
-          "line": 101,
+          "line": 188,
           "column": 1
         },
         {
@@ -280,12 +314,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 38638,
+                  "duration": 79612,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:48:34.549Z",
+                  "startTime": "2026-10-11T03:11:13.220Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -295,7 +329,7 @@
           ],
           "id": "8dd14bcf966e3915d331-a72fd35a870c0ed410e2",
           "file": "night.spec.ts",
-          "line": 45,
+          "line": 78,
           "column": 65
         },
         {
@@ -314,12 +348,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 37820,
+                  "duration": 77374,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:49:13.380Z",
+                  "startTime": "2026-10-11T03:12:32.992Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -329,8 +363,42 @@
           ],
           "id": "8dd14bcf966e3915d331-b97dada189e7aba5594d",
           "file": "night.spec.ts",
-          "line": 45,
+          "line": 78,
           "column": 65
+        },
+        {
+          "title": "a status toast never swallows a tap meant for the movement pad",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 70000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10743,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-11T03:13:50.374Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8dd14bcf966e3915d331-ba815cf67d0fc0d7573e",
+          "file": "night.spec.ts",
+          "line": 153,
+          "column": 1
         },
         {
           "title": "export import, brief detail and actual audio unlock retain their stated behavior",
@@ -348,12 +416,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4846,
+                  "duration": 3585,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:49:51.208Z",
+                  "startTime": "2026-10-11T03:14:01.124Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -363,7 +431,7 @@
           ],
           "id": "8dd14bcf966e3915d331-b663b771d83f72fa7e72",
           "file": "night.spec.ts",
-          "line": 101,
+          "line": 188,
           "column": 1
         }
       ]
@@ -390,12 +458,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 46288,
+                  "duration": 54108,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:47:12.858Z",
+                  "startTime": "2026-10-11T03:09:43.404Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -424,12 +492,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 19121,
+                  "duration": 15959,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:47:59.153Z",
+                  "startTime": "2026-10-11T03:10:37.526Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -458,12 +526,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 15613,
+                  "duration": 18876,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:48:18.283Z",
+                  "startTime": "2026-10-11T03:10:53.495Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -492,12 +560,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 46,
+                  "duration": 43,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:48:33.918Z",
+                  "startTime": "2026-10-11T03:11:12.387Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -526,12 +594,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 58583,
+                  "duration": 53114,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:49:56.073Z",
+                  "startTime": "2026-10-11T03:14:04.725Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -560,12 +628,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 12147,
+                  "duration": 14218,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:50:54.664Z",
+                  "startTime": "2026-10-11T03:14:57.844Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -594,12 +662,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11894,
+                  "duration": 14145,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:51:06.828Z",
+                  "startTime": "2026-10-11T03:15:12.078Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -628,12 +696,12 @@
                   "workerIndex": 1,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 19,
+                  "duration": 21,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-11T00:51:18.737Z",
+                  "startTime": "2026-10-11T03:15:26.233Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -651,9 +719,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-11T00:45:42.458Z",
-    "duration": 336592.78599999996,
-    "expected": 14,
+    "startTime": "2026-10-11T03:06:44.963Z",
+    "duration": 521829.638,
+    "expected": 16,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

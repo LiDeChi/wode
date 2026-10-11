@@ -120,7 +120,8 @@ export interface Mechanism {
   coordinationAfter: number;
 }
 export interface CauseLink { id: string; actorId: string; label: string; belief: string; resource: string; confidence: number; replaceable: boolean; fixed: boolean; intact: boolean; evidence: Evidence[] }
-export interface NightStep { dx: number; dz: number; crouching: boolean; ticks: number }
+export type NightAction = 'none' | 'grab' | 'throw';
+export interface NightStep { dx: number; dz: number; crouching: boolean; sprint: boolean; action: NightAction; ticks: number }
 export interface WorldState {
   schemaVersion: 1;
   id: string;
