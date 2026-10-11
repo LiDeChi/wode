@@ -115,6 +115,9 @@ async function tapText(page, text) {
   }, text).catch(() => false);
 }
 
+const DEV_UI = process.argv.includes('--dev');
+// 每一版截图都留档，不覆盖旧的：--tag=v5 → /tmp/play-shots/v5-lu-daliang.png
+const TAG = process.argv.find((a) => a.startsWith('--tag='))?.slice(6) || 'v4';   // 截图要不要带调试叠层（给用户看的图别带）
 const MAXTICKS = Number(process.argv.find((a) => a.startsWith('--ticks='))?.slice(8) || 150);
 
 async function playRun(browser, dir, { granary }) {
@@ -124,6 +127,8 @@ async function playRun(browser, dir, { granary }) {
   const trace = [];
   const used = new Set();
   let lastWhere = '';
+  let filmTried = false;
+  let filmShot = false;
   const ctx = await browser.newContext({ viewport: { width: 1292, height: 761 } });
   const page = await ctx.newPage();
   page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
@@ -137,11 +142,15 @@ async function playRun(browser, dir, { granary }) {
   page.on('crash', () => errors.push('page crash'));
 
   const shot = async (name) => {
-    const file = `${SHOTS}/${dir}-${name}.png`;
+    const file = `${SHOTS}/${TAG}-${dir}-${name}.png`;
+    await page.evaluate(() => { const d = document.querySelector('#dev'); if (d) { d.dataset.prevHidden = d.hidden ? '1' : '0'; d.hidden = true; } }).catch(() => {});
     await page.screenshot({ path: file });
+    await page.evaluate(() => { const d = document.querySelector('#dev'); if (d && d.dataset.prevHidden === '0') d.hidden = false; }).catch(() => {});
     shots.push(file);
   };
 
+  // 必须带 ?dev=1：只有 dev=1 时 main.js 才暴露 window.__play，冒烟脚本才读得到 stage/act/options。
+  // 给人看的截图在 shot() 里临时把调试叠层藏掉，所以图上还是干净的。
   const res = await page.goto(`${BASE}/play.html?dev=1`, { waitUntil: 'load' });
   if (!res || res.status() !== 200) errors.push(`play.html 没打开：HTTP ${res ? res.status() : '无响应'}`);
   await sleep(700);
@@ -199,6 +208,35 @@ async function playRun(browser, dir, { granary }) {
         if (await tapText(page, '再去粮仓')) { await sleep(2400); continue; }
       }
       if (await tapText(page, '就此收束')) { await sleep(2000); continue; }
+      // 收束页上点一次「把这一局拍成电影」：要写出录制、并跳到 /film.html
+      if (codaDone && !filmTried) {
+        filmTried = true;
+        // 真正的收束页（列了四幕的账 + 「把这一局拍成电影」）——先留一张给用户看
+        await sleep(2400);
+        await shot('epilogue');
+        const hit = await page.evaluate(() => {
+          const b = document.getElementById('film-btn');
+          if (!b) return false;
+          b.click();
+          return true;
+        }).catch(() => false);
+        if (!hit) errors.push('收束页没有「把这一局拍成电影」入口');
+        else {
+          await sleep(3000);
+          const film = await page.evaluate(() => ({
+            path: location.pathname,
+            stored: (() => { try { const v = localStorage.getItem('dw.lastFilm'); return v ? v.length : 0; } catch { return -1; } })(),
+            drawn: !!document.querySelector('canvas'),
+          })).catch(() => null);
+          if (!film || film.path !== '/film.html') errors.push(`电影页没跳过去：${film ? film.path : '读不到'}`);
+          else {
+            filmShot = true;
+            await shot('film-page');
+            if (!film.stored) errors.push('没写出 dw.lastFilm 录制');
+          }
+        }
+        continue;
+      }
       if (await tapText(page, '再做一次')) break;
       break;
     }
@@ -265,10 +303,16 @@ async function playRun(browser, dir, { granary }) {
 
 async function main() {
   await mkdir(SHOTS, { recursive: true });
-  const browser = await chromium.launch({ executablePath: EXE, headless: !HEAD });
   const runs = [];
-  for (const dir of DIRS) runs.push(await playRun(browser, dir, { granary: dir === DIRS[0] }));
-  await browser.close();
+  for (const dir of DIRS) {
+    // 一局一开浏览器：headless shell 连跑两局会在中间自己倒下（Target ... has been closed）
+    const browser = await chromium.launch({ executablePath: EXE, headless: !HEAD });
+    try {
+      runs.push(await playRun(browser, dir, { granary: dir === DIRS[0] }));
+    } finally {
+      await browser.close().catch(() => {});
+    }
+  }
   if (DEBUG) for (const r of runs) for (const line of r.trace) console.error('trace', r.dir, line);
   const bad = runs.filter((r) => r.errors.length);
   const trim = (list) => [...new Set(list.map((e) => String(e).split('\n')[0]))].slice(0, 8);

@@ -45,15 +45,18 @@ html, body {
   z-index: 20;
 }
 
+/* 诉求签：像一片竹简挂在说话的人头顶——深棕竹面、左边一道束绳、下面垂一根线 */
 .tag {
   position: absolute;
   transform: translate(-50%, -100%);
   pointer-events: auto;
   margin: 0;
-  padding: 7px 13px;
-  border: 1px solid rgba(200, 137, 47, 0.55);
-  border-radius: 2px;
-  background: rgba(10, 9, 7, 0.86);
+  padding: 8px 15px 9px 17px;
+  border: 1px solid rgba(200, 137, 47, 0.42);
+  border-left: 3px double rgba(200, 137, 47, 0.8);
+  border-radius: 2px 2px 4px 4px;
+  background:
+    linear-gradient(180deg, rgba(52, 41, 28, 0.95), rgba(24, 19, 14, 0.95));
   color: var(--paper);
   font-family: var(--font-serif);
   font-size: 14px;
@@ -61,19 +64,33 @@ html, body {
   letter-spacing: 0.02em;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 226, 176, 0.08);
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 200ms ease;
   animation: tag-in 220ms ease both;
+}
+
+/* 系签的绳 */
+.tag::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 12px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(200, 137, 47, 0.7);
+  border-radius: 50%;
+  background: rgba(12, 10, 8, 0.9);
 }
 
 .tag::after {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -6px;
+  bottom: -7px;
   width: 1px;
-  height: 6px;
-  background: rgba(200, 137, 47, 0.5);
+  height: 7px;
+  background: linear-gradient(180deg, rgba(200, 137, 47, 0.6), rgba(200, 137, 47, 0.05));
 }
 
 .tag:hover { background: rgba(200, 137, 47, 0.92); color: #17130c; border-color: #e7b463; }
@@ -81,40 +98,60 @@ html, body {
 .tag[data-disabled="1"] { opacity: 0.42; cursor: default; border-style: dashed; }
 .tag:disabled:hover { background: rgba(10, 9, 7, 0.86); color: var(--paper); border-color: rgba(200, 137, 47, 0.55); }
 
+/* 人名：一块拴在头顶的小木牌 */
 .tag-person {
-  border-color: rgba(232, 220, 200, 0.28);
-  background: rgba(10, 9, 7, 0.7);
+  border-color: rgba(200, 137, 47, 0.3);
+  border-left-color: rgba(232, 220, 200, 0.35);
+  background: linear-gradient(180deg, rgba(44, 36, 25, 0.88), rgba(20, 16, 12, 0.88));
   font-size: 13px;
   color: var(--paper-dim);
+  padding: 5px 11px 5px 13px;
 }
 .tag-person:hover { background: rgba(232, 220, 200, 0.16); color: var(--paper); border-color: rgba(232, 220, 200, 0.6); }
 
 .tag-flavor {
   border-color: rgba(140, 47, 47, 0.6);
+  border-left-color: rgba(180, 70, 62, 0.85);
   color: #d8b9a6;
   font-size: 13px;
 }
 .tag-flavor:hover { background: rgba(140, 47, 47, 0.85); color: #f3e6d3; border-color: #b8564f; }
 
-.gizmos { position: absolute; transform: translate(-50%, -50%); display: flex; gap: 8px; }
+/* 看 / 问：人身边一枚铜纽，底下垫一小段木桩 */
+.gizmos { position: absolute; transform: translate(-50%, -50%); display: flex; gap: 10px; }
+.gizmos::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 14px;
+  background: linear-gradient(180deg, rgba(200, 137, 47, 0.5), rgba(200, 137, 47, 0));
+}
 .gizmo {
   pointer-events: auto;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid rgba(200, 137, 47, 0.45);
-  background: rgba(12, 11, 9, 0.82);
-  color: var(--paper-dim);
+  border: 1px solid rgba(200, 137, 47, 0.55);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(232, 180, 99, 0.42), rgba(14, 12, 9, 0.92) 68%);
+  color: #e6cf9f;
   font-family: var(--font-serif);
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 180, 0.22);
   transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 }
-.gizmo:hover { background: rgba(200, 137, 47, 0.9); color: #17130c; transform: translateY(-1px); }
+.gizmo:hover {
+  background: radial-gradient(circle at 34% 28%, #f0c479, rgba(200, 137, 47, 0.95));
+  color: #1b1409;
+  transform: translateY(-1px);
+}
 
 @keyframes tag-in {
   from { opacity: 0; transform: translate(-50%, -90%); }
@@ -273,18 +310,42 @@ html, body {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  padding: 12px 14px;
-  background: rgba(9, 10, 14, 0.72);
-  border: 1px solid rgba(120, 150, 190, 0.24);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  padding: 14px 16px 12px;
+  background: radial-gradient(120% 100% at 20% 0%, rgba(30, 34, 42, 0.55), rgba(6, 7, 10, 0.78));
+  border: 1px solid rgba(120, 150, 190, 0.14);
+  border-top-color: rgba(190, 150, 90, 0.35);
+  border-radius: 3px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 225, 175, 0.06);
 }
 .clepsydra-head { writing-mode: vertical-rl; font-family: var(--font-serif); font-size: 12px; letter-spacing: 0.3em; color: #9fb2c9; }
 .clepsydra-body { display: flex; align-items: flex-end; gap: 10px; }
-.clepsydra-vessel { position: relative; width: 20px; height: 78px; border: 1px solid rgba(150, 170, 200, 0.4); border-top: none; }
+/* 铜壶：上宽下圆，水面在壶里晃 */
+.clepsydra-vessel {
+  position: relative;
+  width: 24px;
+  height: 78px;
+  border: 1px solid rgba(196, 156, 96, 0.55);
+  border-top: 2px solid rgba(214, 176, 114, 0.75);
+  border-radius: 3px 3px 12px 12px / 3px 3px 16px 16px;
+  background: linear-gradient(90deg, rgba(60, 48, 30, 0.75), rgba(26, 21, 14, 0.85) 55%, rgba(70, 56, 34, 0.7));
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
 .clepsydra-water {
   position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
-  background: linear-gradient(180deg, #6f9cc4, #2f4f70);
+  background: linear-gradient(180deg, #7fa8cd, #2b4a6b 70%, #1d3450);
+  box-shadow: inset 0 3px 6px rgba(190, 220, 255, 0.28);
   transition: height 520ms ease;
+}
+/* 壶口滴下来的那一线 */
+.clepsydra-vessel::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  bottom: 2px;
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(180deg, rgba(160, 200, 235, 0.55), rgba(160, 200, 235, 0));
 }
 .clepsydra-read { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #9fb2c9; letter-spacing: 0.12em; }
 .clepsydra-tile { font-family: var(--font-serif); font-size: 13px; color: #d7e3f0; }
@@ -320,19 +381,28 @@ html, body {
 .title-sub { font-family: var(--font-serif); font-size: 15px; line-height: 2; color: var(--paper-dim); margin: 0 0 32px; }
 .title-ask { font-family: var(--font-serif); font-size: 15px; letter-spacing: 0.2em; color: var(--paper); margin: 0 0 16px; }
 .title-choices { display: flex; gap: 16px; justify-content: center; }
+/* 选导演：两块并排挂着的木牍（不是网页卡片） */
 .choice {
   flex: 1;
-  padding: 18px 20px;
-  background: rgba(20, 18, 14, 0.8);
-  border: 1px solid var(--line);
+  padding: 22px 22px 20px;
+  background:
+    linear-gradient(180deg, rgba(46, 37, 25, 0.92), rgba(22, 18, 13, 0.94));
+  border: 1px solid rgba(200, 137, 47, 0.36);
+  border-top: 3px solid rgba(200, 137, 47, 0.62);
+  border-radius: 2px 2px 5px 5px;
   color: var(--paper);
   cursor: pointer;
-  text-align: left;
+  text-align: center;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 226, 176, 0.07);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
-.choice:hover { border-color: var(--bronze); background: rgba(200, 137, 47, 0.12); transform: translateY(-2px); }
-.choice-name { display: block; font-family: var(--font-serif); font-size: 20px; letter-spacing: 0.18em; margin-bottom: 8px; }
-.choice-note { display: block; font-size: 12px; line-height: 1.7; color: var(--paper-dim); }
+.choice:hover {
+  border-color: rgba(231, 180, 99, 0.85);
+  background: linear-gradient(180deg, rgba(74, 56, 32, 0.95), rgba(34, 26, 16, 0.95));
+  transform: translateY(-3px);
+}
+.choice-name { display: block; font-family: var(--font-serif); font-size: 21px; letter-spacing: 0.24em; margin-bottom: 10px; }
+.choice-note { display: block; font-size: 12px; line-height: 1.8; color: var(--paper-dim); }
 .title-keys { margin: 34px 0 0; font-size: 12px; line-height: 1.9; color: rgba(184, 169, 140, 0.75); letter-spacing: 0.05em; }
 
 .film-inner { max-width: 700px; }

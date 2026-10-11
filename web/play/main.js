@@ -14,6 +14,8 @@ const ANSWERS = { lu: { wait: 0.8, polish: 0.8, depth: 0.85 }, shan: { wait: 0.2
 const NEED = '我想看一个人在乱世里怎么做选择';
 const DIRECTOR = { lu: '陆导', shan: '单导' };
 const HOLDER = '门客（你）';
+// 收束页拿不到 scenes 里的幕名时兜底（正常都走 view 里的 title）
+const ACT_TITLE = { daliang: '大梁', yimen: '夷门', night: '取符之夜', ye: '邺城', granary: '暮色粮仓' };
 
 const ITEM_PROP = {
   '赵使的竹简': 'prop:letter',
@@ -45,6 +47,16 @@ let busy = false;
 let ended = false;
 const opened = new Set();   // 哪个人的诉求签已经摊开了
 let lastAct = null;
+let picked = null;          // 这一局选了哪位导演（录电影要用他的口味）
+let lastCoda = null;        // 结局那一屏的文字，收束页还要用
+let lastActs = null;
+const rec = [];             // 这一局的动作记录：电影就是把它重放一遍
+
+/** 所有对引擎的调用都从这儿过——顺手录一份，电影才放得出来 */
+function act(op, ...args) {
+  rec.push({ op, args });
+  return play[op](...args);
+}
 
 /* ── 小工具 ──────────────────────────────────────────────── */
 
@@ -228,7 +240,7 @@ function showAct(v) {
 /* ── 一局怎么走 ──────────────────────────────────────────── */
 
 async function settle() {
-  while ((view.stage === 'act' || view.stage === 'granary') && view.done) view = play.next();
+  while ((view.stage === 'act' || view.stage === 'granary') && view.done) view = act('next');
   if (view.stage === 'coda') return showCoda(view);
   if (view.stage === 'done') return showFinal(view);
   return showAct(view);
@@ -247,7 +259,7 @@ async function doChoose(id) {
     }
     freeze(true);
     ui.clearTags();
-    const r = play.choose(id);
+    const r = act('choose', id);
     const speaker = r.r?.person ?? null;
     if (speaker) { const p = anchorPos(`person:${speaker}`); if (p) cam.focus(p, { dist: 6.2, elev: 0.22 }); }
     if (r.r?.tell) ui.tell(r.r.tell);
@@ -267,7 +279,7 @@ async function doWatch(id) {
   if (busy || !view) return;
   busy = true;
   try {
-    const r = play.watch(id);
+    const r = act('watch', id);
     const p = anchorPos(`person:${id}`);
     if (p) cam.focus(p, { dist: 5.6, elev: 0.22 });
     ui.showMind(r);
@@ -283,7 +295,7 @@ async function doAsk(id) {
   if (busy || !view) return;
   busy = true;
   try {
-    const r = play.ask(id);
+    const r = act('ask', id);
     const p = anchorPos(`person:${id}`);
     if (p) cam.focus(p, { dist: 5.8, elev: 0.22 });
     await speak(nameOf(id), r.answer ?? '……');
@@ -298,7 +310,7 @@ async function doKeeper(id) {
   if (busy || !view || view.stage !== 'granary') return;
   busy = true;
   try {
-    view = play.chooseKeeper(id);
+    view = act('chooseKeeper', id);
     opened.clear();
     await speak('', `你换了个说话的人：${nameOf(id)}。`);
     await showAct(view);
@@ -311,6 +323,8 @@ async function doKeeper(id) {
 
 function showCoda(v) {
   ended = true;
+  lastCoda = v.coda ?? lastCoda;
+  lastActs = v.acts ?? lastActs;
   ui.clearTags();
   ui.clearGizmos();
   ui.hideClepsydra();
@@ -319,7 +333,7 @@ function showCoda(v) {
     onGranary: () => {
       ui.hideEnding();
       ui.clearTags();
-      view = play.next();
+      view = act('next');
       showAct(view);
     },
     onClose: () => showFinal(view),
@@ -331,10 +345,31 @@ function showFinal(v) {
   ui.clearGizmos();
   ui.hideLine();
   cam.setShot({ target: [0, 1.3, -1.0], dist: 62, az: 0.6, elev: 0.46 });
-  const acts = v.acts ?? (play.state().acts
+  const raw = v?.acts ?? lastActs ?? (play.state().acts
     ? Object.entries(play.state().acts).map(([id, a]) => ({ id, title: id, text: a.outcome?.text ?? '' }))
     : []);
-  ui.showFinal(acts.map((a) => ({ id: a.id, title: a.title, outcome: a.text })), { onRestart: () => location.reload() });
+  const acts = (raw ?? []).map((a) => ({
+    id: a.id,
+    title: a.title || ACT_TITLE[a.id] || a.id,
+    outcome: a.outcome ?? a.text ?? '',
+  }));
+  ui.showFinal(acts, { onRestart: () => location.reload(), onFilm: () => saveFilm() });
+}
+
+/** 把这一局的动作录成一份电影（web/film/format.js 的 v1 录制），交给 /film.html 放 */
+async function saveFilm() {
+  try {
+    const mod = await import('/film/format.js');
+    const record = {
+      v: 1,
+      director: { answers: ANSWERS[picked] ?? ANSWERS.shan, need: NEED },
+      steps: rec,
+    };
+    localStorage.setItem(mod.STORAGE_KEY, mod.encode(record));
+    location.href = '/film.html?last=1';
+  } catch (e) {
+    fail(e);
+  }
 }
 
 /* ── 开场 ────────────────────────────────────────────────── */
@@ -344,7 +379,8 @@ function startDirector(dir) {
     session = createSession();
     session.meet(ANSWERS[dir], NEED);
     play = createPlay(session);
-    const film = play.begin();
+    picked = dir;
+    const film = act('begin');
     ui.el.title.hidden = true;
     ui.el.film.hidden = false;
     ui.el.filmText.textContent = film.film ?? '';
@@ -352,7 +388,7 @@ function startDirector(dir) {
     ui.el.enterFilm.addEventListener('click', () => {
       try {
         ui.el.film.hidden = true;
-        view = play.next();
+        view = act('next');
         showAct(view);
       } catch (e) { fail(e); }
     });

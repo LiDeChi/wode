@@ -144,16 +144,38 @@ export function createUI({ dev = false } = {}) {
         if (!seen.has(k)) { node.remove(); tagNodes.delete(k); }
       }
     },
-    /** 每帧把签放到场景对应位置（浏览器坐标）。getScreen(key) → {x,y,visible} */
+    /**
+     * 每帧把签放到场景对应位置（浏览器坐标）。getScreen(key) → {x,y,visible}
+     * 规矩：人名签贴头顶，机关（看/问）挪到人的侧下方，谁也不许压住谁的字。
+     */
     syncTags(getScreen) {
+      const placed = [];
       for (const node of [...tagNodes.values(), ...gizmoNodes.values()]) {
         const p = getScreen(node.dataset.key);
         if (!p || !p.visible) { node.style.visibility = 'hidden'; continue; }
         const n = Number(node.dataset.stack ?? 0);
+        const dx = Number(node.dataset.dx ?? 0);
+        const dy = Number(node.dataset.dy ?? 0);
+        let x = p.x + dx + (n > 0 ? (n % 2 ? 15 : -15) : 0);
+        let y = p.y + dy - n * 34;
         node.style.visibility = 'visible';
-        node.style.left = `${p.x + (n > 0 ? (n % 2 ? 12 : -12) : 0)}px`;
-        node.style.top = `${p.y - n * 36}px`;
         node.style.zIndex = String(1000 - Math.round(p.depth ?? 0) + n);
+
+        // 同一屏上好几张签：重叠就往上抬，抬到顶了再往下让
+        const w = node.offsetWidth || 84;
+        const h = node.offsetHeight || 30;
+        const box = () => ({ l: x - w / 2, r: x + w / 2, t: y - h, b: y });
+        let up = true;
+        for (let guard = 0; guard < 24; guard += 1) {
+          const cur = box();
+          const hit = placed.find((q) => cur.l < q.r - 2 && cur.r > q.l + 2 && cur.t < q.b - 2 && cur.b > q.t + 2);
+          if (!hit) break;
+          if (up && y - h - 8 < 6) up = false;      // 上方没地方了，改往下让
+          y = up ? y - h - 8 : hit.b + h + 8;
+        }
+        placed.push(box());
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
       }
     },
     clearTags() {
@@ -175,6 +197,9 @@ export function createUI({ dev = false } = {}) {
           gizmoNodes.set(e.key, node);
         }
         node.dataset.key = e.key;
+        // 机关挂在人的侧下方：不挡头顶那块写名字的木牌
+        node.dataset.dx = String(e.dx ?? 52);
+        node.dataset.dy = String(e.dy ?? 30);
         node.innerHTML = '';
         for (const action of e.actions ?? []) {
           const b = document.createElement('button');
@@ -276,7 +301,7 @@ export function createUI({ dev = false } = {}) {
       b2.addEventListener('click', () => onClose?.());
       el.endingActions.append(b1, b2);
     },
-    showFinal(acts, { onRestart } = {}) {
+    showFinal(acts, { onRestart, onFilm } = {}) {
       el.ending.hidden = false;
       el.endingBadge.textContent = '完';
       el.endingLived.textContent = '';
@@ -292,6 +317,15 @@ export function createUI({ dev = false } = {}) {
         el.endingSummary.appendChild(row);
       }
       el.endingActions.innerHTML = '';
+      if (onFilm) {
+        const f = document.createElement('button');
+        f.type = 'button';
+        f.className = 'enter';
+        f.id = 'film-btn';
+        f.textContent = '把这一局拍成电影';
+        f.addEventListener('click', () => onFilm());
+        el.endingActions.appendChild(f);
+      }
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'enter';
