@@ -34,6 +34,9 @@ import { ELIDED_NOTE } from '../kernel/depth.js';
 import CONTROLLERS from '../kernel/controllers/index.js';
 import { QIFU_SCENES, QIFU_CONTROLLERS, NIGHT_LIMIT, NIGHT_LANTERN, NIGHT_TILES } from '../scenes/qiefu.js';
 import { WEICHENG_SCENES, WEICHENG_CONTROLLERS } from '../scenes/weicheng.js';
+// 两个新组合（docs/KERNEL.md §7）住在各自的文件里，只是加进同一张场景表，不改上面两部作品
+import { OVERHEARD_SCENES, OVERHEARD_CONTROLLERS } from '../scenes/daliang-overheard.js';
+import { ESCORT_SCENES, ESCORT_CONTROLLERS } from '../scenes/weicheng-escort.js';
 
 export { explainPerception } from '../core/mind.js';
 
@@ -59,13 +62,20 @@ export const KEEPERS = ['keeper_doubt', 'keeper_rash'];
  * 场景表。五场全部来自 shared/scenes/**（选项在它们的控制器里，不在这张表里）。
  * 对外仍然叫 ACTS：舞台流转要用每一幕的 beat 与标题。
  */
-export const SCENES = { ...QIFU_SCENES, ...WEICHENG_SCENES };
+export const SCENES = { ...QIFU_SCENES, ...WEICHENG_SCENES, ...OVERHEARD_SCENES, ...ESCORT_SCENES };
 
 /** 内核自带八个通用控制器（说话 / 递东西 / 走动 / 计时 / 注意 / 地位 / 证据 / 透镜）；
  *  各幕自己写的控制器（由场景数据点名）也在这里合进去。 */
-export const SCENE_CONTROLLERS = { ...QIFU_CONTROLLERS, ...WEICHENG_CONTROLLERS };
+export const SCENE_CONTROLLERS = { ...QIFU_CONTROLLERS, ...WEICHENG_CONTROLLERS, ...OVERHEARD_CONTROLLERS, ...ESCORT_CONTROLLERS };
 
 export const ACTS = SCENES;
+
+/**
+ * 两个新组合（docs/KERNEL.md §7）的场景 id：被偷听、押粮。
+ * 它们不是《窃符》《围城》的分幕——不进 ACT_ORDER、不占 acts 的位置、不影响一局的存档形状，
+ * 由 createPlay(session).enterExtra(id) 单独进场，演完 stage 直接到 done。
+ */
+export const EXTRA_IDS = ['daliang_overheard', 'escort'];
 
 function freshState() {
   return {
@@ -136,6 +146,7 @@ export function createPlay(session, opts = {}) {
     const p = P();
     if (p.stage === 'act') return ACT_ORDER[p.actIndex];
     if (p.stage === 'granary') return 'granary';
+    if (p.stage === 'extra') return p.extra?.id ?? null;   // 新组合：一场一个 id
     return null;
   };
   const actState = (id) => (P().acts[id] ||= { watched: [], asked: [], choice: null, outcome: null, done: false, signal: null });
@@ -222,6 +233,49 @@ export function createPlay(session, opts = {}) {
 
   /* ---------------- 对外的方法 ---------------- */
 
+  // ── 新组合（docs/KERNEL.md §7）：被偷听、押粮 ──────────────────────────────
+  // 两个新玩法只由「控制器清单 + 有序规则表 + 文本」组成（见 shared/scenes/daliang-overheard.js
+  // 与 weicheng-escort.js），内核一行没改；这里只多了一个进场入口，玩法本身没有特例分支：
+  // 进场 = 内核的 enter()，做选择 = 内核的 dispatch()，收束 = 规则表里的 end 效果。
+
+  /** 走进一个新组合（sceneId ∈ EXTRA_IDS）。只新增入口，不动原作的 begin/next/choose */
+  function enterExtra(sceneId) {
+    const s = P();
+    if (!EXTRA_IDS.includes(sceneId) || !scenes[sceneId]) throw new Error(`没有这个新组合：${sceneId}`);
+    if (s.stage === 'act' || s.stage === 'granary') throw new Error('先把这一幕做完，再进新组合');
+    const a = actState(sceneId);
+    a.done = false; a.choice = null; a.outcome = null; a.watched = []; a.asked = [];
+    s.extra = { id: sceneId, ending: null };
+    s.stage = 'extra';
+    kern.enter(sceneId);                       // 建场（幂等）：各控制器 init
+    log({ kind: 'extra', text: scenes[sceneId].scene });
+    return view();
+  }
+
+  /** 新组合里的一次选择：与四幕同一条路（查闸门 → dispatch → 记 log → 收束），只是不进 acts 的分幕流程 */
+  function extraChoose(actId, optionId) {
+    const s = P();
+    const a = actState(actId);
+    if (a.done) throw new Error('这一场已经做完了');
+    const opt = kern.intents(actId).find((o) => o.id === optionId);
+    if (!opt) throw new Error(`没有这个选项：${optionId}`);
+    if (!kern.allowed(actId, opt)) throw new Error(`导演这一幕没有授予「${opt.verb}」`);
+
+    const out = kern.dispatch(actId, optionId);
+    if (out.refused) return { ...out, view: view() };
+
+    log({ kind: 'act', text: out.text, person: out.r?.person, tell: out.r?.tell, option: opt.id, seq: out.r?.reactSeq });
+    if (out.work) out.work = out.work.touched;
+    a.choice = opt.id;
+    a.outcome = { text: out.text, cost: out.cost || null, claims: out.claims || [], choice: out.choice || null, end: out.end || null };
+    remember(actId);
+    if (out.end) {                             // 规则表给了收束（end 效果）→ 这一场就到这里
+      a.done = true;
+      s.extra = { id: actId, ending: out.end };
+    }
+    return { ...out, view: view() };
+  }
+
   function begin() {
     if (!session.state.met) throw new Error('先见导师，再进作品');
     const s = P();
@@ -250,6 +304,12 @@ export function createPlay(session, opts = {}) {
       s.stage = 'done';
       return view();
     }
+    if (s.stage === 'extra') {
+      const id = currentActId();
+      if (id && !actState(id).done) throw new Error('这一场还没做完');
+      s.stage = 'done';
+      return view();
+    }
     return view();
   }
 
@@ -258,6 +318,7 @@ export function createPlay(session, opts = {}) {
     const actId = currentActId();
     if (!actId) throw new Error('现在没有可以做的选择');
     if (actId === 'granary') return granaryChoose(optionId);
+    if (s.stage === 'extra') return extraChoose(actId, optionId);
     const a = actState(actId);
     if (a.done) throw new Error('这一幕已经做完了');
     const opt = kern.intents(actId).find((o) => o.id === optionId);
@@ -400,7 +461,7 @@ export function createPlay(session, opts = {}) {
       // 粮仓那一场声明了 gate:false，所以画面上一直是 allowed:true；选项字段与旧实现逐个相同
       options = intents.map((o) => ({ id: o.id, verb: o.verb, line: o.line, item: o.item || null, allowed: o.allowed }));
     } else {
-      options = intents.map((o) => ({ id: o.id, verb: o.verb, to: o.to || null, toName: o.to ? name(o.to) : null, line: o.line, item: o.item || null, allowed: o.allowed }));
+      options = intents.map((o) => ({ id: o.id, verb: o.verb, to: o.to || null, toName: o.to ? name(o.to) : null, line: o.line ?? o.label ?? null, item: o.item || null, allowed: o.allowed }));
       // 有些幕的开场只留一个选项（只改画面，不改 choose 的可选项）
       const ow = act.optionsWhen;
       if (ow) {
@@ -413,7 +474,7 @@ export function createPlay(session, opts = {}) {
     const nightView = controllers.find((c) => c.id === 'nightwalk')?.view || null;
     const tier = kern.tierOf(actId);
     const out = {
-      ...base, act: actId, index: actId === 'granary' ? null : s.actIndex, title: act.title, place: act.place,
+      ...base, act: actId, index: actId === 'granary' || s.stage === 'extra' ? null : s.actIndex, title: act.title, place: act.place,
       goal: act.goal, scene: act.scene, grants, people, options, done: a.done, outcome: a.outcome,
       watched: a.watched, asked: a.asked, controllers,
       night: actId === 'night' ? { ...nightView, tiles: NIGHT_TILES, pattern: NIGHT_LANTERN, limit: NIGHT_LIMIT } : null,
@@ -431,7 +492,7 @@ export function createPlay(session, opts = {}) {
     return [...ACT_ORDER, 'granary'].filter((id) => s.acts[id]).map((id) => ({ id, title: scenes[id]?.title, choice: s.acts[id].choice, signal: s.acts[id].signal, text: s.acts[id].outcome?.text || '' }));
   }
 
-  return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan() };
+  return { begin, next, choose, watch, ask, chooseKeeper, view, grantsOf, state: P, tierOf: (actId) => kern.tierOf(actId), tiers: () => kern.tierPlan(), enterExtra, extraScenes: () => EXTRA_IDS.slice() };
 }
 
 /** 一局走完要多久（秒），给地板检查用 */
