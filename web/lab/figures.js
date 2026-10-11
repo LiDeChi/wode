@@ -260,8 +260,9 @@ export function createProbeTiles(bench, { onPick, onAsk } = {}) {
   const ORDER = FIGURES.map(f => f.id);
   // 架子上的原位（桌面一直是这样：四块沿视线方向错开一点，免得后一块压在前一块身上）。
   const restAt = i => new THREE.Vector3(X - i * (bench.tall ? .34 : .17), SHELF_Y + .05, APPEAL_TILES[i].z);
-  // 手机近看的位置：一字排开、正对镜头——四块牌各自看得清，手感区也才排得开。
-  const askAt = i => new THREE.Vector3(-1.28 + i * .86, SHELF_Y + .12, 2.55);
+  // 近看的位置：一字排开、正对镜头——四块牌各自看得清，手感区也才排得开。
+  // 间距按「手机竖屏上一块牌的手感区宽 ≈ 88px」定：1.02 个单位一步，两块之间才留得住缝。
+  const askAt = i => new THREE.Vector3(-1.32 + i * .88, SHELF_Y + .12, 2.55);
 
   for (const [i, def] of APPEAL_TILES.entries()) {
     const g = new THREE.Group();
@@ -358,12 +359,14 @@ export function createProbeTiles(bench, { onPick, onAsk } = {}) {
     /** 三种看法：plain（桌面/原样）、wide（手机全景：四块收起，立一块入口牌）、ask（手机近看：四块摆成一排）。 */
     setStage(stage = 'plain') {
       const ask = stage === 'ask';
-      const folded = bench.tall && !ask;
+      // 「问一句」这一处两个平台都走：桌面上四块牌挤在架子那一小片里（38–41px、互相叠 34–40px），
+      // 摆成一排正对镜头才各自点得着。
+      const folded = !ask;
       for (const node of nodes.values()) {
         node.group.visible = !folded;
-        node.at.copy(bench.tall && ask ? askAt(node.i) : restAt(node.i));
+        node.at.copy(ask ? askAt(node.i) : restAt(node.i));
         // 摆开来以后手感区换成排得开又不重叠的大小；其余情况交回登记时那个。
-        bench.setPad(`appeal:${node.appeal}`, ask ? [.78, .62, .3, .22] : (bench.tall ? [.62, .5, .32, .24] : null));
+        bench.setPad(`appeal:${node.appeal}`, ask ? (bench.tall ? [.74, .62, .3, .22] : [.74, .68, .3, .22]) : (bench.tall ? [.62, .5, .32, .24] : null));
       }
       entryG.visible = folded;
       api.stage = stage;

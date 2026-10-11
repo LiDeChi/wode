@@ -109,7 +109,8 @@ export function createStages(bench, rig, { figures, onStage, life } = {}) {
 
   /** 换一种看法。stage 只在竖屏下离开 plain；生活台是个例外——桌面上也去得了。 */
   function show(to) {
-    if (!bench.tall && to !== 'life') to = 'plain';
+    // 生活台与「问一句」在桌面上也值得推近看（桌面上那四块牌挤在一起点不中）。
+    if (!bench.tall && to !== 'life' && to !== 'ask') to = 'plain';
     stage = to;
     const close = to !== 'wide' && to !== 'plain';
     // 四张诉求牌：全景里收起来立一块入口牌，近看时摆成一排。
@@ -117,7 +118,11 @@ export function createStages(bench, rig, { figures, onStage, life } = {}) {
     rig.setStage?.(to);
     bench.only?.(to === 'plain' || to === 'life' ? KEEP[to] ?? null : KEEP[to]);
     applyPose(to);
-    backTag.group.visible = bench.tall && close;
+    backTag.group.visible = close && (bench.tall || to === 'ask');
+    backTag.plate.setText([bench.tall ? '回全景' : '回机器']);
+    // 桌面上那排诉求牌正落在屏幕中间：回程牌要是也挂中间，就压住「利」「惧」两块。
+    backTag.sx = bench.tall ? -.3 : -.66;
+    backTag.sy = bench.tall ? -.44 : -.7;
     if (lifeTag) {
       // 生活台里手机上已经有「回全景」那块牌；桌面上没有，就留这块当出口。
       lifeTag.group.visible = to === 'life' ? !bench.tall : !close;
@@ -131,14 +136,14 @@ export function createStages(bench, rig, { figures, onStage, life } = {}) {
 
   /** 从全景点进一处近看：进了就返回真（调用方据此决定要不要顺手做原来的事）。 */
   function entry(to) {
-    if (!bench.tall || (stage !== 'wide' && stage !== 'plain')) return false;
+    if (stage !== 'wide' && stage !== 'plain') return false;
     show(to);
     return true;
   }
 
   /** 回到全景（眼前木牌、入口牌都跟着换）。 */
   function back() {
-    if (!bench.tall && stage !== 'life') return 'plain';
+    if (!bench.tall && stage !== 'life') return show('plain');
     return show(bench.tall ? 'wide' : 'plain');
   }
 
@@ -156,16 +161,15 @@ export function createStages(bench, rig, { figures, onStage, life } = {}) {
   });
 
   bench.addUpdater((dt, now) => {
-    if (!bench.tall) { backTag.group.visible = guideTag.group.visible = false; }
-    else {
-      if (guideTag.group.visible && performance.now() > guideUntil) { guideTag.group.visible = false; guided = true; }
-      for (const t of [backTag, guideTag]) {
-        if (!t.group.visible) continue;
-        t.group.position.copy(bench.anchor(t.sx, t.sy, t.toward));
-        t.group.lookAt(bench.camera.position);
-        const lift = t.group.userData.lift ? .06 : 0;
-        t.group.position.y += lift;
-      }
+    if (!bench.tall) { if (stage !== 'ask') backTag.group.visible = false; guideTag.group.visible = false; }
+    else if (guideTag.group.visible && performance.now() > guideUntil) { guideTag.group.visible = false; guided = true; }
+    // 挂在镜头前的东西每一帧都要重摆——桌面上也有（「问一句」那排牌的回程牌）。
+    for (const t of [backTag, guideTag]) {
+      if (!t.group.visible) continue;
+      t.group.position.copy(bench.anchor(t.sx, t.sy, t.toward));
+      t.group.lookAt(bench.camera.position);
+      const lift = t.group.userData.lift ? .06 : 0;
+      t.group.position.y += lift;
     }
     if (lifeTag?.group.visible) {
       lifeTag.group.position.copy(bench.anchor(lifeTag.sx, lifeTag.sy, lifeTag.toward));
