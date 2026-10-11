@@ -1,0 +1,6 @@
+# Orca 新建 worktree 时自动打开的终端。
+# 本项目零依赖，没有 install 步骤；启动命令就是跑本地服务器。
+defaultTabs:
+  - title: dev
+    color: "#f97316"
+    command: npm run dev

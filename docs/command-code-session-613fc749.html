@@ -1,0 +1,2025 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>613fc749-f5ea-408c-80e5-3b3f992e4d95 · Command Code session export</title>
+<style>
+* { box-sizing: border-box; }
+html, body {
+	margin: 0;
+	padding: 0;
+	background: #000000;
+	color: #fafafa;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+	font-size: 14px;
+	line-height: 1.6;
+}
+.page {
+	position: relative;
+	max-width: 900px;
+	margin: 0 auto;
+	padding: 48px 32px 96px;
+	border-left: 1px solid #222226;
+	border-right: 1px solid #222226;
+}
+.corner {
+	position: absolute;
+	width: 8px;
+	height: 8px;
+	background: #000000;
+	border: 1px solid #222226;
+}
+.corner-tl { top: 0; left: 0; transform: translate(-4px, -4px); }
+.corner-tr { top: 0; right: 0; transform: translate(4px, -4px); }
+.corner-bl { bottom: 0; left: 0; transform: translate(-4px, 4px); }
+.corner-br { bottom: 0; right: 0; transform: translate(4px, 4px); }
+.header { border-bottom: 1px dashed #181818; padding-bottom: 24px; margin-bottom: 32px; }
+.header h1 { font-size: 20px; font-weight: 500; margin: 0 0 16px; }
+.header .prefix { color: #A599E9; margin-right: 12px; letter-spacing: -0.2em; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 24px; margin: 0; font-size: 12px; }
+.meta dt { color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 2px; }
+.meta dd { margin: 0; color: #E4CCFF; word-break: break-all; }
+.toolbar { display: flex; gap: 8px; margin-top: 20px; }
+.toolbar button {
+	font-family: inherit;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	background: transparent;
+	color: #a1a1aa;
+	border: 1px solid #222226;
+	border-radius: 0;
+	padding: 6px 12px;
+	cursor: pointer;
+}
+.toolbar button:hover { color: #fafafa; border-color: #E4CCFF; }
+.transcript { display: flex; flex-direction: column; gap: 14px; }
+.row { border: 1px solid #181818; background: #0a0a0b; }
+.row-user { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-color: #2D2B55; background: #0d0c16; }
+.user-marker { color: #A599E9; font-weight: 700; }
+.user-body { flex: 1; min-width: 0; }
+.user-text { white-space: pre-wrap; word-break: break-word; }
+.row-assistant { padding: 12px 16px; border-color: #222226; }
+.assistant-prose p { margin: 0 0 12px; }
+.assistant-prose p:last-child { margin-bottom: 0; }
+.assistant-prose h1, .assistant-prose h2, .assistant-prose h3,
+.assistant-prose h4, .assistant-prose h5, .assistant-prose h6 { color: #A599E9; margin: 16px 0 8px; }
+.assistant-prose ul, .assistant-prose ol { margin: 0 0 12px; padding-left: 22px; }
+.assistant-prose code { background: #15151f; color: #B1BAF9; padding: 1px 5px; font-size: 0.9em; }
+.assistant-prose pre { background: #0d0d12; border: 1px solid #222226; padding: 12px; overflow-x: auto; margin: 0 0 12px; }
+.assistant-prose pre code { background: none; padding: 0; color: #B1BAF9; }
+.assistant-prose a { color: #7AD4D6; }
+.row-tool, .row-thinking { padding: 0; cursor: pointer; }
+.row-tool summary, .row-thinking summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 10px 16px; user-select: none; }
+.row-tool summary::-webkit-details-marker, .row-thinking summary::-webkit-details-marker { display: none; }
+.row-tool summary::before, .row-thinking summary::before { content: '\25b8'; color: #4C556A; transition: transform 0.15s ease; }
+.row-tool[open] summary::before, .row-thinking[open] summary::before { transform: rotate(90deg); }
+.tool-badge { background: #5945B1; color: #f4f4f4; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; padding: 2px 8px; }
+.tool-input { color: #8A94A8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-body { border-top: 1px solid #181818; padding: 12px 16px; }
+.tool-output { margin: 0; white-space: pre-wrap; word-break: break-word; color: #8A94A8; font-size: 13px; }
+.tool-body-empty { color: #4C556A; font-style: italic; }
+.thinking-badge { color: #E4CCFF; font-style: italic; }
+.thinking-body { border-top: 1px solid #181818; padding: 12px 16px; }
+.thinking-body pre { margin: 0; white-space: pre-wrap; color: #8A94A8; font-style: italic; font-size: 13px; }
+.inline-image { max-width: 100%; display: block; margin-top: 10px; border: 1px solid #222226; }
+.footer { margin-top: 48px; padding-top: 24px; border-top: 1px dashed #181818; color: #4C556A; font-size: 12px; text-align: center; text-transform: uppercase; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+<div class="page">
+<span class="corner corner-tl"></span>
+<span class="corner corner-tr"></span>
+<span class="corner corner-bl"></span>
+<span class="corner corner-br"></span>
+<header class="header">
+<h1><span class="prefix">//</span>613fc749-f5ea-408c-80e5-3b3f992e4d95</h1>
+<dl class="meta"><div><dt>Session</dt><dd>613fc749-f5ea-408c-80e5-3b3f992e4d95</dd></div><div><dt>Exported</dt><dd>2026-10-11T04:19:04.116Z</dd></div><div><dt>Model</dt><dd>claude-opus-5-5</dd></div><div><dt>Messages</dt><dd>27</dd></div></dl>
+<div class="toolbar">
+<button type="button" onclick="document.querySelectorAll('details').forEach(function(d){d.open=true;})">Expand all</button>
+<button type="button" onclick="document.querySelectorAll('details').forEach(function(d){d.open=false;})">Collapse all</button>
+</div>
+</header>
+<main class="transcript">
+<div class="row row-user"><span class="user-marker">&#10095;</span><div class="user-body"><div class="user-text">讀取0c32e05e-9cc4-4399-9733-b57e581fc4ac的Claude code會話然後繼續</div></div></div>
+<div class="row row-user"><span class="user-marker">&#10095;</span><div class="user-body"><div class="user-text">Error: 404 Not_found_error the routing group space-bunny is switched off in Magpie, so &quot;group/space-bunny&quot; is not served; switch it on again on Magpie&#39;s Routing page to use it
+
+Type &quot;continue&quot; to try again. If the issue persists, contact support: https://commandcode.ai/discord
+Trace ID: 52479412659b54143580d843c6656071</div></div></div>
+<div class="row row-user"><span class="user-marker">&#10095;</span><div class="user-body"><div class="user-text">讀取0c32e05e-9cc4-4399-9733-b57e581fc4ac的Claude code會話然後繼續。多用性價比高的模型做子代理。</div></div></div>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>I need to locate that Claude Code session file, likely stored under ~/.claude/projects/ with the session ID, then figure out the working directory to continue the prior work using cheaper models for sub-agents as requested.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>我先找到這個 Claude Code 會話文件。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">ls -la ~/.claude/projects/ 2&gt;/dev/null | grep -i ling; find ~/.claude/projects -name &quot;0c32e05e-9cc4-4399-9733-b57e581fc4ac*&quot; 2&gt;/dev/null</span></summary><div class="tool-body"><pre class="tool-output">drwx------@  6 lidechi  staff   192 Oct 11 11:35 -Users-lidechi-orca-workspaces-wode-ling
+/Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac.jsonl
+/Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac
+</pre></div></details>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>I want to check the session file&#39;s size and structure.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>I找到了會話文件，先看看它的大小和結構。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">cd ~/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/ &amp;&amp; ls -la &amp;&amp; wc -l 0c32e05e-9cc4-4399-9733-b57e581fc4ac.jsonl &amp;&amp; ls -laR 0c32e05e-9cc4-4399-9733-b57e581fc4ac | head -50</span></summary><div class="tool-body"><pre class="tool-output">total 4848
+drwx------@  6 lidechi  staff      192 Oct 11 11:35 .
+drwxr-xr-x  24 lidechi  staff      768 Oct 11 10:54 ..
+drwx------@  5 lidechi  staff      160 Oct 11 11:35 0c32e05e-9cc4-4399-9733-b57e581fc4ac
+-rw-------@  1 lidechi  staff  1991306 Oct 11 11:45 0c32e05e-9cc4-4399-9733-b57e581fc4ac.jsonl
+-rw-------@  1 lidechi  staff   170617 Oct 11 11:01 91c01cff-f987-4591-b8fd-123cf7f3b3e6.jsonl
+-rw-------@  1 lidechi  staff   148744 Oct 11 11:18 cd8a2d44-a51f-4a8a-9017-c8ceadc993bd.jsonl
+     412 0c32e05e-9cc4-4399-9733-b57e581fc4ac.jsonl
+total 0
+drwx------@ 5 lidechi  staff  160 Oct 11 11:35 .
+drwx------@ 6 lidechi  staff  192 Oct 11 11:35 ..
+drwxr-xr-x@ 3 lidechi  staff   96 Oct 11 11:35 subagents
+drwxr-xr-x@ 8 lidechi  staff  256 Oct 11 11:39 tool-results
+drwx------@ 4 lidechi  staff  128 Oct 11 11:42 workflows
+
+0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents:
+total 0
+drwxr-xr-x@ 3 lidechi  staff   96 Oct 11 11:35 .
+drwx------@ 5 lidechi  staff  160 Oct 11 11:35 ..
+drwxr-xr-x@ 3 lidechi  staff   96 Oct 11 11:35 workflows
+
+0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows:
+total 0
+drwxr-xr-x@  3 lidechi  staff   96 Oct 11 11:35 .
+drwxr-xr-x@  3 lidechi  staff   96 Oct 11 11:35 ..
+drwxr-xr-x@ 23 lidechi  staff  736 Oct 11 11:39 wf_0c92118f-e43
+
+0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows/wf_0c92118f-e43:
+total 18792
+drwxr-xr-x@ 23 lidechi  staff      736 Oct 11 11:39 .
+drwxr-xr-x@  3 lidechi  staff       96 Oct 11 11:35 ..
+-rw-------@  1 lidechi  staff   881102 Oct 11 11:36 agent-a15b990c93d1547ef.jsonl
+-rw-r--r--@  1 lidechi  staff      176 Oct 11 11:35 agent-a15b990c93d1547ef.meta.json
+-rw-------@  1 lidechi  staff  1061880 Oct 11 11:39 agent-a1fa18a4a21b2a516.jsonl
+-rw-r--r--@  1 lidechi  staff      173 Oct 11 11:35 agent-a1fa18a4a21b2a516.meta.json
+-rw-------@  1 lidechi  staff   823403 Oct 11 11:35 agent-a2c038807287beea1.jsonl
+-rw-r--r--@  1 lidechi  staff      176 Oct 11 11:35 agent-a2c038807287beea1.meta.json
+-rw-------@  1 lidechi  staff  1046451 Oct 11 11:42 agent-a4c2e9162277dbf74.jsonl
+-rw-r--r--@  1 lidechi  staff      177 Oct 11 11:39 agent-a4c2e9162277dbf74.meta.json
+-rw-------@  1 lidechi  staff   953247 Oct 11 11:36 agent-a644c26105f9ebb47.jsonl
+-rw-r--r--@  1 lidechi  staff      175 Oct 11 11:35 agent-a644c26105f9ebb47.meta.json
+-rw-------@  1 lidechi  staff   993799 Oct 11 11:38 agent-a7a395369b3ffe847.jsonl
+-rw-r--r--@  1 lidechi  staff      177 Oct 11 11:35 agent-a7a395369b3ffe847.meta.json
+-rw-------@  1 lidechi  staff   952522 Oct 11 11:40 agent-abad3c60cd464f5e3.jsonl
+-rw-r--r--@  1 lidechi  staff      181 Oct 11 11:38 agent-abad3c60cd464f5e3.meta.json
+-rw-------@  1 lidechi  staff   846545 Oct 11 11:37 agent-ac18c1730e02c080f.jsonl
+-rw-r--r--@  1 lidechi  staff      179 Oct 11 11:36 agent-ac18c1730e02c080f.meta.json
+-rw-------@  1 lidechi  staff   827015 Oct 11 11:37 agent-ad7bf6e63b4a051ab.jsonl
+-rw-r--r--@  1 lidechi  staff      180 Oct 11 11:36 agent-ad7bf6e63b4a051ab.meta.json
+-rw-------@  1 lidechi  staff   779288 Oct 11 11:35 agent-aea8fe1cb39de1b28.jsonl
+-rw-r--r--@  1 lidechi  staff      180 Oct 11 11:35 agent-aea8fe1cb39de1b28.meta.json
+-rw-r--r--@  1 lidechi  staff    13761 Oct 11 11:42 journal.jsonl
+
+0c32e05e-9cc4-4399-9733-b57e581fc4ac/tool-results:
+total 488
+drwxr-xr-x@ 8 lidechi  staff    256 Oct 11 11:39 .
+drwx------@ 5 lidechi  staff    160 Oct 11 11:35 ..
+-rw-r--r--@ 1 lidechi  staff  44556 Oct 11 11:35 b151yyeh8.txt
+</pre></div></details>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>This session file is sizable, around 412 lines. I&#39;ll write a script to parse the JSONL and extract a readable conversation view, pulling out user messages, assistant text, and summarized tool calls.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>會話有 412 行、約 2MB。我寫個腳本把用戶消息、助手文本和工具調用摘要提取出來。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">cd ~/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/ &amp;&amp; python3 - &lt;&lt;&#39;EOF&#39;
+import json
+f=&#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac.jsonl&#39;
+out=[]
+types={}
+for i,line in enumerate(open(f)):
+    try: d=json.loads(line)
+    except Exception as e:
+        out.append(f&quot;[{i}] PARSE ERR&quot;); continue
+    t=d.get(&#39;type&#39;); types[t]=types.get(t,0)+1
+    if t not in (&#39;user&#39;,&#39;assistant&#39;): 
+        out.append(f&quot;[{i}] &lt;{t}&gt; {str(d)[:200]}&quot;)
+        continue
+    msg=d.get(&#39;message&#39;,{})
+    c=msg.get(&#39;content&#39;)
+    if isinstance(c,str):
+        out.append(f&quot;[{i}] {t.upper()}: {c[:3000]}&quot;)
+        continue
+    for b in c or []:
+        bt=b.get(&#39;type&#39;)
+        if bt==&#39;text&#39;:
+            out.append(f&quot;[{i}] {t.upper()} TEXT: {b[&#39;text&#39;][:4000]}&quot;)
+        elif bt==&#39;thinking&#39;:
+            out.append(f&quot;[{i}] {t.upper()} THINK: {b.get(&#39;thinking&#39;,&#39;&#39;)[:1500]}&quot;)
+        elif bt==&#39;tool_use&#39;:
+            out.append(f&quot;[{i}] TOOL_USE {b.get(&#39;name&#39;)}: {json.dumps(b.get(&#39;input&#39;),ensure_ascii=False)[:800]}&quot;)
+        elif bt==&#39;tool_result&#39;:
+            cc=b.get(&#39;content&#39;)
+            if isinstance(cc,list):
+                cc=&#39; &#39;.join(x.get(&#39;text&#39;,&#39;&#39;) for x in cc if isinstance(x,dict))
+            out.append(f&quot;[{i}] TOOL_RESULT: {str(cc)[:600]}&quot;)
+open(&#39;/private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad/session.txt&#39;,&#39;w&#39;).write(&#39;\n&#39;.join(out))
+print(types)
+print(len(&#39;\n&#39;.join(out)))
+EOF</span></summary><div class="tool-body"><pre class="tool-output">{&#39;last-prompt&#39;: 24, &#39;mode&#39;: 24, &#39;permission-mode&#39;: 24, &#39;attachment&#39;: 161, &#39;file-history-snapshot&#39;: 1, &#39;user&#39;: 37, &#39;atis-latch&#39;: 24, &#39;ai-title&#39;: 23, &#39;assistant&#39;: 69, &#39;file-history-delta&#39;: 7, &#39;system&#39;: 10, &#39;queue-operation&#39;: 8}
+96754
+</pre></div></details>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">cd /private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad &amp;&amp; grep -v &quot;^\[[0-9]*\] &lt;\(attachment\|last-prompt\|mode\|permission-mode\|atis-latch\|ai-title\|file-history\)&quot; session.txt &gt; session_clean.txt; wc -c session_clean.txt</span></summary><div class="tool-body"><pre class="tool-output">   50807 session_clean.txt
+</pre></div></details>
+<details class="row row-tool"><summary><span class="tool-badge">READ</span><span class="tool-input">/private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad/session_clean.txt</span></summary><div class="tool-body"><pre class="tool-output">/private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad/session_clean.txt is outside workspace (allowed: /Users/lidechi/orca/workspaces/wode/ling, /Users/lidechi/.claude/projects)</pre></div></details>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>Since the scratchpad file is outside the read_file workspace, I&#39;ll try catting it via shell instead, reading it in parts.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>Scratchpad 不在 read_file 白名單裡，我改用 shell 分段讀取。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">cd /private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad &amp;&amp; head -c 25000 session_clean.txt</span></summary><div class="tool-body"><pre class="tool-output">[5] USER: 
+
+&lt;pasted_content id=&quot;357d&quot;&gt;
+ @&quot;docs/数字世界 设计总稿 v3（草案） (2).md&quot;
+    這是別人給我的指示，請幫我分階段做出這個產品。首先要給我看到整個產品裡的角色的信息流動，證明是真的為用戶
+    服務。然後是基於世界設定的多個呈現之間的關聯。然後是呈現的可玩性。
+
+  要用性價比高的模型做agent team子代理
+&lt;/pasted_content id=&quot;357d&quot;&gt;
+
+[17] USER: &lt;command-message&gt;workflow-authoring&lt;/command-message&gt;
+&lt;command-name&gt;workflow-authoring&lt;/command-name&gt;
+&lt;skill-format&gt;true&lt;/skill-format&gt;
+[18] USER TEXT: # Workflow authoring reference
+
+A workflow structures work across many agents — to be comprehensive (decompose and cover in parallel), to be confident (independent perspectives and adversarial checks before committing), or to take on scale one context can&#39;t hold (migrations, audits, broad sweeps). The script is where you encode that structure: what fans out, what verifies, what synthesizes.
+
+When you do call it, the right move is often **hybrid**: scout inline first (list the files, find the channels, scope the diff) to discover the work-list, then call Workflow to pipeline over it. You don&#39;t need to know the shape before the *task* — only before the *orchestration step*.
+
+Common single-phase workflows you can chain across turns:
+- **Understand** — parallel readers over relevant subsystems → structured map
+- **Design** — judge panel of N independent approaches → scored synthesis
+- **Review** — dimensions → find → adversarially verify (the review-changes example)
+- **Research** — multi-modal sweep → deep-read → synthesize
+- **Migrate** — discover sites → transform each (worktree isolation) → verify
+
+For larger work, run several in sequence — read each result before deciding the next phase. You stay in the loop; each workflow is one well-scoped fan-out.
+
+**Ultracode.** When a system-reminder confirms ultracode is on, that opt-in is standing: author and run a workflow for every substantive task by default. The goal is the most exhaustive, correct answer you can produce — token cost is not a constraint. For multi-phase work (understand → design → implement → review), that often means several workflows in sequence — one per phase — so you stay in the loop between them. The quality patterns below (adversarial verify, multi-modal sweep, completeness critic, loop-until-dry) are the tools; pick what fits the task. Lean toward orchestrating with workflows and adversarially verifying your findings — unless the work is trivial or already verified. Solo only on conversational turns or trivial mechanical edits. When a reminder says ultracode is off, revert to the opt-in rule in the Workflow tool description.
+
+Pass the script inline via `script` — do not Write it to a file first. Every invocation automatically persists its script to a file under the session directory and returns the path in the tool result. To iterate on a workflow, edit that file with Write/Edit and re-invoke Workflow with `{scriptPath: &quot;&lt;path&gt;&quot;}` instead of resending the full script.
+
+Every script must begin with `export const meta = {...}`:
+  export const meta = {
+    name: &#39;find-flaky-tests&#39;,
+    description: &#39;Find flaky tests and propose fixes&#39;,   // one-line, shown in permission dialog
+    phases: [                                            // one entry per phase() call
+      { title: &#39;Scan&#39;, detail: &#39;grep test logs for retries&#39; },
+      { title: &#39;Fix&#39;, detail: &#39;one agent per flaky test&#39; },
+    ],
+  }
+  // script body starts here — use agent()/parallel()/pipeline()/phase()/log()
+  phase(&#39;Scan&#39;)
+  const flaky = await agent(&#39;grep CI logs for retry markers&#39;, {schema: FLAKY_SCHEMA})
+  ...
+
+The `meta` object must be a PURE LITERAL — no variables, function calls, spreads, or template interpolation. Required fields: `name`, `description`. Optional: `whenToUse` (shown in the workflow list), `phases`. Use the SAME phase titles in meta.phases as in phase() calls — titles are matched exactly; a phase() call with no matching meta entry just gets its own progress group. Add `model` to a phase entry when that phase uses a specific model override.
+
+Script body hooks:
+- agent(prompt: string, opts?: {label?: string, phase?: string, schema?: object, model?: string, effort?: string, isolation?: &#39;worktree&#39;, agentType?: string}): Promise&lt;any&gt; — spawn a subagent. Without schema, returns its final text as a string. With schema (a JSON Schema), the subagent is forced to call a StructuredOutput tool and agent() returns the validated object — no parsing needed. Returns null if the user skips t
+[30] ASSISTANT THINK: 
+[31] TOOL_USE Bash: {&quot;command&quot;: &quot;git log --oneline | head -5 &amp;&amp; ls -la &amp;&amp; find . -path ./node_modules -prune -o -path ./.git -prune -o -type f -print | head -100 &amp;&amp; cat package.json 2&gt;/dev/null&quot;, &quot;description&quot;: &quot;Scout repo layout and recent history&quot;}
+[34] TOOL_RESULT: Exit code 1
+8aee395 文檔補充心智-可玩性
+77a8fd9 Refactor code structure for improved readability and maintainability
+755  .commandcode/
+755  docs/
+644  .git  103B
+644  AGENT.md  352B
+./AGENT.md
+./docs/数字世界 设计总稿 v3（草案） (2).md
+./.commandcode/taste/taste.md
+[45] ASSISTANT THINK: 
+[46] TOOL_USE Bash: {&quot;command&quot;: &quot;cat AGENT.md .commandcode/taste/taste.md; echo ---; cat .git; ls /Users/lidechi/Documents/Github/wode 2&gt;/dev/null | head; find /Users/lidechi/Documents/Github/wode /Users/lidechi/orca/workspaces/wode -maxdepth 4 \\( -name &#39;units.js&#39; -o -name &#39;mind.js&#39; \\) -not -path &#39;*/node_modules/*&#39; 2&gt;/dev/null | head; ls /Users/lidechi/orca/workspaces/wode; node -v; which pnpm npm&quot;, &quot;description&quot;: &quot;Read agent notes, locate main repo and demo files&quot;}
+[49] TOOL_RESULT: 主 Agent 規則 : 拆解任務、分配子Agent。
+子 Agent 規則 ：
+  - 不 build、不test、不typecheck。
+- 早提交、早返回。
+
+主 Agent 負責任務管理、衝突解決、測試和整合。拆分工作時，遵循工程管理技巧。調查優先，按覆蓋面拆分。
+子 Agent worktree、中間編譯產物，必須及時清理。---
+gitdir: /Users/lidechi/Documents/Github/wode/.git/worktrees/87772-3c2ff026-e3cc-4201-87d2-263d0a9db228
+docs/
+AGENT.md  352B
+ling/
+v26.2.0
+/usr/local/bin/pnpm
+/Users/lidechi/.nvm/versions/node/v26.2.0/bin/npm
+[54] ASSISTANT THINK: 
+[55] TOOL_USE Bash: {&quot;command&quot;: &quot;git branch -a; git log --all --oneline | head -20; git -C /Users/lidechi/Documents/Github/wode worktree list; find / -maxdepth 6 \\( -name &#39;mind.js&#39; -o -name &#39;units.js&#39; \\) -not -path &#39;*/node_modules/*&#39; 2&gt;/dev/null | head&quot;, &quot;description&quot;: &quot;Check other branches and search for demo files&quot;}
+[58] TOOL_RESULT: * LiDeChi/ling
+  + claude/awesome-hertz-30bbe3
+  + main
+  remote-only (1):
+    main
+3eae575 Make 取符之夜 a scene you can learn, and stop the toast eating the pad
+8aee395 文檔補充心智-可玩性
+d545cfa Build the Digital World Warring States first edition
+77a8fd9 Refactor code structure for improved readability and maintainability
+~/Documents/Github/wode 77a8fd9 [main]
+~/Documents/Github/wode/.claude/worktrees/awesome-hertz-30bbe3 3eae575 [claude/awesome-hertz-30bbe3]
+~/orca/workspaces/wode/ling 8aee395 [LiDeChi/ling]
+/Users/lidechi/yinian/src/mind.js
+/private/tmp/head-nt/demo/src/mind.js
+[68] ASSISTANT THINK: 
+[69] ASSISTANT TEXT: There&#39;s already a sibling branch with a prior build attempt. Let me see what it contains before deciding anything.
+[70] TOOL_USE Bash: {&quot;command&quot;: &quot;git show --stat d545cfa | head -60; git show --stat 3eae575 | head -30; ls /Users/lidechi/yinian/src /private/tmp/head-nt/demo/src 2&gt;/dev/null; wc -l /Users/lidechi/yinian/src/*.js 2&gt;/dev/null | tail -3&quot;, &quot;description&quot;: &quot;Inspect existing build branch and demo files&quot;}
+[73] TOOL_RESULT: commit d545cfaa1de062573c633e6c04afeb355f234d9a
+Author: Li De Chi &lt;parsonjian@gmail.com&gt;
+Date:   Sun Oct 11 08:52:27 2026 +0800
+
+    Build the Digital World Warring States first edition
+    
+    Implement the shared world, physical stealth, character minds, audited mechanisms, historical movie replay and durable personal save. Record complete core, desktop and mobile validation with human acceptance boundaries.
+    
+    Co-Authored-By: Claude Code &lt;noreply@anthropic.com&gt;
+
+ .env.example                     |   14 +
+ .gitignore                       |   13 +
+ README.md                        |  
+[78] ASSISTANT THINK: 
+[79] TOOL_USE Bash: {&quot;command&quot;: &quot;git merge-base --is-ancestor d545cfa HEAD &amp;&amp; echo ANCESTOR || echo NOT_ANCESTOR; git show d545cfa:README.md | head -60; echo ----; git show d545cfa:package.json; echo ----; ls -la /private/tmp/head-nt/demo/ ; head -40 /private/tmp/head-nt/demo/src/core.js&quot;, &quot;description&quot;: &quot;Check ancestry, read prior build README and demo&quot;}
+[87] TOOL_RESULT: NOT_ANCESTOR
+# 数字世界 · 窃符
+
+以前这里只有《数字世界设计总稿 v3》。现在可以打开一个本机战国剧场：以新门客身份递话、陪如姬取符，最后看到史书所载或属于本作的结尾；交接与心思会保存，后来还能从另一个人的视角重看。
+
+本项目实现设计稿 §§12、16、24 的第一版：一个人的一个世界、一个历史事件、三部游戏与两种电影呈现、片场和最小导师。游历、多世界、完整研究平台不在此版。真实试玩与考据审定另列，不把自动检查当成人的体验验收。
+
+## 启动
+
+Node.js 22.13+（验证环境为 26.2），npm。服务绑定本机回环地址，默认端口 4318。
+
+```bash
+npm ci
+npm run dev
+```
+
+打开 &lt;http://127.0.0.1:4318/&gt;。生产方式：
+
+```bash
+npm run build
+npm start
+```
+
+SQLite 保存在 `.runtime/worlds.sqlite`；浏览器 HttpOnly 会话 cookie 指向个人世界。不要删除数据目录或清理 cookie 来期待保留进度。需要迁移时，在「导师的笔记」导出 JSON，再在另一浏览器导入。重置前界面要求明确选择，旧演出只留在已导出的文件里。
+
+## 点哪里验证
+
+| 路径 | 一个能复验的小例子 |
+| --- | --- |
+| 进入这段历史 | 看
+[92] ASSISTANT THINK: 
+[93] TOOL_USE Bash: {&quot;command&quot;: &quot;env | grep -iE &#39;ANTHROPIC|OPENAI|LITELLM|MODEL_|GATEWAY|DEEPSEEK&#39; | sed -E &#39;s/(KEY|TOKEN)=.*/\\1=***/&#39;; for p in 4000 8317 3000 3425 4318; do curl -s -m 2 -o /dev/null -w \&quot;$p %{http_code}\\n\&quot; http://127.0.0.1:$p/v1/models; done; ls /Users/lidechi/yinian; head -50 /Users/lidechi/yinian/src/mind.js&quot;, &quot;description&quot;: &quot;Check LLM gateway env and local endpoints, peek yinian mind.js&quot;}
+[101] TOOL_RESULT: ANTHROPIC_DEFAULT_HAIKU_MODEL=commandcode/claude-haiku-5-5[1m]
+ANTHROPIC_DEFAULT_SONNET_MODEL=commandcode/claude-opus-5-5[1m]
+ANTHROPIC_DEFAULT_OPUS_MODEL=commandcode/claude-opus-5-5[1m]
+ANTHROPIC_SMALL_FAST_MODEL=commandcode/claude-haiku-5-5[1m]
+ANTHROPIC_AUTH_TOKEN=***
+ANTHROPIC_BASE_URL=http://127.0.0.1:3425
+CLAUDE_CODE_MODEL_CAPABILITIES=group/auto-grok-4-7=effort,xhigh_effort;codex/gpt-6.1-sol=effort,xhigh_effort,max_effort;codex/gpt-6-astra=effort,xhigh_effort,max_effort;group/free=effort;group/auto-grok-4-5=effort;deepseek/deepseek-flash=effort,max_effort;deepseek/deepseek-v4-pro=effort
+[105] ASSISTANT THINK: 
+[106] TOOL_USE Bash: {&quot;command&quot;: &quot;curl -s -m 2 http://127.0.0.1:4318/ | head -20; lsof -nP -iTCP:4318 -sTCP:LISTEN | tail -2; head -60 /private/tmp/head-nt/demo/README.md&quot;, &quot;description&quot;: &quot;Identify what serves port 4318 and read tmp demo README&quot;}
+[109] TOOL_RESULT: &lt;!doctype html&gt;
+&lt;html lang=&quot;zh-Hans&quot;&gt;
+  &lt;head&gt;
+    &lt;script type=&quot;module&quot; src=&quot;/@vite/client&quot;&gt;&lt;/script&gt;
+
+    &lt;meta charset=&quot;UTF-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1, viewport-fit=cover&quot; /&gt;
+    &lt;meta name=&quot;theme-color&quot; content=&quot;#142b35&quot; /&gt;
+    &lt;meta name=&quot;description&quot; content=&quot;邯郸被围，救兵止步。你的一句话，可能改变一个人的结局。数字世界首作《窃符》。&quot; /&gt;
+    &lt;title&gt;数字世界 · 窃符&lt;/title&gt;
+    &lt;link rel=&quot;icon&quot; type=&quot;image/svg+xml&quot; href=&quot;/seal.svg&quot; /&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div id=&quot;app&quot;&gt;&lt;/div&gt;
+    &lt;script type=&quot;module&quot; src=&quot;/src/main.ts?t=1791687820233&quot;&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+COMMAND   PID    
+[118] ASSISTANT THINK: 
+[119] TOOL_USE Bash: {&quot;command&quot;: &quot;curl -s -m 5 http://127.0.0.1:3425/v1/models -H \&quot;Authorization: Bearer $ANTHROPIC_AUTH_TOKEN\&quot; | python3 -c \&quot;import sys,json;d=json.load(sys.stdin);print([m[&#39;id&#39;] for m in d.get(&#39;data&#39;,[])][:80])\&quot; 2&gt;&amp;1 | head -20&quot;, &quot;description&quot;: &quot;List models available on local gateway&quot;}
+[121] TOOL_RESULT: [&#39;group/auto-claude-opus-5-5&#39;, &#39;group/auto-claude-sonnet-5-5&#39;, &#39;group/commandcode-openmodel&#39;, &#39;group/haiku-5.5&#39;, &#39;group/auto-deepseek-v4-1-flash&#39;, &#39;group/auto-glm-5-3-flash&#39;, &#39;group/auto-mimo-v2-6-flash&#39;, &#39;group/auto-muse-spark-1-3-contributor&#39;, &#39;group/auto-grok-4-5&#39;, &#39;group/auto-claude-haiku-5-5&#39;, &#39;deepseek/deepseek-flash&#39;, &#39;deepseek/deepseek-v4-pro&#39;, &#39;openrouter/apodex/apodex-1.1-mini:free&#39;, &#39;openrouter/dots-studio/dots-3-note-preview:free&#39;, &#39;openrouter/liquid/lfm-2.5-2.6b:free&#39;, &#39;openrouter/nvidia/nemotron-3.5-lightning:free&#39;, &#39;openrouter/thinkingmachines/inkling-small:free&#39;, &#39;openrouter/po
+[125] ASSISTANT THINK: 
+[126] ASSISTANT TEXT: I have enough to plan. Here&#39;s what I found before deciding anything:
+
+- **This worktree** (`LiDeChi/ling`) holds only the design doc.
+- **A sibling branch** (`claude/awesome-hertz-30bbe3`, about 7k lines of TS + three.js) already has an earlier &quot;窃符&quot; build. It&#39;s running on :4318 right now. It put game polish first: stealth tuning, visuals. Your new order is the reverse: information flow → links between presentations → playability.
+- **Local gateway** at `127.0.0.1:3425` has cheap models: `commandcode/deepseek/deepseek-v4.1-flash` and `group/auto-glm-5-3-flash`.
+
+**Decision:** I&#39;ll build fresh on this branch, with an architecture shaped around your three stages. The old branch stays as reference, and I&#39;ll borrow its history-source notes. &quot;性价比高的模型&quot; means two things here:
+1. **Inside the product**, the 导师/导演/演员 agent team calls flash-tier models through the gateway, with rule fallbacks.
+2. **For building it**, my workflow subagents run on Haiku. I write the contracts, then integrate and test.
+
+`★ Insight ─────────────────────────────────────`
+- To prove the product &quot;serves the user&quot;, the entire product needs **one write path**: an append-only ledger where every message between roles records `from → to` plus a `cause` list. &quot;Serves the user&quot; then becomes a graph query: does every 导师/导演 decision&#39;s cause chain end at something *you* said or did?
+- Cheap subagents fail at integration, not at writing a single file. So the real leverage is a precise contract doc: exact function signatures and data shapes. Each Haiku agent then implements one module against it, blind to the others.
+- Every structured decision stays deterministic (the &quot;hard&quot; fields). The LLM only writes the &quot;soft&quot; 他当时的说法 text. That keeps traces reproducible and tests offline-safe, which is what §13 asks for: &quot;硬的和软的分开&quot;.
+`─────────────────────────────────────────────────`
+
+First I&#39;ll write the foundation myself: the ledger, the contract spec, and the project skeleton.
+[127] TOOL_USE Bash: {&quot;command&quot;: &quot;git show claude/awesome-hertz-30bbe3:docs/history-sources.md | head -94; git show claude/awesome-hertz-30bbe3:src/data/catalog.ts | head -80&quot;, &quot;description&quot;: &quot;Read prior branch&#39;s history sources and catalog for reuse&quot;}
+[135] TOOL_RESULT: # 《窃符》史料输入与出处
+
+核对日期：2026-10-11。对应《数字世界 设计总稿 v3（草案）》§16.2、§16.3、§16.7、§24。此文档供角色设定、史料主张与作品注释引用。
+
+“已核实”在本文中指已在所列原典转录正文找到这句话；不等于其中人物的判断已经成为无争议的历史事实。引用保留所访问版本的繁体字与标点。Wikisource 是原典的公开转录，未逐字与影印底本校勘。原文、古代注释、网页现代编者添加的纪年必须分开。
+
+## 来源索引
+
+下列链接均在本次核对中实际访问；正文通过 `https://r.jina.ai/` 加原始 URL 读取。Z-INDEX、Z-EDITION 只用于找到版本和卷次，不作为事件证据。没有用二手文章作为依据。
+
+| 编号 | 原典与实际访问 URL | 本次使用的位置 |
+| --- | --- | --- |
+| S77 | [《史记》卷七十七·魏公子列传](https://zh.wikisource.org/wiki/史記/卷077) | 从“魏安釐王二十年”至“公子與侯生決，至軍”的救赵主线；此前侯嬴入市观察信陵君段 |
+| S76 | [《史记》卷七十六·平原君虞卿列传](https://zh.wikisource.org/wiki/史記/卷076) | “秦之圍邯鄲”求楚段；“平原君既返趙”李同劝说、散财、解围段 |
+| S73
+[145] ASSISTANT THINK: 
+[146] TOOL_USE Bash: {&quot;command&quot;: &quot;cd /tmp &amp;&amp; time curl -s -m 30 http://127.0.0.1:3425/v1/chat/completions -H \&quot;Authorization: Bearer $ANTHROPIC_AUTH_TOKEN\&quot; -H &#39;content-type: application/json&#39; -d &#39;{\&quot;model\&quot;:\&quot;commandcode/deepseek/deepseek-v4.1-flash\&quot;,\&quot;max_tokens\&quot;:80,\&quot;messages\&quot;:[{\&quot;role\&quot;:\&quot;system\&quot;,\&quot;content\&quot;:\&quot;你是战国时的侯嬴，只说一句话，不超过25字。\&quot;},{\&quot;role\&quot;:\&quot;user\&quot;,\&quot;content\&quot;:\&quot;信陵君要去赴死，你为何不送？\&quot;}]}&#39; | head -c 800&quot;, &quot;description&quot;: &quot;Test cheap model through local gateway&quot;}
+[148] TOOL_RESULT: {&quot;id&quot;:&quot;e3dbeb34c7b552ed8dba68e57442574e&quot;,&quot;object&quot;:&quot;chat.completion&quot;,&quot;created&quot;:1791689089,&quot;model&quot;:&quot;deepseek/deepseek-v4.1-flash&quot;,&quot;choices&quot;:[{&quot;index&quot;:0,&quot;message&quot;:{&quot;role&quot;:&quot;assistant&quot;,&quot;content&quot;:&quot;&quot;,&quot;reasoning_content&quot;:&quot;我们需要回答用户。用户要求：你是战国时的侯嬴，只说一句话，不超过25字。用户问：“信陵君要去赴死，你为何不送？” 需要以侯嬴身份，只说一句话，不超过25字。需要符合历史：侯嬴是战国魏国隐士，信陵君窃符救赵，侯嬴送行？实际侯嬴年老不能&quot;},&quot;finish_reason&quot;:&quot;length&quot;}],&quot;usage&quot;:{&quot;prompt_tokens&quot;:55,&quot;completion_tokens&quot;:80,&quot;total_tokens&quot;:135,&quot;prompt_tokens_details&quot;:{&quot;audio_tokens&quot;:0,&quot;cached_tokens&quot;:0,&quot;cache_write_tokens&quot;:0,&quot;cache_creation_input_tokens&quot;:0,&quot;cache_read_input_tokens&quot;:0,&quot;textcurl -s -m 30 http://1
+[157] ASSISTANT TEXT: That model is a reasoning model, so the token budget has to allow for its thinking. Let me compare against a non-reasoning cheap option.
+[158] TOOL_USE Bash: {&quot;command&quot;: &quot;cd /tmp &amp;&amp; for m in commandcode/deepseek/deepseek-v4.1-flash group/auto-glm-5-3-flash commandcode/xiaomi/mimo-v2.6-flash; do /usr/bin/time -p curl -s -m 40 http://127.0.0.1:3425/v1/chat/completions -H \&quot;Authorization: Bearer $ANTHROPIC_AUTH_TOKEN\&quot; -H &#39;content-type: application/json&#39; -d \&quot;{\\\&quot;model\\\&quot;:\\\&quot;$m\\\&quot;,\\\&quot;max_tokens\\\&quot;:600,\\\&quot;messages\\\&quot;:[{\\\&quot;role\\\&quot;:\\\&quot;system\\\&quot;,\\\&quot;content\\\&quot;:\\\&quot;你是战国时的侯嬴，只说一句话，不超过25字。\\\&quot;},{\\\&quot;role\\\&quot;:\\\&quot;user\\\&quot;,\\\&quot;content\\\&quot;:\\\&quot;信陵君要去赴死，你为何不送？\\\&quot;}]}\&quot; 2&gt;/tmp/t.txt | python3 -c \&quot;import sys,json;d=json.load(sys.stdin);print(&#39;$m&#39;, repr(d[&#39;choices&#39;][0][&#39;message&#39;].get(&#39;content&#39;)), d[&#39;usage&#39;][&#39;completion_tokens&#39;])\&quot;; grep real /tmp/t.txt; done&quot;, &quot;description&quot;: &quot;Compare latency and output of three cheap models&quot;}
+[160] TOOL_RESULT: commandcode/deepseek/deepseek-v4.1-flash &#39;&#39; 600
+real 6.22
+group/auto-glm-5-3-flash &#39;老臣自刎已随君行，北望死生，不必相送。&#39; 38
+real 1.01
+commandcode/xiaomi/mimo-v2.6-flash &#39;公子必反，吾已献计于门下矣。&#39; 285
+real 25.87
+Shell cwd was reset to /Users/lidechi/orca/workspaces/wode/ling
+[164] ASSISTANT THINK: 
+[165] ASSISTANT THINK: 
+[166] TOOL_USE Bash: {&quot;command&quot;: &quot;mkdir -p shared/core shared/agents shared/engine shared/data shared/play web/views tests server docs &amp;&amp; git show claude/awesome-hertz-30bbe3:docs/history-sources.md &gt; docs/history-sources.md &amp;&amp; cat &gt; package.json &lt;&lt;&#39;EOF&#39;\n{\n  \&quot;name\&quot;: \&quot;digital-world\&quot;,\n  \&quot;version\&quot;: \&quot;0.1.0\&quot;,\n  \&quot;private\&quot;: true,\n  \&quot;type\&quot;: \&quot;module\&quot;,\n  \&quot;description\&quot;: \&quot;数字世界：从你的需求长出的世界。导师、导演、演员同一种心智，所有呈现共享一张主张图。\&quot;,\n  \&quot;scripts\&quot;: {\n    \&quot;dev\&quot;: \&quot;node server/index.mjs\&quot;,\n    \&quot;test\&quot;: \&quot;node --test tests/\&quot;\n  },\n  \&quot;engines\&quot;: { \&quot;node\&quot;: \&quot;&gt;=22\&quot; }\n}\nEOF\ncat &gt; .gitignore &lt;&lt;&#39;EOF&#39;\nnode_modules/\n.runtime/\n.env\n*.log\nEOF\necho ok&quot;, &quot;description&quot;: &quot;Create project skeleton, copy history sources&quot;}
+[173] TOOL_RESULT: ok
+[179] ASSISTANT THINK: 
+[180] ASSISTANT THINK: 
+[181] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/shared/core/ledger.js&quot;, &quot;content&quot;: &quot;// 账本：整个产品唯一的写入口。只追加，不修改。\n// 每一条都是一条“消息”：谁（from）发给谁（to），说了什么（payload），因为哪几条（cause）。\n// “为用户服务”因此可以被检验：任何一个导师或导演的决定，沿 cause 往回走，必须走到用户做过或说过的某件事。\n\n/** 角色标识：&#39;user&#39; | &#39;mentor&#39; | &#39;director:&lt;id&gt;&#39; | &#39;actor:&lt;id&gt;&#39; | &#39;world&#39; | &#39;gateway&#39; | &#39;presentation:&lt;id&gt;&#39; */\nexport function roleKind(role) {\n  const r = String(role || &#39;&#39;);\n  const i = r.indexOf(&#39;:&#39;);\n  return i &lt; 0 ? r : r.slice(0, i);\n}\n\nexport function roleId(role) {\n  const r = String(role || &#39;&#39;);\n  const i = r.indexOf(&#39;:&#39;);\n  return i &lt; 0 ? r : r.slice(i + 1);\n}\n\n/* 64 位 FNV 变体，只用于给每条记录一个可复验的指纹，不用于安全。 */\nexport function hashHex(input) {\n  const s = typeof input === &#39;string&#39; ? input : JSON.stringify(input);\n  let h1 = 0x811c9dc5;\n  l
+[183] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/shared/core/ledger.js (file state is current in your context — no need to Read it back)
+[185] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/shared/core/claims.js&quot;, &quot;content&quot;: &quot;// 主张图：世界状态不是事实表。每条记录是“某个视角认为某事如此”。\n// 当前的“事实”只是认可度最高的那一组主张；推翻要付代价，被推翻的留作“曾经的共识”。\n// 主张图的每一次变化都写进账本（kind &#39;claim.*&#39;），所以主张的来历也能追到用户。\n\nexport const CHANNELS = [&#39;亲历&#39;, &#39;被告知&#39;, &#39;公开&#39;, &#39;设定&#39;];\nexport const STATUS = { ACTIVE: &#39;active&#39;, FORMER: &#39;former&#39;, DISPUTED: &#39;disputed&#39; };\n/** 推翻成本低于它：自动成为“误会”并存；高于它：必须有人批准，成为“反转事件” */\nexport const REVERSAL_THRESHOLD = 4;\n\nconst keyOf = (c) =&gt; `${c.subject}|${c.predicate}`;\n\nexport function createClaimGraph(ledger) {\n  const claims = new Map();\n  let nextId = 1;\n\n  function weightOf(c) {\n    let w = 0;\n    for (const v of Object.values(c.endorsers)) w += v;\n    return w;\n  }\n\n  function downstream(id) {\n    const out = [];\n    const stack = [id];\n   
+[193] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/shared/core/claims.js (file state is current in your context — no need to Read it back)
+[197] ASSISTANT THINK: 
+[198] ASSISTANT TEXT: Next is the mind kernel. It&#39;s shared by all three roles, so I&#39;ll write it myself rather than delegate it.
+[199] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/shared/core/mind.js&quot;, &quot;content&quot;: &quot;// 心智内核：单元 → 模块 → 心智。导师、导演、演员是同一种心智，只是单元和动作不同。\n// 一件事进来，先由单元按自己的“胃口”就地吃掉；吃不下交给模块；模块吃不下才递到心智。\n// 每一步记下“接了多少、剩多少”。停在哪一层，决定了这个人此刻做什么——这就是“换个人，行为不同”的来源。\n// 有限状态、确定性：同样的心智、同样的输入，永远得到同样的结果（可以重放、可以审计）。\n\nexport const clamp = (v, lo = 0, hi = 1) =&gt; Math.max(lo, Math.min(hi, v));\nconst round = (v) =&gt; Math.round(v * 1000) / 1000;\n\n/** capacity 写成数据：{ base, by: { 性情名: 系数 } }，方便存储和展示 */\nexport function capacityOf(spec, temperament) {\n  if (typeof spec === &#39;number&#39;) return spec;\n  let v = spec?.base ?? 0.3;\n  for (const [k, coef] of Object.entries(spec?.by || {})) v += coef * (temperament[k] ?? 0.5);\n  return round(clamp(v, 0, 1.5));\n}\n\n/**\n * 定义一个心智。\n * def = {\n *   id, name,\n *   temperament: 
+[207] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/shared/core/mind.js (file state is current in your context — no need to Read it back)
+[211] ASSISTANT THINK: 
+[212] TOOL_USE Bash: {&quot;command&quot;: &quot;cat &gt; /tmp/smoke.mjs &lt;&lt;&#39;EOF&#39;\nimport { createLedger, auditService, traceToUser } from &#39;/Users/lidechi/orca/workspaces/wode/ling/shared/core/ledger.js&#39;;\nimport { createClaimGraph } from &#39;/Users/lidechi/orca/workspaces/wode/ling/shared/core/cla</pre></div></details>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">cd /private/tmp/commandcode-501/-Users-lidechi-orca-workspaces-wode-ling/613fc749-f5ea-408c-80e5-3b3f992e4d95/scratchpad &amp;&amp; tail -c +25000 session_clean.txt</span></summary><div class="tool-body"><pre class="tool-output">aims.js&#39;;\nimport { createMind, explainPerception } from &#39;/Users/lidechi/orca/workspaces/wode/ling/shared/core/mind.js&#39;;\nconst L = createLedger();\nconst u = L.append({kind:&#39;user.say&#39;, from:&#39;user&#39;, to:&#39;mentor&#39;, payload:{text:&#39;我想看一个人在乱世里的选择&#39;}});\nconst m = L.append({kind:&#39;mentor.brief&#39;, from:&#39;mentor&#39;, to:&#39;director:a&#39;, cause:[u.seq], payload:{need:&#39;动情&#39;}});\nconst o = L.append({kind:&#39;director.design&#39;, from:&#39;director:a&#39;, to:&#39;world&#39;, payload:{}});\nconsole.log(auditService(L), traceToUser(L, m.seq));\nconst G = createClaimGraph(L);\nconst a = 
+[214] TOOL_RESULT: {
+  total: 2,
+  served: 1,
+  orphans: [ 3 ],
+  byRole: {
+    mentor: { total: 1, served: 1 },
+    director: { total: 1, served: 0 }
+  },
+  ok: false
+} { ok: true, path: [ 1, 2 ], root: 1 }
+reversal-needed 8
+[ &#39;新证据&#39;, &#39;解释旧共识为什么会错&#39;, &#39;导演或导师的批准&#39; ]
+true [
+  { type: &#39;引用&#39;, claims: [ &#39;c1&#39; ] },
+  { type: &#39;反转&#39;, claims: [ &#39;c1&#39;, &#39;c2&#39; ] }
+]
+多疑手上的几路（核印）没吃下，剩下的1.045一路递到心智：把所有印信摊开，一份份对照
+急躁手上的几路（核印、追人）没吃下，剩下的1.005一路递到心智：把所有印信摊开，一份份对照
+[224] ASSISTANT THINK: 
+[225] ASSISTANT THINK: 
+[226] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/docs/CONTRACT.md&quot;, &quot;content&quot;: &quot;# 实现契约（给子代理）\n\n本文是模块之间的接口。**签名和数据形状必须严格照写**，不要改名、不要多包一层、不要换参数顺序。\n看不懂的地方，读 `docs/数字世界 设计总稿 v3（草案） (2).md` 对应章节。\n\n## 0. 总规则\n\n- 纯 JavaScript ES 模块（`.js`，`export`/`import`），**零依赖**，不要 npm 包。浏览器与 Node 22+ 都要能跑同一份 `shared/` 代码：所以 `shared/` 里**不得**用 `fs`、`process`、`window`、`document`。\n- 所有导入写相对路径并带 `.js` 后缀。\n- 中文写注释和界面文字；注释简短，说“为什么”。\n- **确定性**：`shared/` 不得调用 `Math.random()`、`Date.now()`、`new Date()`。需要随机就用 `makeRng(seed)`（见下）。时间由调用方传入。\n- 硬的和软的分开：结构化的决定（输入、选项、所选）放 `payload`；一句“他当时的说法”放 `said`，可以来自模型，也可以是规则模板。\n- **每一个导师、导演的决定都必须带 `cause`**（账本里让它产生的那几条记录的 `seq`），而且这条 `cause` 链最终要能走到 `from:&#39;user&#39;` 的记录。这是整个第一阶段要证明的东西。\n\n## 1. 已有的核心（主代理写好了，只读，不要改）\n\n### `shared/core/ledger.js`\n```js\ncreateLedger() -&gt; l
+[234] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/docs/CONTRACT.md (file state is current in your context — no need to Read it back)
+[238] ASSISTANT THINK: 
+[239] TOOL_USE Bash: {&quot;command&quot;: &quot;cat &gt; shared/core/rng.js &lt;&lt;&#39;EOF&#39;\n// 种子随机：同一个种子永远长出同一个世界。shared/ 里不许用 Math.random。\nimport { hashHex } from &#39;./ledger.js&#39;;\n\nexport function makeRng(seed) {\n  let a = parseInt(hashHex(String(seed)).slice(0, 8), 16) &gt;&gt;&gt; 0;\n  return function next() {\n    a = (a + 0x6d2b79f5) | 0;\n    let t = Math.imul(a ^ (a &gt;&gt;&gt; 15), 1 | a);\n    t = (t + Math.imul(t ^ (t &gt;&gt;&gt; 7), 61 | t)) ^ t;\n    return ((t ^ (t &gt;&gt;&gt; 14)) &gt;&gt;&gt; 0) / 4294967296;\n  };\n}\nEOF\ngit add -A &amp;&amp; git commit -qm \&quot;Lay the ledger, claim graph and mind kernel every role shares\n\nOne append-only ledger is the only write path: each entry says who sent\nwhat to whom and which earlier entries caused it, so &#39;does this decision\nserve the user&#39; becomes a walk back along cause to a user entry. The claim\ngraph records views
+[246] TOOL_RESULT: 4b62200 Lay the ledger, claim graph and mind kernel every role shares
+8aee395 文檔補充心智-可玩性
+[251] ASSISTANT THINK: 
+[252] ASSISTANT THINK: 
+[253] TOOL_USE Workflow: {&quot;script&quot;: &quot;export const meta = {\n  name: &#39;stage1-modules&#39;,\n  description: &#39;Haiku agents implement seed data, mentor, director, gateway+server, catalog against CONTRACT.md, then a contract-conformance pass per file&#39;,\n  phases: [{ title: &#39;Write&#39;, detail: &#39;one haiku agent per module&#39; }, { title: &#39;Conform&#39;, detail: &#39;haiku re-reads contract and fixes drift&#39; }],\n}\nconst ROOT = &#39;/Users/lidechi/orca/workspaces/wode/ling&#39;\nconst COMMON = `You are working in ${ROOT}. Read ${ROOT}/docs/CONTRACT.md fully first, and the existing files in ${ROOT}/shared/core/ (ledger.js, claims.js, mind.js, rng.js) — they are final, do NOT edit them. Follow signatures and data shapes in CONTRACT.md EXACTLY. Zero dependencies, ES modules, relative imports with .js suffix. Chinese UI strings and short comments. Do n
+[255] TOOL_RESULT: Workflow launched in background. Task ID: wnjq8ihct
+Summary: Haiku agents implement seed data, mentor, director, gateway+server, catalog against CONTRACT.md, then a contract-conformance pass per file
+Transcript dir: /Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows/wf_0c92118f-e43
+Script file: /Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/workflows/scripts/stage1-modules-wf_0c92118f-e43.js
+(Edit this file with Write/Edit and re-invoke Workflow with {sc
+[257] &lt;system&gt; {&#39;parentUuid&#39;: &#39;ce5cf4fe-769a-4235-b5aa-6768513cadfa&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;informational&#39;, &#39;content&#39;: &quot;agent-roster: agent.spawn hook: `prompt` was ignored: a hook can 
+[266] ASSISTANT TEXT: While the Haiku agents write the modules, I&#39;ll write the stage-1 orchestrator (the &quot;session&quot; that wires the roles together) and its test. Both are the main agent&#39;s integration job.
+[267] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/shared/engine/session.js&quot;, &quot;content&quot;: &quot;// 一次会话：把用户、导师、导演、演员、主张图接在同一本账上。\n// 第一阶段要证明的链：你的需求 → 导师 → 导演 → 呈现 → 演员在其中演 → 你的反应回到导师和导演。\n// 这里不写任何画面，只负责“谁把什么交给谁，因为什么”。\n\nimport { createLedger, loadLedger, auditService, traceToUser } from &#39;../core/ledger.js&#39;;\nimport { createClaimGraph } from &#39;../core/claims.js&#39;;\nimport { createMind } from &#39;../core/mind.js&#39;;\nimport { createMentor } from &#39;../agents/mentor.js&#39;;\nimport { createDirector } from &#39;../agents/director.js&#39;;\nimport { PEOPLE, STAFF, HISTORY } from &#39;../data/seed.js&#39;;\nimport { CATALOG } from &#39;../play/catalog.js&#39;;\n\n/** 史料层是设定，不由任何人的决定产生，所以记成 &#39;world&#39; 发出的设定主张 */\nfunction seedHistory(claims) {\n  for (const h of HISTORY) {\n    claims.add({\n      subject: h.subject, predicate: h.pre
+[269] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/shared/engine/session.js (file state is current in your context — no need to Read it back)
+[271] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/tests/stage1-flow.test.js&quot;, &quot;content&quot;: &quot;// 第一阶段：角色之间的信息流动，证明是真的为用户服务。\nimport test from &#39;node:test&#39;;\nimport assert from &#39;node:assert/strict&#39;;\nimport { createSession } from &#39;../shared/engine/session.js&#39;;\nimport { traceToUser, roleKind, auditService } from &#39;../shared/core/ledger.js&#39;;\n\nconst ANSWERS_A = { wait: 0.8, polish: 0.8, depth: 0.85 };   // 能等、爱雕琢、要看细\nconst ANSWERS_B = { wait: 0.2, polish: 0.2, depth: 0.25 };   // 现在就要、要能改变、看个大概\n\nfunction run(answers, need) {\n  const s = createSession();\n  s.meet(answers, need);\n  const c = s.commission(&#39;qiefu&#39;);\n  return { s, c };\n}\n\ntest(&#39;每一个导师和导演的决定，沿 cause 往回走，都走到用户&#39;, () =&gt; {\n  const { s } = run(ANSWERS_A, &#39;我想看一个人在乱世里怎么做选择&#39;);\n  s.react(&#39;qiefu&#39;, &#39;daliang&#39;, &#39;停下来看心思&#39;);\n  s.reac
+[279] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/tests/stage1-flow.test.js (file state is current in your context — no need to Read it back)
+[283] ASSISTANT THINK: 
+[284] TOOL_USE Edit: {&quot;replace_all&quot;: false, &quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/tests/stage1-flow.test.js&quot;, &quot;old_string&quot;: &quot;  assert.notEqual(A.c.design.slot === B.c.design.slot &amp;&amp; A.c.design.emotion, B.c.design.emotion);&quot;, &quot;new_string&quot;: &quot;  assert.notEqual(A.c.design.emotion, B.c.design.emotion, &#39;需求里的情感不同，导演选的交互种类应不同&#39;);&quot;}
+[286] TOOL_RESULT: The file /Users/lidechi/orca/workspaces/wode/ling/tests/stage1-flow.test.js has been updated successfully. (file state is current in your context — no need to Read it back)
+[296] ASSISTANT TEXT: Now the mind-kernel tests (换人测试 and 说服). These are written against the contract and will validate the Haiku seed data.
+[297] TOOL_USE Write: {&quot;file_path&quot;: &quot;/Users/lidechi/orca/workspaces/wode/ling/tests/mind.test.js&quot;, &quot;content&quot;: &quot;// 心智：换人测试、说服、不被话术摆平。\nimport test from &#39;node:test&#39;;\nimport assert from &#39;node:assert/strict&#39;;\nimport { createMind } from &#39;../shared/core/mind.js&#39;;\nimport { PEOPLE, ITEMS, CHAIN, HISTORY, SOURCES } from &#39;../shared/data/seed.js&#39;;\n\nconst P = Object.fromEntries(PEOPLE.map((p) =&gt; [p.id, p]));\nconst mind = (id, trust) =&gt; createMind(trust === undefined ? P[id] : { ...P[id], trust: { ...(P[id].trust || {}), &#39;actor:player&#39;: trust } });\nconst SHORTFALL = { kind: &#39;缺额&#39;, channels: { 数量: 0.7, 印信: 0.4, 人: 0.5 } };\n\ntest(&#39;设定里有全部固定的人、物、成因链&#39;, () =&gt; {\n  for (const id of [&#39;weiwang&#39;, &#39;xinling&#39;, &#39;houying&#39;, &#39;ruji&#39;, &#39;jinbi&#39;, &#39;zhuhai&#39;, &#39;pingyuan&#39;, &#39;litong&#39;, &#39;zhaoshi&#39;, &#39;keeper_doubt&#39;, &#39;keeper_rash&#39;, &#39;borrower&#39;, &#39;guard
+[300] TOOL_RESULT: File created successfully at: /Users/lidechi/orca/workspaces/wode/ling/tests/mind.test.js (file state is current in your context — no need to Read it back)
+[304] ASSISTANT THINK: 
+[305] ASSISTANT TEXT: I&#39;ll wait for the module workflow to finish before integrating.
+[306] TOOL_USE Bash: {&quot;command&quot;: &quot;sleep 240; ls -la /Users/lidechi/orca/workspaces/wode/ling/shared/*/ &quot;, &quot;description&quot;: &quot;Wait for module agents, then list files&quot;, &quot;run_in_background&quot;: true}
+[309] TOOL_RESULT: Command running in background with ID: bgkev5e0y. Output is being written to: /private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bgkev5e0y.output. You will be notified when it completes. To check interim output, use Read on that file path.
+[318] TOOL_USE Bash: {&quot;command&quot;: &quot;sleep 1; echo waiting&quot;, &quot;description&quot;: &quot;Placeholder while workflow runs&quot;}
+[320] TOOL_RESULT: waiting
+[324] ASSISTANT TEXT: The workflow is still running; I&#39;ll continue when it reports back.
+[325] TOOL_USE Bash: {&quot;command&quot;: &quot;until [ -f /Users/lidechi/orca/workspaces/wode/ling/shared/play/catalog.js ] &amp;&amp; [ -f /Users/lidechi/orca/workspaces/wode/ling/shared/data/seed.js ]; do sleep 5; done; ls -la /Users/lidechi/orca/workspaces/wode/ling/shared/*/ /Users/lidechi/orca/workspaces/wode/ling/server&quot;, &quot;description&quot;: &quot;Wait until seed and catalog files exist&quot;, &quot;run_in_background&quot;: true}
+[328] TOOL_RESULT: Command running in background with ID: bjde343t3. Output is being written to: /private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bjde343t3.output. You will be notified when it completes. To check interim output, use Read on that file path.
+[332] ASSISTANT TEXT: Waiting for the background agents to report.
+[335] &lt;system&gt; {&#39;parentUuid&#39;: &#39;1c49141b-0160-4e29-9dca-e349a2233763&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;stop_hook_summary&#39;, &#39;hookCount&#39;: 3, &#39;hookInfos&#39;: [{&#39;command&#39;: &#39;if [ -z &quot;${HOME-}&quot; ]; then cas
+[336] &lt;system&gt; {&#39;parentUuid&#39;: &#39;a7d029ba-3d55-42be-812a-472accee2c04&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;turn_duration&#39;, &#39;durationMs&#39;: 1134819, &#39;messageCount&#39;: 229, &#39;pendingWorkflowCount&#39;: 1, &#39;times
+[342] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;enqueue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:38:01.617Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;, &#39;content&#39;: &#39;&lt;task-notification&gt;\n&lt;task-id&gt;bjde343t3&lt;/t
+[343] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;dequeue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:38:01.624Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;}
+[344] USER: &lt;task-notification&gt;
+&lt;task-id&gt;bjde343t3&lt;/task-id&gt;
+&lt;tool-use-id&gt;toolu_019hvYoWbPbqHWeou8NC3oyn&lt;/tool-use-id&gt;
+&lt;output-file&gt;/private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bjde343t3.output&lt;/output-file&gt;
+&lt;status&gt;completed&lt;/status&gt;
+&lt;summary&gt;Background command &quot;Wait until seed and catalog files exist&quot; completed (exit code 0)&lt;/summary&gt;
+&lt;/task-notification&gt;
+[345] ASSISTANT THINK: 
+[346] TOOL_USE Bash: {&quot;command&quot;: &quot;cat /private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bjde343t3.output; tail -c 1500 /Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows/wf_0c92118f-e43/journal.jsonl 2&gt;/dev/null | tr &#39;,&#39; &#39;\\n&#39; | grep -E &#39;label|type&#39; | tail -12&quot;, &quot;description&quot;: &quot;Show file listing and workflow journal progress&quot;}
+[349] TOOL_RESULT: 644  index.mjs  8.7K
+644  gateway.js  4.0K
+644  mentor.js  9.7K
+644  claims.js  9.9K
+644  ledger.js  6.3K
+644  mind.js  9.8K
+644  rng.js  448B
+644  seed.js  32.6K
+644  session.js  5.5K
+644  catalog.js  5.1K
+... (6 filtered)
+[+6 hidden: rtk recall 30eb68fb6525]
+
+[exited with code 0]
+{&quot;type&quot;:&quot;result&quot;
+[353] ASSISTANT THINK: 
+[354] TOOL_USE Bash: {&quot;command&quot;: &quot;ls shared/agents; grep -c &#39;\&quot;type\&quot;:\&quot;result\&quot;&#39; /Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows/wf_0c92118f-e43/journal.jsonl&quot;, &quot;description&quot;: &quot;Check director exists and workflow result count&quot;}
+[357] TOOL_RESULT: gateway.js  4.0K
+mentor.js  9.7K
+6
+[367] ASSISTANT TEXT: The director module is still being written, and 6 of 10 agent steps are done. I&#39;ll wait for the workflow notification.
+[368] TOOL_USE Bash: {&quot;command&quot;: &quot;J=/Users/lidechi/.claude/projects/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/subagents/workflows/wf_0c92118f-e43/journal.jsonl; until [ \&quot;$(grep -c &#39;\&quot;type\&quot;:\&quot;result\&quot;&#39; $J)\&quot; -ge 10 ]; do sleep 10; done; echo done&quot;, &quot;description&quot;: &quot;Wait for all 10 workflow agent results&quot;, &quot;run_in_background&quot;: true}
+[370] TOOL_RESULT: Command running in background with ID: bq899iou3. Output is being written to: /private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bq899iou3.output. You will be notified when it completes. To check interim output, use Read on that file path.
+[374] USER TEXT: [Request interrupted by user]
+[375] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;enqueue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:40:48.545Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;, &#39;content&#39;: &#39;&lt;task-notification&gt;\n&lt;task-id&gt;bgkev5e0y&lt;/t
+[376] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;dequeue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:40:48.573Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;}
+[377] USER: &lt;task-notification&gt;
+&lt;task-id&gt;bgkev5e0y&lt;/task-id&gt;
+&lt;tool-use-id&gt;toolu_01D2HHXpwcW2RefNi195fTK9&lt;/tool-use-id&gt;
+&lt;output-file&gt;/private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bgkev5e0y.output&lt;/output-file&gt;
+&lt;status&gt;completed&lt;/status&gt;
+&lt;summary&gt;Background command &quot;Wait for module agents, then list files&quot; completed (exit code 0)&lt;/summary&gt;
+&lt;/task-notification&gt;
+[378] ASSISTANT THINK: 
+[379] ASSISTANT TEXT: 已暂停，没有再继续动手。下面是停下时的状态。
+
+**以前卡在哪：** 这个分支里只有设计稿，没有任何代码。
+
+**现在已经做完、并且我验证过的：**
+- 地基三件已经提交（commit `4b62200`），这是我自己写的，不是交给子代理的：
+  - `shared/core/ledger.js`：账本，全产品唯一的写入口。每条记录都写明谁发给谁、因为哪几条。
+  - `shared/core/claims.js`：主张图，管冲突、推翻代价和“曾经的共识”。
+  - `shared/core/mind.js`：心智内核，单元、模块、心智三层。
+- `docs/CONTRACT.md`：给子代理用的接口契约。
+- 一个可复验的小例子：运行 `node /tmp/smoke.mjs`。
+  - 第 3 条导演决定故意没写 cause，审计会把它标成“孤儿”（`orphans: [3]`），说明审计真能抓到不为用户服务的决定。
+  - 推翻一条被引用过的主张时，缺证据、缺解释、缺批准会被逐条拒绝；三样都给齐才通过，两部作品之间的关系算出“反转”。
+
+**写好了但还没跑过的：**
+- `shared/engine/session.js`：把用户、导师、导演、演员接到同一本账上的编排层。
+- `tests/stage1-flow.test.js` 和 `tests/mind.test.js`：检查每个决定都能追到用户、不同用户得到不同设计、换人测试、不被话术摆平。
+- 这几个文件依赖子代理在写的模块，所以现在还不能运行。
+
+**停下时还在后台跑的：** 用 Haiku 子代理写 5 个模块的那个 workflow。
+- 已写出：`seed.js`、`catalog.js`、`mentor.js`、`gateway.js`、`server/index.mjs`。
+- 我中断时，`director.js` 还没生成。
+- 这些子代理写的文件我都还没审查，也还没提交。
+
+**还不支持：** 还没有任何能打开的界面，也还没开始第二阶段（多个呈现之间的关联）和第三阶段（可玩性）。
+
+接下来你想怎么做？
+1. **继续**：等 workflow 写完 `director.js`，我跑测试、修好问题，把第一阶段做成能点开看的信息流页面。
+2. **调整方向**：比如换模型，或者先给你看现有的契约再动手。
+3. **停止后台 workflow**：我可以帮你停掉它。
+[382] &lt;system&gt; {&#39;parentUuid&#39;: &#39;9f887cc2-b2da-41eb-82d0-52667c407ec1&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;stop_hook_summary&#39;, &#39;hookCount&#39;: 3, &#39;hookInfos&#39;: [{&#39;command&#39;: &#39;if [ -z &quot;${HOME-}&quot; ]; then cas
+[383] &lt;system&gt; {&#39;parentUuid&#39;: &#39;9256b6d6-05ae-415b-ab4b-31dc13acde95&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;turn_duration&#39;, &#39;durationMs&#39;: 25692, &#39;messageCount&#39;: 262, &#39;pendingWorkflowCount&#39;: 1, &#39;timesta
+[384] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;enqueue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:42:12.289Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;, &#39;content&#39;: &#39;&lt;task-notification&gt;\n&lt;task-id&gt;wnjq8ihct&lt;/t
+[385] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;dequeue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:42:12.309Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;}
+[391] USER: &lt;task-notification&gt;
+&lt;task-id&gt;wnjq8ihct&lt;/task-id&gt;
+&lt;tool-use-id&gt;toolu_01Q1fzaZEWmbewch7io76BCr&lt;/tool-use-id&gt;
+&lt;output-file&gt;/private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/wnjq8ihct.output&lt;/output-file&gt;
+&lt;status&gt;completed&lt;/status&gt;
+&lt;summary&gt;Dynamic workflow &quot;Haiku agents implement seed data, mentor, director, gateway+server, catalog against CONTRACT.md, then a contract-conformance pass per file&quot; completed&lt;/summary&gt;
+&lt;result&gt;[{&quot;key&quot;:&quot;seed&quot;,&quot;written&quot;:&quot;shared/data/seed.js\n\n- Gap: the historical claim ids H01–H21 are not referenced from PEOPLE sources. I kept only the S-source ids, because the H ids are not in SOURCES.\n- Gap: `HISTORY.holder` uses `narrator:S77`-style ids that the contract does not define.\n- Gap: the `ledger` and `design` sources have empty or file-path urls.\n- Gap: the hear() and keeper checks were computed by hand, not run.&quot;,&quot;fix&quot;:&quot;Fixed in `/Users/lidechi/orca/workspaces/wode/ling/shared/data/seed.js`:\n\n- **ruji bio:** the quote \&quot;欲為公子死，無所辭\&quot; is Hou Ying&#39;s judgment of Ruji, not her own words. The bio now says so.\n- **jinbi bio:** \&quot;嚄唶宿將\&quot; is Xinling&#39;s description of Jinbi, not narration. The bio now says so.\n- **pingyuan bio:** \&quot;初时仍有奢侈\&quot; is an inference from the text, not an explicit record. The bio now labels it that way.\n\nChecked and left unchanged:\n- No `Math.random`, `Date.now`, `new Date`, imports, or npm dependencies in the file.\n- All 15 required PEOPLE ids exist, and each has the full mind fields plus display fields.\n- `keeper_doubt` and `keeper_rash` share one `KEEPER_UNITS` and `KEEPER_MODULES` definition and differ only in temperament.\n- The 换人 test holds by hand: doubt gives `stoppedAt` &#39;mind&#39; with the 摊开对照 act, and rash gives &#39;unit&#39; with the 直接去追借粮者 act.\n- The persuasion requirements hold by hand, and no single appeal gets all four of 魏王, 信陵君, 晋鄙 and 侯嬴 accepted.\n- All 6 CHAIN entries, 6 ITEMS, PREFS_QUESTIONS, and the STAFF mentor and two directors match the contract.\n\nKnown gaps:\n- I checked the math by hand and did not run the code, per the instructions.\n- HISTORY `holder` values use `narrator:&amp;lt;source&amp;gt;`, which is not one of the role forms listed in CONTRACT.md §1. The contract needs to decide whether that is acceptable.\n- Only the seed file was edited; no other files were written.&quot;},{&quot;key&quot;:&quot;mentor&quot;,&quot;written&quot;:&quot;/Users/lidechi/orca/workspaces/wode/ling/shared/agents/mentor.js\n\n- `meet` returns `notes` as a snapshot. The `need` note stores the raw sentence, and `emotion` is derived from the first keyword match, falling back to 悲悯.\n- `guard` attaches its `mentor.refuse` record to the last entry that traces back to the user, so the refusal has a user-rooted cause. If no such entry exists yet, `cause` is empty and `traceToUser` will fail for that refusal.\n- `chooseDirector` leaves `director` as `null` when the directors list is empty, and returns `{director:null, seq:null}` instead of writing a note.\n- `learn` returns `null` for signals
+[392] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;enqueue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:42:20.921Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;, &#39;content&#39;: &#39;&lt;task-notification&gt;\n&lt;task-id&gt;bq899iou3&lt;/t
+[393] ASSISTANT THINK: 
+[394] ASSISTANT TEXT: 后台的 workflow 已经跑完了，10 个 Haiku 子代理都没有报错，最后一个模块 `director.js` 也写出来了。按你的中断，我没有接着动手：没跑测试，没审代码，也没提交。
+
+**多了什么：** 第一阶段需要的模块齐了，都只做过语法检查，没有运行过：
+- `seed.js`：人物、物件、成因链。
+- `catalog.js`：作品目录。
+- `mentor.js`：导师。
+- `director.js`：导演。
+- `gateway.js` 和 `server/index.mjs`：模型网关和本机服务器。
+
+**子代理自己报的几处问题，接上测试后要先处理：**
+- 换人测试和说服的数值是子代理手算的，没跑过，最可能在这里出错。
+- `seed.js` 里史书主张的持有者写成了 `narrator:S77` 这种格式，契约里没有这一种。
+- 导师选导演时多写了一条 `field:&#39;director&#39;` 的笔记，契约里没有列这种记录。
+- 服务器里备用模型和主模型共用 8 秒超时：主模型一慢，就没时间换备用模型了。
+
+**还不能用的：** 没有界面，测试也没跑过。
+
+你说继续，我就做这几步：
+1. 跑 `node --test tests/`，把失败的地方修好。
+2. 把第一阶段做成网页，能看到用户 → 导师 → 导演 → 呈现的信息怎么流动。
+3. 提交，再告诉你点哪里验证。
+
+你要是想先改方向，或者先看看契约和代码，也可以直接说。
+[396] &lt;queue-operation&gt; {&#39;type&#39;: &#39;queue-operation&#39;, &#39;operation&#39;: &#39;dequeue&#39;, &#39;timestamp&#39;: &#39;2026-10-11T03:42:25.772Z&#39;, &#39;sessionId&#39;: &#39;0c32e05e-9cc4-4399-9733-b57e581fc4ac&#39;}
+[398] &lt;system&gt; {&#39;parentUuid&#39;: &#39;aa70ab16-e636-45a1-b8ef-be02de53da6f&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;stop_hook_summary&#39;, &#39;hookCount&#39;: 3, &#39;hookInfos&#39;: [{&#39;command&#39;: &#39;if [ -z &quot;${HOME-}&quot; ]; then cas
+[399] &lt;system&gt; {&#39;parentUuid&#39;: &#39;496d40c0-bb88-454d-9794-5fbf35b4e46f&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;turn_duration&#39;, &#39;durationMs&#39;: 1441095, &#39;messageCount&#39;: 269, &#39;timestamp&#39;: &#39;2026-10-11T03:42:25
+[400] USER: &lt;task-notification&gt;
+&lt;task-id&gt;bq899iou3&lt;/task-id&gt;
+&lt;tool-use-id&gt;toolu_01F4Eb7DqyNJSq5yc5pyPs7T&lt;/tool-use-id&gt;
+&lt;output-file&gt;/private/tmp/claude-501/-Users-lidechi-orca-workspaces-wode-ling/0c32e05e-9cc4-4399-9733-b57e581fc4ac/tasks/bq899iou3.output&lt;/output-file&gt;
+&lt;status&gt;completed&lt;/status&gt;
+&lt;summary&gt;Background command &quot;Wait for all 10 workflow agent results&quot; completed (exit code 0)&lt;/summary&gt;
+&lt;/task-notification&gt;
+[401] ASSISTANT TEXT: 等待的后台任务也结束了，它确认 10 个子代理都已返回。我这边仍处于暂停状态。
+
+你回复“继续”，我就开始：先跑测试修问题，再把第一阶段的信息流做成能点开看的页面。
+[404] &lt;system&gt; {&#39;parentUuid&#39;: &#39;87682554-299f-479d-9ab4-e5d3d7564f46&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;stop_hook_summary&#39;, &#39;hookCount&#39;: 3, &#39;hookInfos&#39;: [{&#39;command&#39;: &#39;if [ -z &quot;${HOME-}&quot; ]; then cas
+[405] &lt;system&gt; {&#39;parentUuid&#39;: &#39;4d76d624-6c3c-4bba-94ae-435a6f4f2c83&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;turn_duration&#39;, &#39;durationMs&#39;: 4310, &#39;messageCount&#39;: 275, &#39;timestamp&#39;: &#39;2026-10-11T03:42:30.08
+[411] &lt;system&gt; {&#39;parentUuid&#39;: &#39;d3ff7ddd-8722-4123-a829-e182675fc4b1&#39;, &#39;isSidechain&#39;: False, &#39;type&#39;: &#39;system&#39;, &#39;subtype&#39;: &#39;away_summary&#39;, &#39;content&#39;: &#39;目标是按设计稿分三阶段做出数字世界，现在在第一阶段：让用户看到导师、导演、演员之间的信息流动。地基和全部模块已写好但还没测试。等你说
+</pre></div></details>
+<div class="row row-user"><span class="user-marker">&#10095;</span><div class="user-body"><div class="user-text">continue</div></div></div>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>The user wants me to continue, so I&#39;ll move forward with running tests, fixing failures, and building the stage-1 web page. Since git commit rules say only to commit when explicitly requested, I&#39;ll hold off on committing and just focus on the implementation work.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>接着上次的进度：先跑测试，修好失败的地方。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">git status --short; ls -R shared server tests web | head -40; node --test tests/ 2&gt;&amp;1 | tail -80</span></summary><div class="tool-body"><pre class="tool-output">?? .commandcode/import-report.md
+?? .commandcode/settings.json
+?? server/
+?? shared/agents/
+?? shared/data/
+?? shared/engine/
+?? shared/play/
+?? tests/
+server:
+index.mjs
+
+shared:
+agents
+core
+data
+engine
+play
+
+shared/agents:
+director.js
+gateway.js
+mentor.js
+
+shared/core:
+claims.js
+ledger.js
+mind.js
+rng.js
+
+shared/data:
+seed.js
+
+shared/engine:
+session.js
+
+shared/play:
+catalog.js
+
+tests:
+mind.test.js
+stage1-flow.test.js
+
+web:
+views
+
+web/views:
+node:internal/modules/cjs/loader:1522
+  throw err;
+  ^
+
+Error: Cannot find module &#39;/Users/lidechi/orca/workspaces/wode/ling/tests&#39;
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1519:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1073:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1097:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1124:12)
+    at Module._load (node:internal/modules/cjs/loader:1296:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: &#39;MODULE_NOT_FOUND&#39;,
+  requireStack: []
+}
+
+Node.js v26.2.0
+✖ tests (41.562792ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.305291
+
+✖ failing tests:
+
+test at tests:1:1
+✖ tests (41.562792ms)
+  &#39;test failed&#39;
+</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>Node 26 不再把目录当参数接收，我改用 glob 写法，同时修一下 package.json 里的脚本。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">sed -i &#39;&#39; &#39;s#&quot;node --test tests/&quot;#&quot;node --test \\&quot;tests/**/*.test.js\\&quot;&quot;#&#39; package.json &amp;&amp; grep test package.json &amp;&amp; node --test &quot;tests/**/*.test.js&quot; 2&gt;&amp;1 | grep -vE &quot;^\s+at &quot; | tail -120</span></summary><div class="tool-body"><pre class="tool-output">    &quot;test&quot;: &quot;node --test \&quot;tests/**/*.test.js\&quot;&quot;
+✔ 设定里有全部固定的人、物、成因链 (0.664625ms)
+✔ 换人测试：两个守仓人结构相同，只有性情不同 (0.07375ms)
+✔ 换人测试：同样的缺额，多疑的停到心智，急躁的在手脚就动身 (0.427167ms)
+✔ 同一个人第二次遇到同类事，预期变高，误差变小 (0.12275ms)
+✔ 说服：魏王讲义反而更怕，任何单一诉求都说不动 (0.152625ms)
+✔ 说服：信陵君被义打动，不被利打动 (0.072541ms)
+✔ 说服：晋鄙越压越疑；信任够时义和恩才行 (0.057042ms)
+✖ 不被话术摆平：没有一句话能同时说服魏王、信陵君、晋鄙、侯嬴 (0.805417ms)
+✖ 每一个导师和导演的决定，沿 cause 往回走，都走到用户 (1.996541ms)
+✖ 链条的顺序是：用户 → 导师 → 导演 → 呈现 (0.461708ms)
+✖ 不同的用户，得到不同的导演、不同的档位、不同的作品设计 (0.403833ms)
+✖ 导师从你的反应里学；你亲手改过的字段，观察不能覆盖 (0.34975ms)
+✖ 导演对照预测与真实反应，手艺被改动，并留下记录 (0.516958ms)
+✖ 导演不能改导师的笔记：越权被拒，并记账 (0.325583ms)
+✖ 存档再读回，账本指纹一致，审计结果不变 (0.274458ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 7
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46.506417
+
+✖ failing tests:
+
+test at tests/mind.test.js:61:1
+✖ 不被话术摆平：没有一句话能同时说服魏王、信陵君、晋鄙、侯嬴 (0.805417ms)
+  AssertionError [ERR_ASSERTION]: 这句话摆平了所有人：{&quot;义&quot;:0,&quot;利&quot;:0.8,&quot;惧&quot;:0.4,&quot;恩&quot;:0.8}
+  
+  true !== false
+  
+    generatedMessage: false,
+    code: &#39;ERR_ASSERTION&#39;,
+    actual: true,
+    expected: false,
+    operator: &#39;strictEqual&#39;,
+    diff: &#39;simple&#39;
+  }
+
+test at tests/stage1-flow.test.js:17:1
+✖ 每一个导师和导演的决定，沿 cause 往回走，都走到用户 (1.996541ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:28:1
+✖ 链条的顺序是：用户 → 导师 → 导演 → 呈现 (0.461708ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:39:1
+✖ 不同的用户，得到不同的导演、不同的档位、不同的作品设计 (0.403833ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:49:1
+✖ 导师从你的反应里学；你亲手改过的字段，观察不能覆盖 (0.34975ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:62:1
+✖ 导演对照预测与真实反应，手艺被改动，并留下记录 (0.516958ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:78:1
+✖ 导演不能改导师的笔记：越权被拒，并记账 (0.325583ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+
+test at tests/stage1-flow.test.js:84:1
+✖ 存档再读回，账本指纹一致，审计结果不变 (0.274458ms)
+  TypeError: Cannot read properties of undefined (reading &#39;temperament&#39;)
+</pre></div></details>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>I need to look at session.js, CONTRACT.md, mentor.js, director.js, catalog.js, and relevant seed files to understand the full picture before integrating everything properly.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>Mind 测试过了 7/8。剩下的是集成问题，属于主代理的活，我先读契约和这几个模块。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">READ[6]</span><span class="tool-input">docs/CONTRACT.md, shared/engine/session.js (+4 more)</span></summary><div class="tool-body"><pre class="tool-output">Read 6/6 files
+--- File Contents ---
+
+// File: docs/CONTRACT.md (markdown)
+# 实现契约（给子代理）
+
+本文是模块之间的接口。**签名和数据形状必须严格照写**，不要改名、不要多包一层、不要换参数顺序。
+看不懂的地方，读 `docs/数字世界 设计总稿 v3（草案） (2).md` 对应章节。
+
+## 0. 总规则
+
+- 纯 JavaScript ES 模块（`.js`，`export`/`import`），**零依赖**，不要 npm 包。浏览器与 Node 22+ 都要能跑同一份 `shared/` 代码：所以 `shared/` 里**不得**用 `fs`、`process`、`window`、`document`。
+- 所有导入写相对路径并带 `.js` 后缀。
+- 中文写注释和界面文字；注释简短，说“为什么”。
+- **确定性**：`shared/` 不得调用 `Math.random()`、`Date.now()`、`new Date()`。需要随机就用 `makeRng(seed)`（见下）。时间由调用方传入。
+- 硬的和软的分开：结构化的决定（输入、选项、所选）放 `payload`；一句“他当时的说法”放 `said`，可以来自模型，也可以是规则模板。
+- **每一个导师、导演的决定都必须带 `cause`**（账本里让它产生的那几条记录的 `seq`），而且这条 `cause` 链最终要能走到 `from:&#39;user&#39;` 的记录。这是整个第一阶段要证明的东西。
+
+## 1. 已有的核心（主代理写好了，只读，不要改）
+
+### `shared/core/ledger.js`
+```js
+createLedger() -&gt; ledger
+ledger.append({ kind, from, to=&#39;world&#39;, payload={}, cause=[], said?, saidSource?, scene? }) -&gt; entry
+// entry = { seq, kind, from, to, payload, cause:number[], said?, saidSource?, scene?, hash }
+ledger.get(seq) / ledger.entries / ledger.size / ledger.ofKind(&#39;mentor&#39;) / ledger.last(pred) / ledger.subscribe(fn)
+traceToUser(ledger, seq) -&gt; { ok, path:[seq 从用户到这条], root }
+ancestors(ledger, seq) / descendants(ledger, seq) -&gt; seq[]
+auditService(ledger) -&gt; { total, served, orphans, byRole, ok }
+roleKind(&#39;director:lu&#39;) -&gt; &#39;director&#39;; roleId(&#39;director:lu&#39;) -&gt; &#39;lu&#39;
+hashHex(any) -&gt; string
+```
+角色标识：`&#39;user&#39;`、`&#39;mentor&#39;`、`&#39;director:&lt;id&gt;&#39;`、`&#39;actor:&lt;id&gt;&#39;`、`&#39;world&#39;`、`&#39;gateway&#39;`、`&#39;presentation:&lt;id&gt;&#39;`。
+
+账本 `kind` 命名（只能用这些前缀）：
+| kind | 谁写 | payload 要点 |
+|---|---|---|
+| `user.meet` | 用户 | `{ answers:{wait,polish,depth,surprise}, need:string }` |
+| `user.edit-note` | 用户 | `{ field, from, to }` |
+| `user.act` | 用户 | `{ scene, verb, target, item?, option? }` |
+| `user.react` | 用户 | `{ scene, beat, signal, value? }` signal ∈ `&#39;停下来看心思&#39;|&#39;追问为什么&#39;|&#39;很快通过&#39;|&#39;重来一次&#39;|&#39;中途离开&#39;|&#39;停顿&#39;` |
+| `mentor.note` | 导师 | `{ field, value, source:&#39;问&#39;|&#39;观察&#39;|&#39;你改的&#39; }` |
+| `mentor.allot` | 导师 | `{ input, options, chosen:{[sceneId]:tier}, spent, budget }` |
+| `mentor.brief` | 导师 | `{ director, need, emotion, prefs, budget, tiers }` |
+| `mentor.learn` | 导师 | `{ field, before, after, signal }` |
+| `mentor.refuse` | 导师 | `{ attempted, by, reason }` |
+| `director.design` | 导演 | 见 §4 |
+| `director.predict` | 导演 | `{ presentation, predictions:[{beat, expect, confidence}] }` |
+| `director.grant` | 导演 | `{ scene, verbs:[...], level, language:&#39;看不见&#39;|&#39;选一句&#39;|&#39;自由说&#39; }` |
+| `director.schedule` | 导演 | `{ input, options, chosen, slot:&#39;现在&#39;|&#39;稍后&#39;|&#39;之后&#39; }` |
+| `director.learn` | 导演 | `{ beat, expected, actual, error, craft:{before,after} }` |
+| `actor.perceive` | 演员 | `{ scene, signature, stoppedAt, act, trace }` |
+| `actor.say` / `actor.give` / `actor.go` / `actor.watch` | 演员 | `{ scene, target, item?, ... }` |
+| `world.verb-refused` | 世界 | `{ actor, verb, scene, reason }` |
+| `world.chain` | 世界 | `{ link, result:&#39;held&#39;|&#39;changed&#39;|&#39;filled&#39;, why }` |
+| `present.open` / `present.deliver` | 呈现 | `{ presentation, scene }` |
+| `gateway.call` | 网关 | `{ purpose, model, ms, tokens, ok }` |
+| `claim.*` | 主张图（自动） | — |
+
+### `shared/core/claims.js`
+```js
+createClaimGraph(ledger) -&gt; G
+G.add({ subject, predicate, object, holder, channel:&#39;亲历&#39;|&#39;被告知&#39;|&#39;公开&#39;|&#39;设定&#39;, evidence=[], deps=[], presentation=null, weight=1, cause=[], note })
+  -&gt; { claim, check:{conflicts, maxCost, verdict:&#39;none&#39;|&#39;misunderstanding&#39;|&#39;reversal-needed&#39;}, seq }
+G.endorse(id, holder, weight, cause, presentation) / G.read(id, presentation, cause) / G.cite(id, presentation, cause)
+G.overturn(oldId, { replacement, evidence, explanation, approvedBy, presentation, cause }) -&gt; { ok, cost, missing?, affected?, newId? }
+G.consensus(subject, predicate) / G.viewFor(holder, {told}) / G.relations(presA, presB) -&gt; [{type:&#39;承接&#39;|&#39;引用&#39;|&#39;并行&#39;|&#39;争议&#39;|&#39;反转&#39;, claims}]
+G.overturnCost(id) / G.get(id) / G.all() / G.find(pred)
+```
+claim = `{ id, subject, predicate, object, holder, channel, evidence, deps, endorsers, citedBy, readBy, presentation, status:&#39;active&#39;|&#39;former&#39;|&#39;disputed&#39;, seq, history }`
+
+### `shared/core/mind.js`
+```js
+createMind(def, savedState?) -&gt; mind
+mind.perceive({ kind, signature?, channels:{通道:强度}, reliability? }) -&gt; { trace, stoppedAt:&#39;unit&#39;|&#39;module&#39;|&#39;mind&#39;, action:{act, verb, layer, from}, candidates, error, expectation }
+mind.hear(appeal:{义,利,惧,恩}, fromRole) -&gt; { accepted, moved, fit, backlash, trustBefore, trustAfter, reason }
+mind.imagine(otherDef, event, guess?) -&gt; { act, stoppedAt }
+mind.install(unitDef) / mind.uninstall(id) / mind.tick(dt) / mind.save()
+explainPerception(result, name) -&gt; string
+```
+心智定义 `def`：
+```js
+{ id, name,
+  temperament: { 疑心, 耐性, 义, 畏, 恩, ... 0..1 },
+  units: [{ id, label, module, reads:[&#39;通道名&#39;...], capacity:{ base, by:{性情名:系数} } | number, act:&#39;动作描述&#39;, verb?:&#39;go&#39;|&#39;give&#39;|&#39;say&#39;|&#39;watch&#39; }],
+  modules: [{ id, label, capacity, act, verb? }],
+  mindAct: &#39;递到心智时做的事&#39;,
+  values: { 义, 利, 惧, 恩 },      // 话里的哪种诉求打动他
+  resist: { 义: { 惧: 0.5 } },     // 某种诉求反而激起什么
+  threshold: 0.35,
+  goals: [&#39;动作描述&#39;...],
+  trust: { &#39;actor:player&#39;: 0.3 } }
+```
+`capacity` 的值 = base + Σ 系数×性情。**性情决定胃口**：同样的事件，胃口大的单元就地吃掉，人就动身；胃口小，事情递到心智，人就停下来想。
+
+工具：`shared/core/rng.js`（主代理写）
+```js
+makeRng(seed:string) -&gt; () =&gt; number   // [0,1)
+```
+
+## 2. 设定数据 `shared/data/seed.js`
+
+```js
+export const SOURCES      // { [id]: { id, title, url, location, quote, kind:&#39;primary&#39;|&#39;design&#39;|&#39;ledger&#39;, note } }
+export const PLACES       // [{ id, name, desc }]   daliang 大梁·信陵君府, yimen 夷门, palace 魏王卧内, ye 邺, handan 邯郸, granary 邯郸粮仓
+export const PEOPLE       // [心智定义 + 展示字段]，字段见下
+export const STAFF        // { mentor: 心智定义, directors: [心智定义...] }
+export const ITEMS        // [{ id, name, desc, appeal:{义,利,惧,恩} }]   玩家“说”的方式：递一样东西
+export const HISTORY      // [主张草稿]  史料层：{ subject, predicate, object, holder, channel:&#39;设定&#39;, evidence:[sourceId], confidence, note }
+export const CHAIN        // [成因链环节]，字段见下
+export const PREFS_QUESTIONS // 导师第一次见面问的三个很粗的问题，见下
+```
+
+PEOPLE 每个人在心智定义之外加：`{ title, place, historical:boolean, bio, look:{ color:&#39;#hex&#39;, glyph:&#39;单字&#39; }, voice:&#39;说话习惯一句话&#39;, sources:[sourceId] }`
+
+必须有这些人（id 固定）：`weiwang` 魏王、`xinling` 信陵君、`houying` 侯嬴、`ruji` 如姬、`jinbi` 晋鄙、`zhuhai` 朱亥、`pingyuan` 平原君、`litong` 李同、`zhaoshi` 赵使、`keeper_doubt` 守仓人·老秦（多疑，虚构）、`keeper_rash` 守仓人·阿季（耐性低，虚构）、`borrower` 借粮者（虚构）、`guard_a` 宫中守卫甲、`guard_b` 宫中守卫乙、`player` 新来的门客（虚构，玩家控制意图）。
+
+性情是设计假设（设计稿 §17.8），`bio` 里要写明“性情为本作设计假设”。
+
+**换人测试的硬要求**：两个守仓人面对同一事件
+`{ kind:&#39;缺额&#39;, channels:{ 数量:0.7, 印信:0.4, 人:0.5 } }`
+- `keeper_doubt`：结果 `stoppedAt === &#39;mind&#39;`，`action.act` 是“把所有印信摊开，一份份对照”
+- `keeper_rash`：结果 `stoppedAt === &#39;unit&#39;`，`action.act` 是“直接去追借粮者”
+靠的是 capacity 的性情系数，不是写死分支。两人 units/modules 结构相同，只有 temperament 不同。
+
+**说服的硬要求**（hear）：
+- 魏王：`hear({义:0.8}, &#39;actor:player&#39;).accepted === false` 且 backlash &gt; 0（讲义反而更怕）。任何单一诉求都说不动他。
+- 信陵君：`hear({义:0.8}, &#39;actor:player&#39;)` 在 trust 0.5 时 accepted；`hear({利:0.8})` 不 accepted。
+- 晋鄙：默认 trust 0.2，`hear({惧:0.7})` 不 accepted（越压越疑）；`hear({义:0.8, 恩:0.4})` 在 trust ≥ 0.5 时 accepted。
+- 不能有一种 appeal 让魏王、信陵君、晋鄙、侯嬴四人全部 accepted（防“被话术摆平”）。
+
+ITEMS 至少：`bamboo` 赵使求救的竹简（义）、`wine` 一杯酒（恩）、`seal` 印信（利+惧）、`qin_warning` 秦使的警告（惧）、`ledger_page` 仓簿副页（证据，义 0.3）、`hammer` 铁椎（惧 0.9）。
+
+CHAIN（设计稿 §16.3），6 个环节，id 固定：`halt` 魏王止步、`plead` 信陵君穷尽正路、`plan` 侯嬴献计、`steal` 如姬窃符、`seize` 邺城夺军、`relief` 解围。每个：
+```js
+{ id, label, people:[id], belief:&#39;一句话&#39;, resources:&#39;一句话&#39;, confidence:0..1, mutable:boolean,
+  irreplaceable:boolean, sources:[sourceId], alternative:&#39;条件不满足时历史怎样自己补上（一句话）&#39;,
+  changed:&#39;若被改变，本作的历史会怎样（一句话）&#39; }
+```
+`halt`、`relief` 的 `mutable:false`。
+
+PREFS_QUESTIONS：
+```js
+[{ id:&#39;wait&#39;, q:&#39;等一会儿，换来更精致的？&#39;, options:[{label:&#39;现在就要&#39;, value:0.2},{label:&#39;可以等&#39;, value:0.8}] },
+ { id:&#39;polish&#39;, q:&#39;你更想要哪一种？&#39;, options:[{label:&#39;雕琢好的一段&#39;, value:0.8},{label:&#39;能真的改变它&#39;, value:0.2}] },
+ { id:&#39;depth&#39;, q:&#39;人心要看多细？&#39;, options:[{label:&#39;看个大概&#39;, value:0.25},{label:&#39;越细越好&#39;, value:0.85}] }]
+```
+（`surprise` 不问，默认 0.5，由观察修正。）
+
+STAFF.mentor 与 STAFF.directors 也是心智定义：
+- 导师的单元读玩家信号（通道：`等待`、`停顿`、`追问`、`重玩`、`离开`）。
+- 两位导演：`lu` 陆导（偏爱锁死雕琢、偏悲剧余味），`shan` 单导（偏爱放开、快节奏）。导演 temperament 里有 `雕琢`、`悲剧`、`节奏`、`放开` 四个数。导演的单元读 `停顿`、`追问`、`重玩`、`很快通过`。
+
+## 3. 导师 `shared/agents/mentor.js`
+
+```js
+export function createMentor({ ledger, def, budget = 10 }) -&gt; mentor
+mentor.meet({ answers, need }, userSeq) -&gt; { notes, seqs:number[] }
+  // 为每个字段写一条 mentor.note（source:&#39;问&#39;），cause=[userSeq]
+  // need 是用户自己写的一句话；按关键词推出 emotion（见下表），也写一条 note：field &#39;emotion&#39;
+mentor.notes() -&gt; { wait:{value,source,seq}, polish:{...}, depth:{...}, surprise:{...}, emotion:{...}, need:{...} }
+mentor.editNote(field, value, userSeq) -&gt; seq        // 用户改笔记，source:&#39;你改的&#39;
+mentor.allot(scenes, cause) -&gt; { chosen:{[sceneId]:tier}, seq }
+  // scenes = [{ id, title, centrality:0..1 }]；tier ∈ &#39;细演&#39;(3) | &#39;普通&#39;(2) | &#39;一笔带过&#39;(1)
+  // 规则：depth 高、centrality 高 → 细演；超预算从 centrality 最低的往下降。payload 写 input/options/chosen/spent/budget
+  // said：一句导师的说法，例如“这几场我给细演，你说过想看清人心”。
+mentor.chooseDirector(directors, cause) -&gt; { director, seq }
+  // 按口味配导演：polish 高 → 偏爱雕琢的；polish 低 → 偏爱放开的。写 mentor.brief 之前的一条 mentor.note? 不，直接在 brief 里体现
+mentor.brief(directorId, cause) -&gt; { brief, seq }
+  // brief = { director, need, emotion, prefs:{wait,polish,depth,surprise}, budget, tiers }
+mentor.learn(signal, userSeq) -&gt; seq | null
+  // signal = { kind:&#39;停下来看心思&#39;|&#39;追问为什么&#39;|&#39;很快通过&#39;|&#39;重来一次&#39;|&#39;中途离开&#39;|&#39;停顿&#39;, beat }
+  // 规则：看心思/追问 → depth +0.08；很快通过 → depth -0.06；重来一次 → surprise +0.05、polish -0.04；中途离开 → wait -0.1
+  // 只在字段 source 不是 &#39;你改的&#39; 时改（用户亲手改过的，观察不能覆盖）。写 mentor.learn
+mentor.guard(action, by) -&gt; seq    // 别人（导演）试图改导师的分配规则或笔记：拒绝，写 mentor.refuse
+mentor.state() -&gt; 可序列化对象；createMentor({ ..., saved }) 能恢复
+```
+need → emotion 关键词（按顺序匹配，第一条命中即用；都不中用 &#39;悲悯&#39;）：
+| 关键词 | emotion |
+|---|---|
+| 选择、决定、改变、取舍 | 责任 |
+| 紧张、刺激、危险、追 | 紧张 |
+| 为什么、真相、原因、弄清 | 顿悟 |
+| 信任、朋友、谈心、亲近 | 亲密 |
+| 走走、看看、探索、好奇 | 好奇 |
+| 人、命运、悲、结局 | 悲悯 |
+
+## 4. 导演 `shared/agents/director.js`
+
+```js
+export const TEMPLATES   // 设计稿 §13 情感→交互：
+// { 责任:[&#39;分配&#39;,&#39;决策&#39;], 亲密:[&#39;对话&#39;], 紧张:[&#39;即时动作&#39;], 好奇:[&#39;探索&#39;], 顿悟:[&#39;解谜&#39;], 悲悯:[&#39;观看&#39;] }
+export function createDirector({ ledger, def, mentor }) -&gt; director   // mentor 只用来调用 mentor.guard
+director.id / director.role  // role = &#39;director:&lt;id&gt;&#39;
+director.design(brief, catalog, cause) -&gt; { design, seq }
+director.predict(design, notes, cause) -&gt; { predictions, seq }
+director.grant(beat, cause) -&gt; seq
+director.schedule(options, cause) -&gt; { chosen, seq }
+director.learn(predictions, reactions, cause) -&gt; { errors, seq }
+director.tryEditMentor(field) -&gt; seq   // 演示权限边界：调用 mentor.guard，返回拒绝记录
+director.craft()  // 当前手艺参数 { lockBias, tragedyBias, paceBias, freedomBias }
+director.state()
+```
+
+`catalog` 是一个呈现的节拍目录（由 `shared/play/catalog.js` 提供，见 §6）：
+```js
+{ id, title, kind:&#39;film&#39;|&#39;game&#39;|&#39;action&#39;, beats:[{ id, scene, title, emotions:[&#39;责任&#39;,...], levels:[0,1,2], centrality, canLock:boolean }] }
+```
+`design` 形状（**严格照写**）：
+```js
+{ presentation, director, emotion, slot:&#39;现在&#39;|&#39;稍后&#39;|&#39;之后&#39;,
+  beats:[{ id, scene, template, level:0|1|2|3, prefab:&#39;高&#39;|&#39;中&#39;|&#39;低&#39;, locked:boolean,
+           grants:[&#39;go&#39;|&#39;give&#39;|&#39;say&#39;|&#39;watch&#39;...], language:&#39;看不见&#39;|&#39;选一句&#39;|&#39;自由说&#39;, why }] }
+```
+设计规则（全部确定性）：
+- 每个 beat 的 `template`：beat.emotions 里与 brief.emotion 相同的优先；否则 beat.emotions[0]；再从 TEMPLATES 查第一个。
+- `level`：polish 高（&gt;0.6）→ 取 beat.levels 的最小值；polish 低（&lt;0.4）→ 最大值；否则中间。导演的 `放开` 性情 &gt; 0.6 时 +1（不超过 levels 最大值）。
+- `locked`：beat.canLock &amp;&amp; (polish + 导演雕琢)/2 &gt; 0.55。
+- `prefab`：locked → &#39;高&#39;；level ≥ 2 → &#39;低&#39;；否则 &#39;中&#39;。
+- `grants`：level 0 → []；level 1 → [&#39;say&#39;]；level 2 → [&#39;go&#39;,&#39;give&#39;,&#39;say&#39;]；template 是 &#39;即时动作&#39; → [&#39;go&#39;,&#39;give&#39;]；&#39;观看&#39; → []。另外凡 level ≥ 1 都加 &#39;watch&#39;（看心思）。
+- `language`：level 0 → &#39;看不见&#39;；level 1、2 → &#39;选一句&#39;；level 3 → &#39;自由说&#39;。
+- `slot`：wait &lt; 0.4 → &#39;现在&#39;；否则 polish &gt; 0.6 → &#39;稍后&#39;，否则 &#39;现在&#39;。
+- `why`：一句话，说出依据，必须提到 brief 里的一个字段（例：“你说想要能真的改变它，所以这里放开”）。
+`director.design` 写一条 `director.design`，`payload = design`，`cause` 包含传入的 cause。
+
+`predict`：对每个 level ≥ 1 的 beat，用导演心智的 `imagine` 设想玩家（玩家性情由 notes 推：depth→好奇，surprise→冒险，polish→雕琢），预测 expect ∈ `&#39;停下来看心思&#39;|&#39;追问为什么&#39;|&#39;很快通过&#39;|&#39;重来一次&#39;`，confidence 0..1。映射规则：设想结果 stoppedAt===&#39;mind&#39; → &#39;停下来看心思&#39;；&#39;module&#39; → &#39;追问为什么&#39;；&#39;unit&#39; → &#39;很快通过&#39;。
+
+`learn`：reactions = `[{ beat, signal }]`。每条与预测对照：相同 error 0，不同 error 1。整体命中率低于 0.5 时：若玩家多停下来看心思而导演预测很快通过 → `paceBias -0.1`、`tragedyBias +0.05`；反之 `paceBias +0.1`。每次 learn 写一条 `director.learn`（含 craft.before/after）。手艺参数会影响下一次 design 的 level 选择（paceBias &gt; 0.15 时 level 往低调 1）。
+
+## 5. 网关 `shared/agents/gateway.js` 与服务器 `server/index.mjs`
+
+```js
+export function createSpeaker({ ledger, call, limits = { 对白:30, 设想:6, 改造:1 } }) -&gt; speaker
+// call(request) -&gt; Promise&lt;{ text, model, ms, tokens }&gt;   由宿主注入：浏览器里 POST /api/speak；Node 测试里可传假的
+speaker.say({ purpose:&#39;对白&#39;|&#39;设想&#39;|&#39;改造&#39;, role, persona, view:[string], line, fallback, maxChars = 40, cause = [] })
+  -&gt; Promise&lt;{ text, source:&#39;model&#39;|&#39;rule&#39;, model?, ms? }&gt;
+// 超额、call 抛错、超时（8 秒）、返回空 → 用 fallback，source:&#39;rule&#39;。
+// 每次真的调用（成功或失败）都写 ledger &#39;gateway.call&#39;。
+// 输出过滤：去掉引号、换行；超过 maxChars 截断；包含“AI”“模型”“作为一个”等出戏词 → 视为失败用 fallback。
+speaker.usage() -&gt; { 对白:{used,limit}, 设想:{...}, 改造:{...} }
+```
+提示词：system 写“你是{persona}，生活在公元前258年。只知道下面这些事：{view 逐条}。用你的口吻说一句话，不超过{maxChars}字，不要旁白，不要引号。”；user 写 `line`（要表达的意思）。
+
+`server/index.mjs`：Node 内置 `http`，零依赖。
+- 静态托管仓库根目录下的 `web/`、`shared/`、`docs/`（`/` → `web/index.html`）。正确的 MIME（.js 用 `text/javascript`）。
+- `POST /api/speak` body `{ system, user, maxTokens }` → 转发到 `${MODEL_GATEWAY_URL||&#39;http://127.0.0.1:3425/v1&#39;}/chat/completions`，`Authorization: Bearer ${MODEL_GATEWAY_KEY||ANTHROPIC_AUTH_TOKEN}`，model 取 `MODEL_FAST || &#39;group/auto-glm-5-3-flash&#39;`，备用 `MODEL_FALLBACK || &#39;commandcode/deepseek/deepseek-v4.1-flash&#39;`（这个是推理模型，max_tokens 至少 800）。返回 `{ text, model, ms, tokens }`。8 秒超时；失败返回 502 `{ error }`。
+- `GET /api/health` → `{ ok, model, gateway:boolean }`。
+- `GET/PUT /api/world` 存取 `.runtime/world.json`（整个世界的存档 JSON）。
+- 只绑 `127.0.0.1`，端口 `PORT || 4320`。凭据只在服务器，不发给浏览器。
+
+## 6. 呈现目录 `shared/play/catalog.js`
+
+```js
+export const CATALOG   // { [presentationId]: catalog }，形状见 §4
+export const WORKS     // 作品墙：[{ id, title, kind, length:&#39;约1分钟&#39;, viewpoint:&#39;谁的眼睛&#39;, summary, reads:[...], writes:[...] }]
+```
+作品（id 固定）：`changping` 《长平之后》film；`weicheng` 《围城》game；`qiefu` 《窃符》game；`night` 《取符之夜》action；`studio` 片场。
+《窃符》beats：`open`(film, 悲悯, levels[0])、`daliang`(大梁, 责任/亲密, levels[1,2])、`yimen`(夷门, 亲密/顿悟, levels[1,2])、`night`(取符之夜, 紧张, levels[2])、`ye`(邺城, 责任/悲悯, levels[1,2])、`coda`(拉远与史, 悲悯, levels[0])。
+《围城》beats：`dusk`(暮色粮仓, 责任, levels[1,2])、`morning`(第二天·守仓人视角, 顿悟, levels[0,1])。
+《取符之夜》beats：`run`(紧张, levels[2])。《长平之后》beats：`film`(悲悯, levels[0])。
+`centrality` 写 0..1；《窃符》的 `ye`、`night` 最高。
+
+## 7. 不做
+
+游历、多世界、完整科研、账户系统、npm 依赖、构建步骤。
+
+
+// File: shared/agents/director.js (javascript)
+// 导演：把“这一段怎么演”定下来，并设想玩家会怎么接。
+// 所有设计规则都是确定性的；导演不改导师的规则，只能经 mentor.guard 留下拒绝记录。
+import { createMind } from &#39;../core/mind.js&#39;;
+
+// 设计稿 §13 情感→交互
+export const TEMPLATES = { 责任: [&#39;分配&#39;, &#39;决策&#39;], 亲密: [&#39;对话&#39;], 紧张: [&#39;即时动作&#39;], 好奇: [&#39;探索&#39;], 顿悟: [&#39;解谜&#39;], 悲悯: [&#39;观看&#39;] };
+
+const round = (v) =&gt; Math.round(v * 1000) / 1000;
+const clamp = (v, lo = 0, hi = 1) =&gt; Math.max(lo, Math.min(hi, v));
+const num = (v, d = 0.5) =&gt; (typeof v === &#39;number&#39; &amp;&amp; !Number.isNaN(v) ? v : d);
+const causes = (cause) =&gt; (cause == null ? [] : Array.isArray(cause) ? cause.slice() : [cause]);
+
+// 模板 → 玩家会在哪个通道上“响”
+const CHANNEL_OF = { 对话: &#39;追问&#39;, 解谜: &#39;追问&#39;, 分配: &#39;追问&#39;, 决策: &#39;追问&#39;, 观看: &#39;停顿&#39;, 悲悯: &#39;停顿&#39;, 即时动作: &#39;很快通过&#39;, 探索: &#39;重玩&#39; };
+const CHANNELS = [&#39;停顿&#39;, &#39;追问&#39;, &#39;重玩&#39;, &#39;很快通过&#39;];
+
+// 设想中的玩家：单元只读自己那一路；停在哪一层决定预测
+const PLAYER_UNITS = [
+  { id: &#39;u-look&#39;, label: &#39;停顿&#39;, module: &#39;m-look&#39;, reads: [&#39;停顿&#39;], capacity: { base: 0.25, by: { 好奇: 0.35 } }, act: &#39;停下来看心思&#39; },
+  { id: &#39;u-ask&#39;, label: &#39;追问&#39;, module: &#39;m-think&#39;, reads: [&#39;追问&#39;], capacity: { base: 0.25, by: { 好奇: 0.35 } }, act: &#39;追问为什么&#39; },
+  { id: &#39;u-replay&#39;, label: &#39;重玩&#39;, module: &#39;m-think&#39;, reads: [&#39;重玩&#39;], capacity: { base: 0.2, by: { 冒险: 0.5 } }, act: &#39;重来一次&#39; },
+  { id: &#39;u-pass&#39;, label: &#39;很快通过&#39;, module: &#39;m-pass&#39;, reads: [&#39;很快通过&#39;], capacity: { base: 0.2, by: { 冒险: 0.3, 雕琢: -0.15 } }, act: &#39;很快通过&#39; },
+];
+const PLAYER_MODULES = [
+  { id: &#39;m-look&#39;, label: &#39;看心思&#39;, capacity: { base: 0.05, by: { 好奇: 0.3 } }, act: &#39;停下来看心思&#39; },
+  { id: &#39;m-think&#39;, label: &#39;想为什么&#39;, capacity: { base: 0.05, by: { 好奇: 0.3, 雕琢: 0.1 } }, act: &#39;追问为什么&#39; },
+  { id: &#39;m-pass&#39;, label: &#39;推进&#39;, capacity: { base: 0.1, by: { 冒险: 0.3 } }, act: &#39;很快通过&#39; },
+];
+
+// imagine 的 stoppedAt → 预测的反应
+const STOP_TO_EXPECT = { mind: &#39;停下来看心思&#39;, module: &#39;追问为什么&#39;, unit: &#39;很快通过&#39; };
+const CONF = { unit: 0.8, module: 0.65, mind: 0.5 };
+const VERB_TEXT = { go: &#39;走过去&#39;, give: &#39;递东西&#39;, say: &#39;说一句&#39;, watch: &#39;看他的心思&#39; };
+
+function playerDef() {
+  return { id: &#39;player&#39;, name: &#39;玩家&#39;, temperament: {}, units: PLAYER_UNITS, modules: PLAYER_MODULES, mindAct: &#39;停下来看心思&#39;, goals: [] };
+}
+
+export function createDirector({ ledger, def, mentor }) {
+  const mind = createMind({ units: [], modules: [], temperament: {}, ...def, id: def.id });
+  const role = &#39;director:&#39; + def.id;
+  const t = def.temperament || {};
+  // 手艺参数：从导演性情起步，learn 会改它
+  const craft = {
+    lockBias: round(num(t.雕琢, 0.5)),
+    tragedyBias: round(num(t.悲剧, 0.5)),
+    paceBias: 0,
+    freedomBias: round(num(t.放开, 0.5)),
+  };
+
+  const append = (kind, payload, cause, said, saidSource) =&gt; {
+    const e = ledger.append({
+      kind, from: role, to: &#39;world&#39;, payload,
+      cause: causes(cause), ...(said !== undefined ? { said, saidSource } : {}),
+    });
+    return e.seq;
+  };
+
+  // 模板：emotions 里与 brief.emotion 相同的优先，否则 emotions[0]，再查 TEMPLATES
+  function templateOf(beat, emotion) {
+    const emos = beat.emotions || [];
+    const emo = emos.includes(emotion) ? emotion : emos[0];
+    if (TEMPLATES[emo]) return TEMPLATES[emo][0];
+    const hit = Object.keys(TEMPLATES).find((k) =&gt; emos.includes(k));
+    return hit ? TEMPLATES[hit][0] : &#39;分配&#39;;
+  }
+
+  function levelOf(beat, polish) {
+    const levels = [...(beat.levels || [0])].sort((a, b) =&gt; a - b);
+    const lo = levels[0];
+    const hi = levels[levels.length - 1];
+    let level = polish &gt; 0.6 ? lo : polish &lt; 0.4 ? hi : levels[Math.floor((levels.length - 1) / 2)];
+    if (craft.freedomBias &gt; 0.6) level = Math.min(level + 1, hi);
+    if (craft.paceBias &gt; 0.15) level = Math.max(level - 1, 0);
+    return clamp(level, 0, 3);
+  }
+
+  function grantsOf(template, level) {
+    let g;
+    if (level === 0) g = [];
+    else if (template === &#39;即时动作&#39;) g = [&#39;go&#39;, &#39;give&#39;];
+    else if (template === &#39;观看&#39;) g = [];
+    else if (level &gt;= 2) g = [&#39;go&#39;, &#39;give&#39;, &#39;say&#39;];
+    else g = [&#39;say&#39;];
+    if (level &gt;= 1 &amp;&amp; !g.includes(&#39;watch&#39;)) g.push(&#39;watch&#39;);
+    return g;
+  }
+
+  function design(brief, catalog, cause) {
+    const prefs = brief?.prefs || {};
+    const pol = num(prefs.polish);
+    const wait = num(prefs.wait);
+    const emotion = brief?.emotion;
+    const slot = wait &lt; 0.4 ? &#39;现在&#39; : pol &gt; 0.6 ? &#39;稍后&#39; : &#39;现在&#39;;
+    const beats = (catalog?.beats || []).map((beat) =&gt; {
+      const template = templateOf(beat, emotion);
+      const level = levelOf(beat, pol);
+      const locked = !!beat.canLock &amp;&amp; (pol + craft.lockBias) / 2 &gt; 0.55;
+      const prefab = locked ? &#39;高&#39; : level &gt;= 2 ? &#39;低&#39; : &#39;中&#39;;
+      const grants = grantsOf(template, level);
+      const language = level === 0 ? &#39;看不见&#39; : level === 3 ? &#39;自由说&#39; : &#39;选一句&#39;;
+      const ptext = pol &gt; 0.6 ? &#39;你更想要雕琢好的一段&#39; : pol &lt; 0.4 ? &#39;你说想要能真的改变它&#39; : &#39;你在雕琢和改变之间两可&#39;;
+      const atext = level &gt;= 2 ? &#39;所以这里放开&#39; : level === 1 ? &#39;所以这里留一句话&#39; : &#39;所以这里先不让你动&#39;;
+      return { id: beat.id, scene: beat.scene, template, level, prefab, locked, grants, language, why: `${ptext}，${atext}` };
+    });
+    const d = { presentation: catalog?.id, director: def.id, emotion, slot, beats };
+    const first = beats[0];
+    const said = first
+      ? `这一拍我用「${first.template}」来写。${first.why}。`
+      : &#39;这一场我先不排戏。&#39;;
+    const seq = append(&#39;director.design&#39;, d, cause, said, &#39;rule&#39;);
+    return { design: d, seq };
+  }
+
+  function predict(design, notes, cause) {
+    // notes 可以是 mentor.notes() 的 {value,source,seq} 形状，也可以是裸数字
+    const val = (x, d) =&gt; (x &amp;&amp; typeof x === &#39;object&#39; ? num(x.value, d) : num(x, d));
+    const n = {
+      wait: val(notes?.wait), polish: val(notes?.polish), depth: val(notes?.depth), surprise: val(notes?.surprise),
+    };
+    // 玩家性情由 notes 推：depth→好奇，surprise→冒险，polish→雕琢
+    const temperament = { 好奇: n.depth, 冒险: n.surprise, 雕琢: n.polish };
+    const pdef = playerDef();
+    const predictions = [];
+    for (const beat of (design?.beats || []).filter((b) =&gt; b.level &gt;= 1)) {
+      const channels = {};
+      for (const c of CHANNELS) channels[c] = 0.15;
+      channels[CHANNEL_OF[beat.template] || &#39;追问&#39;] = clamp(0.5 + 0.1 * beat.level, 0, 1);
+      const event = { kind: &#39;beat&#39;, signature: `beat:${beat.id}:${beat.template}`, channels };
+      const r = mind.imagine(pdef, event, temperament);
+      predictions.push({
+        beat: beat.id,
+        scene: beat.scene,
+        expect: STOP_TO_EXPECT[r.stoppedAt] || &#39;追问为什么&#39;,
+        confidence: CONF[r.stoppedAt] ?? 0.5,
+      });
+    }
+    const said = predictions.length
+      ? `我猜他会在${predictions.length}处有反应，第一处是「${predictions[0].expect}」。`
+      : &#39;这一场我没有可猜的地方。&#39;;
+    const seq = append(&#39;director.predict&#39;, { presentation: design?.presentation, predictions }, cause, said, &#39;rule&#39;);
+    return { predictions, seq };
+  }
+
+  function grant(beat, cause) {
+    const verbs = (beat.grants || []).map((v) =&gt; VERB_TEXT[v] || v);
+    const said = verbs.length
+      ? `这一幕我给你的是：${verbs.join(&#39;、&#39;)}。`
+      : &#39;这一幕你只能看着，不能动。&#39;;
+    return append(&#39;director.grant&#39;, {
+      scene: beat.scene, verbs: beat.grants || [], level: beat.level, language: beat.language,
+    }, cause, said, &#39;rule&#39;);
+  }
+
+  function schedule(options, cause) {
+    const list = options || [];
+    let chosen = null;
+    for (const o of list) {
+      if (!chosen || (o.weight ?? 0) &gt; (chosen.weight ?? 0)) chosen = o;
+    }
+    const slot = chosen?.slot ?? &#39;现在&#39;;
+    const said = chosen ? `这一次我先排「${chosen.id ?? chosen.label ?? &#39;这一段&#39;}」，${slot}做。` : &#39;这次没有可排的。&#39;;
+    const seq = append(&#39;director.schedule&#39;, {
+      input: list.map((o) =&gt; o.id ?? o.label ?? null), options: list, chosen, slot,
+    }, cause, said, &#39;rule&#39;);
+    return { chosen, seq };
+  }
+
+  function learn(predictions, reactions, cause) {
+    const before = { ...craft };
+    const errors = [];
+    let hits = 0;
+    let pauseMiss = 0;
+    let otherMiss = 0;
+    for (const rx of reactions || []) {
+      const p = (predictions || []).find((x) =&gt; x.beat === rx.beat);
+      const miss = !p || p.expect !== rx.signal;
+      if (!miss) hits += 1;
+      else if (rx.signal === &#39;停下来看心思&#39; &amp;&amp; p?.expect === &#39;很快通过&#39;) pauseMiss += 1;
+      else otherMiss += 1;
+      errors.push({ beat: rx.beat, expect: p?.expect ?? null, signal: rx.signal, error: miss ? 1 : 0 });
+    }
+    const total = (reactions || []).length;
+    const hitRate = total ? round(hits / total) : 1;
+    if (total &amp;&amp; hitRate &lt; 0.5) {
+      // 玩家多停下来看心思、而导演以为很快通过 → 放慢、多写悲剧余味；否则加快
+      if (pauseMiss &gt; otherMiss) {
+        craft.paceBias = round(craft.paceBias - 0.1);
+        craft.tragedyBias = round(craft.tragedyBias + 0.05);
+      } else {
+        craft.paceBias = round(craft.paceBias + 0.1);
+      }
+    }
+    const after = { ...craft };
+    const said = total
+      ? `这次我猜中了${hits}/${total}，${hitRate &lt; 0.5 ? &#39;偏差大，我把节奏调了&#39; : &#39;基本准，手艺不动&#39;}。`
+      : &#39;这次没有反应可对照。&#39;;
+    // 契约形状：beat / expected / actual / error 为并列数组，另附 hitRate 与 errors 明细
+    const seq = append(&#39;director.learn&#39;, {
+      beat: errors.map((e) =&gt; e.beat),
+      expected: errors.map((e) =&gt; e.expect),
+      actual: errors.map((e) =&gt; e.signal),
+      error: errors.map((e) =&gt; e.error),
+      errors, hitRate, craft: { before, after },
+    }, cause, said, &#39;rule&#39;);
+    return { errors, seq };
+  }
+
+  // 演示权限边界：导演不能改导师的规则或笔记，只能请导师的 guard 拒绝并记下
+  function tryEditMentor(field) {
+    return mentor ? mentor.guard(field, role) : null;
+  }
+
+  return {
+    id: def.id,
+    role,
+    design,
+    predict,
+    grant,
+    schedule,
+    learn,
+    tryEditMentor,
+    craft: () =&gt; ({ ...craft }),
+    state: () =&gt; ({ id: def.id, role, craft: { ...craft }, mind: mind.save() }),
+  };
+}
+
+
+// File: shared/agents/mentor.js (javascript)
+// 导师：替用户记口味、分预算、配导演。只听用户的话（问、改、停下来的信号），不听导演。
+// 每一个决定都写进账本，并把 cause 指回用户那一条，所以“为用户服务”可以被 traceToUser 检验。
+
+import { traceToUser } from &#39;../core/ledger.js&#39;;
+import { clamp } from &#39;../core/mind.js&#39;;
+
+const TIERS = [&#39;细演&#39;, &#39;普通&#39;, &#39;一笔带过&#39;];
+// 档位即成本：细演 3、普通 2、一笔带过 1
+const TIER_NUM = { 细演: 3, 普通: 2, 一笔带过: 1 };
+const FIELDS = [&#39;wait&#39;, &#39;polish&#39;, &#39;depth&#39;, &#39;surprise&#39;];
+const DEFAULT_VALUE = 0.5;
+
+// 情感关键词：按表的顺序匹配，第一条命中即用
+const EMOTION_RULES = [
+  [&#39;责任&#39;, [&#39;选择&#39;, &#39;决定&#39;, &#39;改变&#39;, &#39;取舍&#39;]],
+  [&#39;紧张&#39;, [&#39;紧张&#39;, &#39;刺激&#39;, &#39;危险&#39;, &#39;追&#39;]],
+  [&#39;顿悟&#39;, [&#39;为什么&#39;, &#39;真相&#39;, &#39;原因&#39;, &#39;弄清&#39;]],
+  [&#39;亲密&#39;, [&#39;信任&#39;, &#39;朋友&#39;, &#39;谈心&#39;, &#39;亲近&#39;]],
+  [&#39;好奇&#39;, [&#39;走走&#39;, &#39;看看&#39;, &#39;探索&#39;, &#39;好奇&#39;]],
+  [&#39;悲悯&#39;, [&#39;人&#39;, &#39;命运&#39;, &#39;悲&#39;, &#39;结局&#39;]],
+];
+
+// 玩家停下、追问、很快通过、重来、离开时，导师怎么调口味
+const LEARN_RULES = {
+  &#39;停下来看心思&#39;: [[&#39;depth&#39;, 0.08]],
+  &#39;追问为什么&#39;: [[&#39;depth&#39;, 0.08]],
+  &#39;很快通过&#39;: [[&#39;depth&#39;, -0.06]],
+  &#39;重来一次&#39;: [[&#39;surprise&#39;, 0.05], [&#39;polish&#39;, -0.04]],
+  &#39;中途离开&#39;: [[&#39;wait&#39;, -0.1]],
+};
+
+const LEARN_SAID = {
+  &#39;停下来看心思&#39;: &#39;你停下来看心思，我就把人心往细里写。&#39;,
+  &#39;追问为什么&#39;: &#39;你追问为什么，我就把人心往细里写。&#39;,
+  &#39;很快通过&#39;: &#39;你很快就过了，我少写一点人心。&#39;,
+  &#39;重来一次&#39;: &#39;你想重来，我下次多给一点意外，雕琢少一点。&#39;,
+  &#39;中途离开&#39;: &#39;你中途走了，我下次少让你等。&#39;,
+};
+
+const round2 = (v) =&gt; Math.round(v * 100) / 100;
+
+/** 从一句话里推出情感；都不中用“悲悯”。 */
+export function pickEmotion(need = &#39;&#39;) {
+  for (const [emotion, words] of EMOTION_RULES) {
+    if (words.some((w) =&gt; need.includes(w))) return emotion;
+  }
+  return &#39;悲悯&#39;;
+}
+
+export function createMentor({ ledger, def, budget = 10, saved } = {}) {
+  const s = saved ? JSON.parse(JSON.stringify(saved)) : {};
+  // notes：{ [field]: { value, source:&#39;问&#39;|&#39;观察&#39;|&#39;你改的&#39;, seq } }
+  let notes = s.notes || {};
+  let chosen = s.chosen || {};
+  let spent = s.spent ?? 0;
+  let director = s.director ?? null; // { id, seq }
+  let allotSeq = s.allotSeq ?? null;
+  // 最近一条能追到用户的记录：拒绝记录要挂在它上面
+  let anchor = s.anchor ?? null;
+  const budgetNow = s.budget ?? budget;
+
+  /** 统一写入口：from 固定为 mentor；cause 去重、去掉非法值；能追到用户就更新 anchor */
+  function write(kind, payload, cause, said, to = &#39;world&#39;) {
+    const c = [...new Set(cause.filter((x) =&gt; Number.isInteger(x)))];
+    const e = ledger.append({ kind, from: &#39;mentor&#39;, to, payload, cause: c, said, saidSource: &#39;rule&#39; });
+    if (traceToUser(ledger, e.seq).ok) anchor = e.seq;
+    return e;
+  }
+
+  function setNote(field, value, source, cause, said) {
+    const e = write(&#39;mentor.note&#39;, { field, value, source }, cause, said);
+    notes[field] = { value, source, seq: e.seq };
+    return e.seq;
+  }
+
+  /** 第一次见面：把用户的三个问题、一句话的诉求，各记一条笔记 */
+  function meet({ answers = {}, need = &#39;&#39; } = {}, userSeq) {
+    const seqs = [];
+    const said = {
+      wait: (v) =&gt; (v &lt; 0.4 ? &#39;你现在就要，我就不让你等。&#39; : &#39;你愿意等，我就慢慢雕。&#39;),
+      polish: (v) =&gt; (v &gt; 0.6 ? &#39;你要一段雕好的，我往精里做。&#39; : &#39;你要能真改变它，我往动里做。&#39;),
+      depth: (v) =&gt; (v &gt; 0.6 ? &#39;你要看人心看细，我就往细里写。&#39; : &#39;你只看个大概，我不往细里钻。&#39;),
+    };
+    for (const f of FIELDS) {
+      const asked = answers[f] !== undefined;
+      const v = asked ? answers[f] : DEFAULT_VALUE;
+      // surprise 不问，按观察修正：这里只放中间值
+      const line = said[f] ? said[f](v) : &#39;你没问惊喜，我先放中间，等你的动作来改它。&#39;;
+      seqs.push(setNote(f, v, asked ? &#39;问&#39; : &#39;观察&#39;, [userSeq], line));
+    }
+    const emotion = pickEmotion(need);
+    seqs.push(setNote(&#39;emotion&#39;, emotion, &#39;问&#39;, [userSeq], `你要的是${emotion}，我就往这上面配。`));
+    seqs.push(setNote(&#39;need&#39;, need, &#39;问&#39;, [userSeq], `你说的这句话我原样存着：“${need}”。`));
+    return { notes: snapshotNotes(), seqs };
+  }
+
+  function snapshotNotes() {
+    return JSON.parse(JSON.stringify(notes));
+  }
+
+  /** 用户亲手改笔记：source 记为“你改的”，之后观察不能覆盖它 */
+  function editNote(field, value, userSeq) {
+    return setNote(field, value, &#39;你改的&#39;, [userSeq], `你改成了${value}，这一条我听你的。`);
+  }
+
+  /**
+   * 预算分配：depth 与 centrality 加权定档，超预算时从 centrality 最低的往下降。
+   * scenes = [{ id, title, centrality }]
+   */
+  function allot(scenes = [], cause = []) {
+    const depth = notes.depth?.value ?? DEFAULT_VALUE;
+    const items = scenes.map((sc, i) =&gt; {
+      const c = clamp(sc.centrality ?? DEFAULT_VALUE);
+      const score = depth * 0.6 + c * 0.4;
+      const tier = score &gt;= 0.6 ? &#39;细演&#39; : score &gt;= 0.35 ? &#39;普通&#39; : &#39;一笔带过&#39;;
+      return { id: sc.id, c, i, tier, cut: false };
+    });
+    const total = () =&gt; items.reduce((a, x) =&gt; a + TIER_NUM[x.tier], 0);
+    while (total() &gt; budgetNow) {
+      const cands = items.filter((x) =&gt; TIER_NUM[x.tier] &gt; 1).sort((a, b) =&gt; a.c - b.c || a.i - b.i);
+      if (!cands.length) break;
+      const x = cands[0];
+      x.tier = x.tier === &#39;细演&#39; ? &#39;普通&#39; : &#39;一笔带过&#39;;
+      x.cut = true;
+    }
+    const out = {};
+    for (const x of items) out[x.id] = x.tier;
+    const sum = total();
+    chosen = out;
+    spent = sum;
+    const anyCut = items.some((x) =&gt; x.cut);
+    let line = depth &gt; 0.6 ? &#39;你说人心要看细，这几场我给细演。&#39; : &#39;人心看个大概就行，这几场我省着演。&#39;;
+    if (anyCut) line += &#39;预算就这么多，其余的我先一笔带过。&#39;;
+    const e = write(
+      &#39;mentor.allot&#39;,
+      {
+        input: scenes.map((sc) =&gt; ({ id: sc.id, centrality: sc.centrality })),
+        options: TIERS,
+        chosen: out,
+        spent: sum,
+        budget: budgetNow,
+      },
+      [...cause, notes.depth?.seq],
+      line,
+    );
+    allotSeq = e.seq;
+    return { chosen: out, seq: e.seq };
+  }
+
+  /** 按口味配导演：polish 高偏爱雕琢，低偏爱放开；同分取先到的 */
+  function chooseDirector(directors = [], cause = []) {
+    const polish = notes.polish?.value ?? DEFAULT_VALUE;
+    const key = polish &gt; 0.5 ? &#39;雕琢&#39; : &#39;放开&#39;;
+    let best = null;
+    for (const d of directors) {
+      const sc = d.temperament?.[key] ?? 0;
+      if (!best || sc &gt; best.sc) best = { d, sc };
+    }
+    if (!best) return { director: null, seq: null };
+    const id = best.d.id;
+    const name = best.d.name || id;
+    const e = write(
+      &#39;mentor.note&#39;,
+      { field: &#39;director&#39;, value: id, source: &#39;观察&#39; },
+      [...cause, notes.polish?.seq],
+      `这一部我找${name}掌舵：你要的${polish &gt; 0.5 ? &#39;是雕琢&#39; : &#39;是放开&#39;}。`,
+    );
+    director = { id, seq: e.seq };
+    return { director: id, seq: e.seq };
+  }
+
+  /** 给导演的任务单：需要什么、什么情绪、口味、预算、档位 */
+  function brief(directorId, cause = []) {
+    const prefs = {};
+    for (const f of FIELDS) prefs[f] = notes[f]?.value ?? DEFAULT_VALUE;
+    const b = {
+      director: directorId,
+      need: notes.need?.value ?? &#39;&#39;,
+      emotion: notes.emotion?.value ?? &#39;悲悯&#39;,
+      prefs,
+      budget: budgetNow,
+      tiers: TIERS,
+    };
+    const seqs = FIELDS.map((f) =&gt; notes[f]?.seq);
+    const e = write(
+      &#39;mentor.brief&#39;,
+      b,
+      [...cause, ...seqs, allotSeq],
+      `我把“${b.emotion}”这个口味交给${directorId}，预算 ${budgetNow}，你说过的地方我都记着。`,
+      directorId ? `director:${directorId}` : &#39;world&#39;,
+    );
+    return { brief: b, seq: e.seq };
+  }
+
+  /**
+   * 从玩家的反应里学口味。只改没被用户亲手改过的字段。
+   * signal = { kind, beat }。没有规则的信号（如“停顿”）返回 null。
+   */
+  function learn(signal = {}, userSeq) {
+    const rules = LEARN_RULES[signal.kind];
+    if (!rules) return null;
+    let last = null;
+    for (const [field, delta] of rules) {
+      const cur = notes[field] ?? { value: DEFAULT_VALUE, source: &#39;观察&#39;, seq: null };
+      if (cur.source === &#39;你改的&#39;) continue;
+      const before = cur.value;
+      const after = round2(clamp(before + delta));
+      const e = write(
+        &#39;mentor.learn&#39;,
+        { field, before, after, signal: signal.kind, beat: signal.beat },
+        [userSeq],
+        LEARN_SAID[signal.kind],
+      );
+      notes[field] = { value: after, source: &#39;观察&#39;, seq: e.seq };
+      last = e.seq;
+    }
+    return last;
+  }
+
+  /** 导演想改导师的规则或笔记：拒绝，并写下拒绝记录（to 指向提出者） */
+  function guard(action, by) {
+    // 没有可追溯的锚点时，退回账本里最近一条用户记录，保证 cause 能走到用户
+    const userEntry = ledger.entries.filter((x) =&gt; x.from === &#39;user&#39;).pop();
+    const link = anchor ?? userEntry?.seq;
+    const e = write(
+      &#39;mentor.refuse&#39;,
+      { attempted: action, by, reason: &#39;导师的分配规则和笔记只听用户，导演不能改。&#39; },
+      link !== undefined ? [link] : [],
+      &#39;这是我的规则，不归导演改。&#39;,
+      by,
+    );
+    return e.seq;
+  }
+
+  function state() {
+    return JSON.parse(JSON.stringify({
+      notes, chosen, spent, director, allotSeq, anchor, budget: budgetNow,
+    }));
+  }
+
+  return {
+    def,
+    budget: budgetNow,
+    meet,
+    notes: snapshotNotes,
+    editNote,
+    allot,
+    chooseDirector,
+    brief,
+    learn,
+    guard,
+    state,
+  };
+}
+
+
+// File: shared/engine/session.js (javascript)
+// 一次会话：把用户、导师、导演、演员、主张图接在同一本账上。
+// 第一阶段要证明的链：你的需求 → 导师 → 导演 → 呈现 → 演员在其中演 → 你的反应回到导师和导演。
+// 这里不写任何画面，只负责“谁把什么交给谁，因为什么”。
+
+import { createLedger, loadLedger, auditService, traceToUser } from &#39;../core/ledger.js&#39;;
+import { createClaimGraph } from &#39;../core/claims.js&#39;;
+import { createMind } from &#39;../core/mind.js&#39;;
+import { createMentor } from &#39;../agents/mentor.js&#39;;
+import { createDirector } from &#39;../agents/director.js&#39;;
+import { PEOPLE, STAFF, HISTORY } from &#39;../data/seed.js&#39;;
+import { CATALOG } from &#39;../play/catalog.js&#39;;
+
+/** 史料层是设定，不由任何人的决定产生，所以记成 &#39;world&#39; 发出的设定主张 */
+function seedHistory(claims) {
+  for (const h of HISTORY) {
+    claims.add({
+      subject: h.subject, predicate: h.predicate, object: h.object, holder: h.holder || &#39;史书&#39;,
+      channel: &#39;设定&#39;, evidence: h.evidence || [], weight: 3, note: h.note,
+    });
+  }
+}
+
+export function createSession({ saved, speaker } = {}) {
+  const ledger = saved?.ledger ? loadLedger(saved.ledger) : createLedger();
+  const claims = createClaimGraph(ledger);
+  if (!saved) seedHistory(claims);
+  const mentor = createMentor({ ledger, def: STAFF.mentor, saved: saved?.mentor });
+  const directors = Object.fromEntries(STAFF.directors.map((d) =&gt; [d.id, createDirector({ ledger, def: d, mentor, saved: saved?.directors?.[d.id] })]));
+  const minds = Object.fromEntries(PEOPLE.map((p) =&gt; [p.id, createMind(p, saved?.minds?.[p.id])]));
+  const state = {
+    met: !!saved?.met,
+    directorId: saved?.directorId || null,
+    designs: saved?.designs || {},
+    predictions: saved?.predictions || {},
+  };
+
+  /** 第一次见面：用户回答三个粗问题，写一句自己的需求 */
+  function meet(answers, need) {
+    const u = ledger.append({ kind: &#39;user.meet&#39;, from: &#39;user&#39;, to: &#39;mentor&#39;, payload: { answers, need } });
+    const r = mentor.meet({ answers, need }, u.seq);
+    const pick = mentor.chooseDirector(Object.values(directors).map((d) =&gt; d.def), [u.seq, ...r.seqs]);
+    state.directorId = pick.director;
+    state.met = true;
+    return { userSeq: u.seq, director: pick.director };
+  }
+
+  function director() { return directors[state.directorId]; }
+
+  /**
+   * 排一部作品：导师分配算力档位 → 给导演交需求 → 导演设计、授予交互、设想玩家。
+   * 每一步的 cause 都接到上一步，最上面接到用户。
+   */
+  function commission(presentationId, cause = []) {
+    const cat = CATALOG[presentationId];
+    if (!cat) throw new Error(`没有这部作品：${presentationId}`);
+    const root = cause.length ? cause : [ledger.last((e) =&gt; e.from === &#39;user&#39;)?.seq].filter(Boolean);
+    const allot = mentor.allot(cat.beats.map((b) =&gt; ({ id: b.id, title: b.title, centrality: b.centrality })), root);
+    const brief = mentor.brief(state.directorId, [allot.seq, ...root]);
+    const d = director();
+    const design = d.design({ ...brief.brief, tiers: allot.chosen }, cat, [brief.seq]);
+    const grants = design.design.beats.map((b) =&gt; d.grant(b, [design.seq]));
+    const notes = mentor.notes();
+    const pred = d.predict(design.design, notes, [design.seq]);
+    state.designs[presentationId] = { ...design.design, seq: design.seq };
+    state.predictions[presentationId] = { list: pred.predictions, seq: pred.seq };
+    ledger.append({ kind: &#39;present.open&#39;, from: `presentation:${presentationId}`, to: &#39;user&#39;, cause: [design.seq, ...grants], payload: { presentation: presentationId } });
+    return { allot, brief, design: design.design, designSeq: design.seq, predictions: pred.predictions };
+  }
+
+  /** 用户在呈现里的反应：同时交给导师（了解你）和导演（对照预测） */
+  function react(presentationId, beat, signal) {
+    const u = ledger.append({ kind: &#39;user.react&#39;, from: &#39;user&#39;, to: &#39;mentor&#39;, payload: { scene: presentationId, beat, signal } });
+    const learned = mentor.learn({ kind: signal, beat }, u.seq);
+    return { userSeq: u.seq, mentorSeq: learned };
+  }
+
+  /** 一部作品看完：导演把所有反应和自己的预测对照，调整手艺 */
+  function wrap(presentationId) {
+    const pred = state.predictions[presentationId];
+    if (!pred) return null;
+    const reactions = ledger.entries
+      .filter((e) =&gt; e.kind === &#39;user.react&#39; &amp;&amp; e.payload.scene === presentationId)
+      .map((e) =&gt; ({ beat: e.payload.beat, signal: e.payload.signal, seq: e.seq }));
+    const r = director().learn(pred.list, reactions, [pred.seq, ...reactions.map((x) =&gt; x.seq)]);
+    ledger.append({ kind: &#39;present.deliver&#39;, from: `presentation:${presentationId}`, to: &#39;user&#39;, cause: [r.seq], payload: { presentation: presentationId } });
+    return r;
+  }
+
+  function editNote(field, value) {
+    const before = mentor.notes()[field]?.value;
+    const u = ledger.append({ kind: &#39;user.edit-note&#39;, from: &#39;user&#39;, to: &#39;mentor&#39;, payload: { field, from: before, to: value } });
+    return mentor.editNote(field, value, u.seq);
+  }
+
+  function save() {
+    return {
+      ledger: ledger.toJSON(),
+      mentor: mentor.state(),
+      directors: Object.fromEntries(Object.entries(directors).map(([k, d]) =&gt; [k, d.state()])),
+      minds: Object.fromEntries(Object.entries(minds).map(([k, m]) =&gt; [k, m.save()])),
+      ...state,
+    };
+  }
+
+  return {
+    ledger, claims, mentor, directors, minds, state, speaker,
+    meet, commission, react, wrap, editNote, director, save,
+    audit: () =&gt; auditService(ledger),
+    trace: (seq) =&gt; traceToUser(ledger, seq),
+  };
+}
+
+
+// File: shared/play/catalog.js (javascript)
+// 呈现目录：每个作品有哪些节拍（beat），每个节拍适合什么情绪、能放到哪一档交互。
+// 导演只读这里来排设计；作品墙读 WORKS 来看每部作品碰了哪些主张。
+// 数据纯静态，不含随机和时间，保证每次加载结果一致。
+
+/** 节拍的情绪只从这几个里取，和导演的 TEMPLATES 对齐 */
+// 责任 / 亲密 / 紧张 / 好奇 / 顿悟 / 悲悯
+
+export const CATALOG = {
+  changping: {
+    id: &#39;changping&#39;,
+    title: &#39;长平之后&#39;,
+    kind: &#39;film&#39;,
+    beats: [
+      {
+        id: &#39;film&#39;,
+        scene: &#39;handan&#39;,
+        title: &#39;邯郸城下&#39;,
+        desc: &#39;长平败后，秦军围住邯郸，城里的人只能看着。&#39;,
+        emotions: [&#39;悲悯&#39;],
+        levels: [0],
+        centrality: 0.5,
+        canLock: false,
+      },
+    ],
+  },
+
+  weicheng: {
+    id: &#39;weicheng&#39;,
+    title: &#39;围城&#39;,
+    kind: &#39;game&#39;,
+    beats: [
+      {
+        id: &#39;dusk&#39;,
+        scene: &#39;granary&#39;,
+        title: &#39;暮色粮仓&#39;,
+        desc: &#39;粮仓对不上账，守仓人要决定先瞒住还是先去找人。&#39;,
+        emotions: [&#39;责任&#39;],
+        levels: [1, 2],
+        centrality: 0.6,
+        canLock: true,
+      },
+      {
+        id: &#39;morning&#39;,
+        scene: &#39;granary&#39;,
+        title: &#39;第二天·守仓人视角&#39;,
+        desc: &#39;天亮了，守仓人看见借粮的人排成长队，才明白昨晚的账意味着什么。&#39;,
+        emotions: [&#39;顿悟&#39;],
+        levels: [0, 1],
+        centrality: 0.4,
+        canLock: true,
+      },
+    ],
+  },
+
+  qiefu: {
+    id: &#39;qiefu&#39;,
+    title: &#39;窃符&#39;,
+    kind: &#39;game&#39;,
+    beats: [
+      {
+        id: &#39;open&#39;,
+        scene: &#39;daliang&#39;,
+        title: &#39;大梁的开场&#39;,
+        desc: &#39;魏王止步，信陵君的正路走不通，门客们开始各自想办法。&#39;,
+        emotions: [&#39;悲悯&#39;],
+        levels: [0],
+        centrality: 0.5,
+        canLock: false,
+      },
+      {
+        id: &#39;daliang&#39;,
+        scene: &#39;daliang&#39;,
+        title: &#39;信陵君府&#39;,
+        desc: &#39;信陵君请门客出主意，你可以递一样东西，替他说一句话。&#39;,
+        emotions: [&#39;责任&#39;, &#39;亲密&#39;],
+        levels: [1, 2],
+        centrality: 0.6,
+        canLock: true,
+      },
+      {
+        id: &#39;yimen&#39;,
+        scene: &#39;yimen&#39;,
+        title: &#39;夷门&#39;,
+        desc: &#39;侯嬴献计，如姬的名字第一次被提起。&#39;,
+        emotions: [&#39;亲密&#39;, &#39;顿悟&#39;],
+        levels: [1, 2],
+        centrality: 0.7,
+        canLock: false,
+      },
+      {
+        id: &#39;night&#39;,
+        scene: &#39;palace&#39;,
+        title: &#39;取符之夜&#39;,
+        desc: &#39;如姬在卧内偷出兵符，你要决定在哪一刻出手。&#39;,
+        emotions: [&#39;紧张&#39;],
+        levels: [2],
+        centrality: 0.9,
+        canLock: false,
+      },
+      {
+        id: &#39;ye&#39;,
+        scene: &#39;ye&#39;,
+        title: &#39;邺城&#39;,
+        desc: &#39;晋鄙不肯交兵，朱亥的铁椎落下，邺城的军队换了主人。&#39;,
+        emotions: [&#39;责任&#39;, &#39;悲悯&#39;],
+        levels: [1, 2],
+        centrality: 0.95,
+        canLock: true,
+      },
+      {
+        id: &#39;coda&#39;,
+        scene: &#39;handan&#39;,
+        title: &#39;拉远与史&#39;,
+        desc: &#39;镜头拉远，告诉你这一晚之后，历史又怎样接着走。&#39;,
+        emotions: [&#39;悲悯&#39;],
+        levels: [0],
+        centrality: 0.4,
+        canLock: false,
+      },
+    ],
+  },
+
+  night: {
+    id: &#39;night&#39;,
+    title: &#39;取符之夜&#39;,
+    kind: &#39;action&#39;,
+    beats: [
+      {
+        id: &#39;run&#39;,
+        scene: &#39;palace&#39;,
+        title: &#39;一路狂奔&#39;,
+        desc: &#39;符在怀里，追兵在后，你只有一条路可以跑。&#39;,
+        emotions: [&#39;紧张&#39;],
+        levels: [2],
+        centrality: 0.8,
+        canLock: false,
+      },
+    ],
+  },
+
+  studio: {
+    id: &#39;studio&#39;,
+    title: &#39;片场&#39;,
+    kind: &#39;game&#39;,
+    beats: [],
+  },
+};
+
+export const WORKS = [
+  {
+    id: &#39;changping&#39;,
+    title: &#39;长平之后&#39;,
+    kind: &#39;film&#39;,
+    length: &#39;约1分钟&#39;,
+    viewpoint: &#39;旁观的史官&#39;,
+    summary: &#39;长平败后，秦军围邯郸，城外的人只能看着。&#39;,
+    reads: [],
+    writes: [&#39;邯郸|被围&#39;],
+  },
+  {
+    id: &#39;weicheng&#39;,
+    title: &#39;围城&#39;,
+    kind: &#39;game&#39;,
+    length: &#39;约1分钟&#39;,
+    viewpoint: &#39;守仓人&#39;,
+    summary: &#39;邯郸粮仓对不上账，守仓人夜里瞒，天亮后才知道瞒不住。&#39;,
+    reads: [&#39;邯郸|被围&#39;],
+    writes: [&#39;邯郸粮仓|欠粮&#39;, &#39;平原君|散财&#39;],
+  },
+  {
+    id: &#39;qiefu&#39;,
+    title: &#39;窃符&#39;,
+    kind: &#39;game&#39;,
+    length: &#39;约1分钟&#39;,
+    viewpoint: &#39;门客&#39;,
+    summary: &#39;魏王止步，门客们各出主意，如姬偷符，晋鄙落下，邺城易主。&#39;,
+    reads: [&#39;魏王|止步&#39;],
+    writes: [&#39;侯嬴|献计&#39;, &#39;如姬|窃符&#39;, &#39;晋鄙|下场&#39;],
+  },
+  {
+    id: &#39;night&#39;,
+    title: &#39;取符之夜&#39;,
+    kind: &#39;action&#39;,
+    length: &#39;约1分钟&#39;,
+    viewpoint: &#39;门客&#39;,
+    summary: &#39;符在手里的那一夜，从卧内逃出来，身后有人发现了。&#39;,
+    reads: [&#39;如姬|窃符&#39;],
+    writes: [&#39;兵符|去向&#39;, &#39;门客|被发现&#39;],
+  },
+  {
+    id: &#39;studio&#39;,
+    title: &#39;片场&#39;,
+    kind: &#39;studio&#39;,
+    length: &#39;约1分钟&#39;,
+    viewpoint: &#39;片场（作者）&#39;,
+    summary: &#39;把上面几部作品的节拍和主张放在一起排练的地方。&#39;,
+    reads: [],
+    writes: [],
+  },
+];
+
+
+// File: tests/stage1-flow.test.js (javascript)
+// 第一阶段：角色之间的信息流动，证明是真的为用户服务。
+import test from &#39;node:test&#39;;
+import assert from &#39;node:assert/strict&#39;;
+import { createSession } from &#39;../shared/engine/session.js&#39;;
+import { traceToUser, roleKind, auditService } from &#39;../shared/core/ledger.js&#39;;
+
+const ANSWERS_A = { wait: 0.8, polish: 0.8, depth: 0.85 };   // 能等、爱雕琢、要看细
+const ANSWERS_B = { wait: 0.2, polish: 0.2, depth: 0.25 };   // 现在就要、要能改变、看个大概
+
+function run(answers, need) {
+  const s = createSession();
+  s.meet(answers, need);
+  const c = s.commission(&#39;qiefu&#39;);
+  return { s, c };
+}
+
+test(&#39;每一个导师和导演的决定，沿 cause 往回走，都走到用户&#39;, () =&gt; {
+  const { s } = run(ANSWERS_A, &#39;我想看一个人在乱世里怎么做选择&#39;);
+  s.react(&#39;qiefu&#39;, &#39;daliang&#39;, &#39;停下来看心思&#39;);
+  s.react(&#39;qiefu&#39;, &#39;yimen&#39;, &#39;追问为什么&#39;);
+  s.wrap(&#39;qiefu&#39;);
+  const a = s.audit();
+  assert.ok(a.total &gt;= 6, `决定太少：${a.total}`);
+  assert.deepEqual(a.orphans, [], `这些决定追不到用户：${a.orphans}`);
+  assert.ok(a.byRole.mentor.total &gt; 0 &amp;&amp; a.byRole.director.total &gt; 0);
+});
+
+test(&#39;链条的顺序是：用户 → 导师 → 导演 → 呈现&#39;, () =&gt; {
+  const { s, c } = run(ANSWERS_A, &#39;想弄清楚为什么信陵君要窃符&#39;);
+  const path = traceToUser(s.ledger, c.designSeq).path.map((q) =&gt; roleKind(s.ledger.get(q).from));
+  assert.equal(path[0], &#39;user&#39;);
+  assert.ok(path.includes(&#39;mentor&#39;));
+  assert.equal(path[path.length - 1], &#39;director&#39;);
+  const open = s.ledger.last((e) =&gt; e.kind === &#39;present.open&#39;);
+  const p2 = traceToUser(s.ledger, open.seq).path.map((q) =&gt; roleKind(s.ledger.get(q).from));
+  assert.deepEqual([p2[0], p2[p2.length - 1]], [&#39;user&#39;, &#39;presentation&#39;]);
+});
+
+test(&#39;不同的用户，得到不同的导演、不同的档位、不同的作品设计&#39;, () =&gt; {
+  const A = run(ANSWERS_A, &#39;我想看一个人在乱世里怎么做选择&#39;);
+  const B = run(ANSWERS_B, &#39;来点紧张刺激的&#39;);
+  assert.notEqual(A.s.state.directorId, B.s.state.directorId, &#39;口味不同，导师应配不同导演&#39;);
+  assert.notDeepEqual(A.c.allot.chosen, B.c.allot.chosen, &#39;看细与看个大概，算力档位应不同&#39;);
+  const lv = (c) =&gt; c.design.beats.map((b) =&gt; b.level).join();
+  assert.notEqual(lv(A.c), lv(B.c), &#39;雕琢与放开，交互档位应不同&#39;);
+  assert.notEqual(A.c.design.emotion, B.c.design.emotion, &#39;需求里的情感不同，导演选的交互种类应不同&#39;);
+});
+
+test(&#39;导师从你的反应里学；你亲手改过的字段，观察不能覆盖&#39;, () =&gt; {
+  const { s } = run(ANSWERS_B, &#39;我想看一个人在乱世里怎么做选择&#39;);
+  const d0 = s.mentor.notes().depth.value;
+  s.react(&#39;qiefu&#39;, &#39;daliang&#39;, &#39;停下来看心思&#39;);
+  s.react(&#39;qiefu&#39;, &#39;yimen&#39;, &#39;停下来看心思&#39;);
+  const d1 = s.mentor.notes().depth.value;
+  assert.ok(d1 &gt; d0, `看心思后 depth 应上升：${d0} → ${d1}`);
+  s.editNote(&#39;depth&#39;, 0.1);
+  s.react(&#39;qiefu&#39;, &#39;ye&#39;, &#39;停下来看心思&#39;);
+  assert.equal(s.mentor.notes().depth.value, 0.1);
+  assert.equal(s.mentor.notes().depth.source, &#39;你改的&#39;);
+});
+
+test(&#39;导演对照预测与真实反应，手艺被改动，并留下记录&#39;, () =&gt; {
+  const { s } = run(ANSWERS_A, &#39;我想看一个人在乱世里怎么做选择&#39;);
+  const preds = s.state.predictions.qiefu.list;
+  assert.ok(preds.length &gt;= 2, &#39;导演应对可交互的节拍做预测&#39;);
+  // 故意和预测反着来
+  const flip = { 停下来看心思: &#39;很快通过&#39;, 追问为什么: &#39;很快通过&#39;, 很快通过: &#39;停下来看心思&#39;, 重来一次: &#39;很快通过&#39; };
+  for (const p of preds) s.react(&#39;qiefu&#39;, p.beat, flip[p.expect]);
+  const before = s.director().craft();
+  const r = s.wrap(&#39;qiefu&#39;);
+  const after = s.director().craft();
+  assert.notDeepEqual(before, after, &#39;全错时手艺应变化&#39;);
+  const learn = s.ledger.get(r.seq);
+  assert.equal(learn.kind, &#39;director.learn&#39;);
+  assert.ok(traceToUser(s.ledger, r.seq).ok);
+});
+
+test(&#39;导演不能改导师的笔记：越权被拒，并记账&#39;, () =&gt; {
+  const { s } = run(ANSWERS_A, &#39;想弄清楚为什么&#39;);
+  const seq = s.director().tryEditMentor(&#39;depth&#39;);
+  assert.equal(s.ledger.get(seq).kind, &#39;mentor.refuse&#39;);
+});
+
+test(&#39;存档再读回，账本指纹一致，审计结果不变&#39;, () =&gt; {
+  const { s } = run(ANSWERS_A, &#39;我想看一个人在乱世里怎么做选择&#39;);
+  s.react(&#39;qiefu&#39;, &#39;daliang&#39;, &#39;追问为什么&#39;);
+  const saved = JSON.parse(JSON.stringify(s.save()));
+  const s2 = createSession({ saved });
+  assert.equal(s2.ledger.size, s.ledger.size);
+  assert.deepEqual(auditService(s2.ledger), auditService(s.ledger));
+  saved.ledger[3].payload = { tampered: true };
+  assert.throws(() =&gt; createSession({ saved }), /指纹不符/);
+});
+
+</pre></div></details>
+<details class="row row-thinking"><summary><span class="thinking-badge">Thinking</span></summary><div class="thinking-body"><pre>I found the temperament bug: the session calls a def method the director doesn&#39;t expose, so I need to pass STAFF.directors directly instead, and also fix the director&#39;s saved state not being restored. I also need to check the ledger export functions and investigate why a persuasion test case with specific appeal values is failing, so I&#39;ll look at the mind test and seed values for the four people involved.</pre></div></details>
+<div class="row row-assistant"><div class="assistant-prose"><p>问题很清楚：session 里读的是 <code>d.def</code>，但 director 没有暴露 <code>def</code>。我先修这一处，再看说服那条失败。</p></div></div>
+<details class="row row-tool"><summary><span class="tool-badge">EDIT</span><span class="tool-input">shared/engine/session.js</span></summary><div class="tool-body"><pre class="tool-output">Edited /Users/lidechi/orca/workspaces/wode/ling/shared/engine/session.js (1 replacement)
+
+Snippet (lines 38-44 of 112):
+38	  function meet(answers, need) {
+39	    const u = ledger.append({ kind: &#39;user.meet&#39;, from: &#39;user&#39;, to: &#39;mentor&#39;, payload: { answers, need } });
+40	    const r = mentor.meet({ answers, need }, u.seq);
+41	    const pick = mentor.chooseDirector(STAFF.directors, [u.seq, ...r.seqs]);
+42	    state.directorId = pick.director;
+43	    state.met = true;
+44	    return { userSeq: u.seq, director: pick.director };</pre></div></details>
+<details class="row row-tool"><summary><span class="tool-badge">SHELL</span><span class="tool-input">node --test &quot;tests/**/*.test.js&quot; 2&gt;&amp;1 | grep -vE &quot;^\s+at &quot; | sed -n &#39;/failing tests/,$p&#39;; sed -n 55,90p tests/mind.test.js; grep -nE &quot;^export|toJSON|loadLedger&quot; shared/core/ledger.js</span></summary><div class="tool-body"><pre class="tool-output">✖ failing tests:
+
+test at tests/mind.test.js:61:1
+✖ 不被话术摆平：没有一句话能同时说服魏王、信陵君、晋鄙、侯嬴 (1.157208ms)
+  AssertionError [ERR_ASSERTION]: 这句话摆平了所有人：{&quot;义&quot;:0,&quot;利&quot;:0.8,&quot;惧&quot;:0.4,&quot;恩&quot;:0.8}
+  
+  true !== false
+  
+    generatedMessage: false,
+    code: &#39;ERR_ASSERTION&#39;,
+    actual: true,
+    expected: false,
+    operator: &#39;strictEqual&#39;,
+    diff: &#39;simple&#39;
+  }
+
+test(&#39;说服：晋鄙越压越疑；信任够时义和恩才行&#39;, () =&gt; {
+  assert.equal(mind(&#39;jinbi&#39;).hear({ 惧: 0.7 }, &#39;actor:player&#39;).accepted, false);
+  assert.equal(mind(&#39;jinbi&#39;, 0.55).hear({ 义: 0.8, 恩: 0.4 }, &#39;actor:player&#39;).accepted, true);
+});
+
+test(&#39;不被话术摆平：没有一句话能同时说服魏王、信陵君、晋鄙、侯嬴&#39;, () =&gt; {
+  const grid = [0, 0.4, 0.8];
+  for (const y of grid) for (const l of grid) for (const j of grid) for (const e of grid) {
+    const appeal = { 义: y, 利: l, 惧: j, 恩: e };
+    const all = [&#39;weiwang&#39;, &#39;xinling&#39;, &#39;jinbi&#39;, &#39;houying&#39;].every((id) =&gt; mind(id, 0.6).hear(appeal, &#39;actor:player&#39;).accepted);
+    assert.equal(all, false, `这句话摆平了所有人：${JSON.stringify(appeal)}`);
+  }
+});
+6:export function roleKind(role) {
+12:export function roleId(role) {
+19:export function hashHex(input) {
+38:export function createLedger(initial = []) {
+71:    toJSON: () =&gt; entries.map(({ hash, ...rest }) =&gt; ({ ...rest, hash })),
+76:export function loadLedger(json) {
+87:export function traceToUser(ledger, seq) {
+111:export function ancestors(ledger, seq) {
+124:export function descendants(ledger, seq) {
+142:export const DECISION_KINDS = [&#39;mentor.allot&#39;, &#39;mentor.brief&#39;, &#39;mentor.note&#39;, &#39;mentor.learn&#39;, &#39;director.design&#39;, &#39;director.predict&#39;, &#39;director.grant&#39;, &#39;director.schedule&#39;, &#39;director.learn&#39;];
+148:export function auditService(ledger, kinds = DECISION_KINDS) {
+</pre></div></details>
+<div class="row row-user"><span class="user-marker">&#10095;</span><div class="user-body"><div class="user-text">Error: You&#39;ve reached your 5-hour usage limit. Resets in 48m (1:02 PM).
+Keep going with /extra (pay-as-you-go at API cost, zero markup) or /upgrade.</div></div></div>
+</main>
+<footer class="footer">Exported from Command Code</footer>
+</div>
+</body>
+</html>

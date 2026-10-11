@@ -6,7 +6,7 @@
   "description": "数字世界：从你的需求长出的世界。导师、导演、演员同一种心智，所有呈现共享一张主张图。",
   "scripts": {
     "dev": "node server/index.mjs",
-    "test": "node --test tests/"
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "engines": { "node": ">=22" }
 }

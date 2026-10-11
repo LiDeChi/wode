@@ -27,6 +27,7 @@ roleKind('director:lu') -> 'director'; roleId('director:lu') -> 'lu'
 hashHex(any) -> string
 ```
 角色标识：`'user'`、`'mentor'`、`'director:<id>'`、`'actor:<id>'`、`'world'`、`'gateway'`、`'presentation:<id>'`。
+史料层的 `HISTORY[].holder` 另允许 `'narrator:<sourceId>'`（例：`'narrator:S77'`），表示“这句话是那本书的叙述者说的”，用来保留说话人；它不是角色标识，只出现在主张的 `holder` 里，不参与 `roleKind`/`roleId`。
 
 账本 `kind` 命名（只能用这些前缀）：
 | kind | 谁写 | payload 要点 |
@@ -35,7 +36,7 @@ hashHex(any) -> string
 | `user.edit-note` | 用户 | `{ field, from, to }` |
 | `user.act` | 用户 | `{ scene, verb, target, item?, option? }` |
 | `user.react` | 用户 | `{ scene, beat, signal, value? }` signal ∈ `'停下来看心思'|'追问为什么'|'很快通过'|'重来一次'|'中途离开'|'停顿'` |
-| `mentor.note` | 导师 | `{ field, value, source:'问'|'观察'|'你改的' }` |
+| `mentor.note` | 导师 | `{ field, value, source:'问'\|'观察'\|'你改的' }`；`field` ∈ `'wait'\|'polish'\|'depth'\|'surprise'\|'emotion'\|'need'\|'director'`。`field:'director'` 由 `mentor.chooseDirector` 写：`value` 是导演 id，`source:'观察'` |
 | `mentor.allot` | 导师 | `{ input, options, chosen:{[sceneId]:tier}, spent, budget }` |
 | `mentor.brief` | 导师 | `{ director, need, emotion, prefs, budget, tiers }` |
 | `mentor.learn` | 导师 | `{ field, before, after, signal }` |
@@ -102,7 +103,7 @@ export const PLACES       // [{ id, name, desc }]   daliang 大梁·信陵君府
 export const PEOPLE       // [心智定义 + 展示字段]，字段见下
 export const STAFF        // { mentor: 心智定义, directors: [心智定义...] }
 export const ITEMS        // [{ id, name, desc, appeal:{义,利,惧,恩} }]   玩家“说”的方式：递一样东西
-export const HISTORY      // [主张草稿]  史料层：{ subject, predicate, object, holder, channel:'设定', evidence:[sourceId], confidence, note }
+export const HISTORY      // [主张草稿]  史料层：{ subject, predicate, object, holder, channel:'设定', evidence:[sourceId], confidence, note }；holder 允许 'narrator:<sourceId>'（例 'narrator:S77'，见 §1）
 export const CHAIN        // [成因链环节]，字段见下
 export const PREFS_QUESTIONS // 导师第一次见面问的三个很粗的问题，见下
 ```
@@ -120,7 +121,7 @@ PEOPLE 每个人在心智定义之外加：`{ title, place, historical:boolean, 
 靠的是 capacity 的性情系数，不是写死分支。两人 units/modules 结构相同，只有 temperament 不同。
 
 **说服的硬要求**（hear）：
-- 魏王：`hear({义:0.8}, 'actor:player').accepted === false` 且 backlash > 0（讲义反而更怕）。任何单一诉求都说不动他。
+- 魏王：`hear({义:0.8}, 'actor:player').accepted === false` 且 backlash > 0（讲义反而更怕）。任何单一诉求都说不动他；`threshold` 提到 0.55 且「利/惧」也有 resist，凑几样好处也不动。
 - 信陵君：`hear({义:0.8}, 'actor:player')` 在 trust 0.5 时 accepted；`hear({利:0.8})` 不 accepted。
 - 晋鄙：默认 trust 0.2，`hear({惧:0.7})` 不 accepted（越压越疑）；`hear({义:0.8, 恩:0.4})` 在 trust ≥ 0.5 时 accepted。
 - 不能有一种 appeal 让魏王、信陵君、晋鄙、侯嬴四人全部 accepted（防“被话术摆平”）。
@@ -239,7 +240,7 @@ speaker.usage() -> { 对白:{used,limit}, 设想:{...}, 改造:{...} }
 
 `server/index.mjs`：Node 内置 `http`，零依赖。
 - 静态托管仓库根目录下的 `web/`、`shared/`、`docs/`（`/` → `web/index.html`）。正确的 MIME（.js 用 `text/javascript`）。
-- `POST /api/speak` body `{ system, user, maxTokens }` → 转发到 `${MODEL_GATEWAY_URL||'http://127.0.0.1:3425/v1'}/chat/completions`，`Authorization: Bearer ${MODEL_GATEWAY_KEY||ANTHROPIC_AUTH_TOKEN}`，model 取 `MODEL_FAST || 'group/auto-glm-5-3-flash'`，备用 `MODEL_FALLBACK || 'commandcode/deepseek/deepseek-v4.1-flash'`（这个是推理模型，max_tokens 至少 800）。返回 `{ text, model, ms, tokens }`。8 秒超时；失败返回 502 `{ error }`。
+- `POST /api/speak` body `{ system, user, maxTokens }` → 转发到 `${MODEL_GATEWAY_URL||'http://127.0.0.1:3425/v1'}/chat/completions`，`Authorization: Bearer ${MODEL_GATEWAY_KEY||ANTHROPIC_AUTH_TOKEN}`，model 取 `MODEL_FAST || 'group/auto-glm-5-3-flash'`，备用 `MODEL_FALLBACK || 'commandcode/deepseek/deepseek-v4.1-flash'`（这个是推理模型，max_tokens 至少 800）。返回 `{ text, model, ms, tokens }`。主模型超时 6 秒，备用模型独立 10 秒（主模型慢不能占掉备用模型的时间）；都失败返回 502 `{ error }`。
 - `GET /api/health` → `{ ok, model, gateway:boolean }`。
 - `GET/PUT /api/world` 存取 `.runtime/world.json`（整个世界的存档 JSON）。
 - 只绑 `127.0.0.1`，端口 `PORT || 4320`。凭据只在服务器，不发给浏览器。
