@@ -1,5 +1,5 @@
 // 自动玩一整局的冒烟测试：陆导一局、单导一局，每幕截图到 /tmp/play-shots/，控制台不许有错。
-// 用法：node tools/play-smoke.mjs [--dir lu|shan] [--head] [--debug]
+// 用法：node tools/play-smoke.mjs [--dir lu|shan] [--head] [--debug] [--tag=v8] [--night=none|clean]
 //
 // 两个坑记在这里：
 //   1. 场景里的签每帧跟着镜头动，Playwright 的 click() 会因为「元素不稳定」一直等到超时；
@@ -18,6 +18,9 @@ const SHOTS = '/tmp/play-shots';
 const argv = process.argv.slice(2);
 const argOf = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
 const DIRS = argOf('--dir') ? [argOf('--dir')] : ['lu', 'shan'];
+// --night=none（默认）：夜里只是贴墙看，符没带出来 → 邺城案上只有一卷没递出去的军令
+// --night=clean：照着 fixtures 那条正路把符摸出来（token_b → rush）→ 案上摆两半铜符
+const NIGHT = argOf('--night') || 'none';
 const HEAD = argv.includes('--head');
 const DEBUG = argv.includes('--debug');
 
@@ -26,7 +29,9 @@ const DEBUG = argv.includes('--debug');
 const PLAN = {
   daliang: ['yi'],
   yimen: ['back'],
-  night: ['step', 'token_b', 'rush', 'step'],
+  // 摸符那张签挂在场景里那件令牌实物上，只有令牌进画面时签才在；所以每走一步都先伸一次手，
+  // 够不着才往前走（tapTag 自己会判断签在不在屏上，够不着就不会被记账）
+  night: NIGHT === 'clean' ? ['token_a', 'token_b', 'step', 'rush', 'wait'] : ['step', 'step'],
   ye: ['yi'],
   inspect: ['seal', 'note', 'pledge'],
   decide: ['report', 'witness', 'hide'],
@@ -81,28 +86,30 @@ async function tapTag(page, intent, tries = 4) {
 
 /** 打开还没打开的人物签（幂等：已经展开的人不要再点一次，否则会收起来）
  *  skip 里的人点下去是「换个人说话」而不是展开诉求签，自动玩的时候要躲开；
- *  keepers 里当前那一位是默认跳过的（main.js 在 inspect 阶段已经把他的诉求签摊开） */
+ *  keepers 里不是当前那一位的守仓人也要躲开（点了他话头会退回上一轮）。
+ *  「摊开没摊开」直接问 dev 挂出来的 __play.opened，比从 DOM 里猜可靠。 */
 async function openPeople(page, skip = [], keepers = [], current = null) {
   const keeperKeys = keepers.map((id) => `person:${id}`);
   const currentKey = current ? `person:${current}` : null;
   const skipKeys = skip.map((k) => (k.includes(':') ? k : `person:${k}`));
-  const keys = await page.evaluate(() => [...document.querySelectorAll('#tags .tag-person')].map((n) => n.dataset.key)).catch(() => []);
-  for (const key of keys) {
-    if (skipKeys.includes(key)) continue;
-    if (keeperKeys.includes(key) && key !== currentKey) continue;
-    const isOpen = await page.evaluate((k) => {
-      return [...document.querySelectorAll('#tags .tag')].some((n) => {
-        if (n.dataset.key !== k || !n.dataset.intent) return false;
-        const st = getComputedStyle(n);
-        return st.visibility !== 'hidden' && st.display !== 'none' && n.getBoundingClientRect().width > 2;
-      });
-    }, key).catch(() => false);
-    if (isOpen) continue;
-    await page.evaluate((k) => {
-      const n = [...document.querySelectorAll('#tags .tag-person')].find((x) => x.dataset.key === k);
-      if (n) n.click();
-    }, key).catch(() => {});
-    await sleep(140);
+  // 签是分帧挂出来的（台词一放，签就清空），所以走两遍：第一遍摊开，第二遍补上迟到的那些人
+  for (let pass = 0; pass < 2; pass += 1) {
+    const state = await page.evaluate(() => ({
+      keys: [...document.querySelectorAll('#tags .tag-person')].map((n) => n.dataset.key),
+      opened: window.__play?.opened ?? [],
+    })).catch(() => ({ keys: [], opened: [] }));
+    for (const key of state.keys) {
+      if (skipKeys.includes(key)) continue;
+      // 粮仓里点别的守仓人是「换个人说话」，会把话头退回上一轮，自动玩的时候要躲开
+      if (keeperKeys.includes(key) && key !== currentKey) continue;
+      if (state.opened.includes(key.slice('person:'.length))) continue;
+      await page.evaluate((k) => {
+        const n = [...document.querySelectorAll('#tags .tag-person')].find((x) => x.dataset.key === k);
+        if (n) n.click();
+      }, key).catch(() => {});
+      await sleep(160);
+    }
+    await sleep(120);
   }
 }
 
@@ -129,6 +136,7 @@ async function playRun(browser, dir, { granary }) {
   let lastWhere = '';
   let filmTried = false;
   let filmShot = false;
+  let ye = null;
   const ctx = await browser.newContext({ viewport: { width: 1292, height: 761 } });
   const page = await ctx.newPage();
   page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
@@ -180,6 +188,8 @@ async function playRun(browser, dir, { granary }) {
         act: window.__play?.view?.act ?? null,
         phase: window.__play?.view?.granary?.phase ?? null,
         done: !!window.__play?.view?.done,
+        night: window.__play?.view?.flags?.night ?? null,
+        anchors: window.__play?.stage?.anchors ?? [],
         options: (window.__play?.view?.options ?? []).map((o) => `${o.id}:${o.allowed ? 1 : 0}`),
       }));
     } catch (e) {
@@ -191,6 +201,12 @@ async function playRun(browser, dir, { granary }) {
     if (st.act && st.act !== lastAct) {
       lastAct = st.act;
       acts.push(st.act);
+      if (st.act === 'ye') {
+        // 邺城的案上有没有兵符，必须和取符之夜的结果一致（否则画面和正文打架）
+        ye = { night: st.night, hasTally: (st.anchors ?? []).includes('prop:tally'), hasOrder: (st.anchors ?? []).includes('prop:order') };
+        if (st.night === 'clean' && !ye.hasTally) errors.push('夜里把兵符带出宫了，邺城案上却没有兵符');
+        if (st.night !== 'clean' && (ye.hasTally || !ye.hasOrder)) errors.push(`夜里没带出兵符（night=${st.night}），邺城案上不该有兵符`);
+      }
       await sleep(2000);
       await shot(st.act);
     }
@@ -211,9 +227,14 @@ async function playRun(browser, dir, { granary }) {
       // 收束页上点一次「把这一局拍成电影」：要写出录制、并跳到 /film.html
       if (codaDone && !filmTried) {
         filmTried = true;
-        // 真正的收束页（列了四幕的账 + 「把这一局拍成电影」）——先留一张给用户看
-        await sleep(2400);
+        // 真正的收束页（一案竹简 + 封泥 + 卷轴）——桌面一版、手机一版
+        await sleep(3600);
         await shot('epilogue');
+        await page.setViewportSize({ width: 390, height: 844 });
+        await sleep(1000);
+        await shot('epilogue-mobile');
+        await page.setViewportSize({ width: 1292, height: 761 });
+        await sleep(400);
         const hit = await page.evaluate(() => {
           const b = document.getElementById('film-btn');
           if (!b) return false;
@@ -277,6 +298,8 @@ async function playRun(browser, dir, { granary }) {
     const ids = all.filter((id) => !used.has(id));
     const tryIds = ids.length ? ids : all;
     let picked = null;
+    // 有些诉求签挂在人物身上（如姬身上的「摸符」），先把该摊开的签摊开，计划里的招才点得到
+    await openPeople(page, [], info.keepers, info.current);
     for (const id of tryIds) { if (await tapTag(page, id)) { picked = id; break; } }
     if (!picked) {
       await openPeople(page, [], info.keepers, info.current);
@@ -293,12 +316,13 @@ async function playRun(browser, dir, { granary }) {
       trace.push(`   dump ${JSON.stringify(dump)}`);
       await sleep(400);
     }
-    await sleep(760);
+    // 取符之夜有漏刻在走（真·时间压力）：夜里出手快一点，不然脚本会被时间推着走
+    await sleep(st.act === 'night' ? 280 : 760);
   }
   if (ticks >= MAXTICKS) errors.push('一整局没走完（步数用尽）');
   await page.close().catch(() => {});
   await ctx.close().catch(() => {});
-  return { dir, acts, shots, errors, trace };
+  return { dir, acts, ye, shots, errors, trace };
 }
 
 async function main() {
@@ -318,7 +342,7 @@ async function main() {
   const trim = (list) => [...new Set(list.map((e) => String(e).split('\n')[0]))].slice(0, 8);
   console.log(JSON.stringify({
     ok: bad.length === 0,
-    runs: runs.map((r) => ({ dir: r.dir, acts: r.acts, shots: r.shots, errorCount: r.errors.length, errors: trim(r.errors) })),
+    runs: runs.map((r) => ({ dir: r.dir, acts: r.acts, ye: r.ye, shots: r.shots, errorCount: r.errors.length, errors: trim(r.errors) })),
   }, null, 1));
   if (bad.length) process.exit(1);
 }

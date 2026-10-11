@@ -193,15 +193,19 @@ html, body {
 
 .objective {
   position: fixed;
-  left: 28px;
-  bottom: 132px;
-  max-width: 640px;
+  left: 22px;
+  bottom: 136px;
+  max-width: 620px;
   z-index: 12;
+  padding: 9px 16px 10px;
+  border-radius: 3px;
+  /* 一层墨晕淡底：旁白压在人物下摆上时也读得清，但不做成网页色块 */
+  background: radial-gradient(120% 150% at 0% 50%, rgba(12, 9, 6, 0.86) 0%, rgba(12, 9, 6, 0.62) 55%, rgba(12, 9, 6, 0) 100%);
   font-family: var(--font-serif);
   font-size: 15px;
   line-height: 1.7;
   color: var(--paper-dim);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
   transition: color 200ms ease;
 }
 .objective.hinting { color: var(--paper); }
@@ -441,11 +445,161 @@ html, body {
 .ending-book { font-size: 15px; color: var(--paper-dim); margin-top: 22px; animation-delay: 1600ms; }
 .ending-days { font-size: 15px; color: var(--bronze); margin-top: 18px; animation-delay: 2400ms; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-.ending-summary { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); text-align: left; display: flex; flex-direction: column; gap: 10px; }
-.ending-row { display: flex; gap: 14px; font-size: 13px; line-height: 1.8; color: var(--paper-dim); }
-.ending-row-act { min-width: 88px; font-family: var(--font-serif); color: var(--paper); letter-spacing: 0.1em; }
-.ending-actions { display: flex; gap: 16px; justify-content: center; margin-top: 38px; }
-.ending-actions .enter { margin-left: 0; }
+/* ── 收束页：一案竹简 ─────────────────────────────────────── */
+.ending { align-items: flex-start; overflow-y: auto; padding: 32px 26px 38px; }
+.ending-desk {
+  position: relative;
+  margin: 22px auto 0;
+  padding: 24px 28px 28px;
+  text-align: left;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, #4a3722 0%, #3a2b1a 42%, #2b2013 100%);
+  box-shadow:
+    0 26px 50px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 226, 178, 0.14),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.55);
+}
+.ending-desk::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(92deg, rgba(255, 226, 178, 0.045) 0 1px, transparent 1px 13px);
+  opacity: 0.7;
+}
+.ending-slips { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.slip-last { grid-column: 1 / -1; }
+
+.slip {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 22px 15px;
+  border-radius: 3px;
+  background-color: #5a4326;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 240, 200, 0.07) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.3) 25px, transparent 26px 52px),
+    linear-gradient(180deg, rgba(255, 240, 200, 0.09), rgba(0, 0, 0, 0.3));
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 240, 200, 0.16);
+  opacity: 0;
+  animation: slipDrop 560ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation-delay: calc(var(--i, 0) * 340ms + 1100ms);
+}
+/* 竹简上两道编绳 */
+.slip::before,
+.slip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(180deg, rgba(126, 90, 46, 0.75), rgba(62, 42, 20, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 226, 178, 0.14);
+  pointer-events: none;
+}
+.slip::before { top: 7px; }
+.slip::after { bottom: 7px; }
+@keyframes slipDrop {
+  from { opacity: 0; transform: translateY(-14px) rotate(-0.5deg); }
+  to { opacity: 1; transform: none; }
+}
+.slip-act {
+  margin: 0 0 6px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: #f0e2c0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65), 0 -1px 0 rgba(255, 240, 200, 0.07);
+}
+.slip-text {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.85;
+  color: #d9c9a6;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.slip-kind { display: block; margin-top: 6px; font-size: 12px; letter-spacing: 0.14em; color: #b8a37c; }
+/* 最后一片：盖朱红封泥 */
+.slip-last { padding-right: 108px; }
+.slip-seal {
+  position: absolute;
+  right: 24px;
+  bottom: -8px;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: #f3d3c8;
+  background: radial-gradient(circle at 34% 30%, #b5432f, #7e1f16 62%, #571009);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6), inset 0 2px 6px rgba(255, 180, 150, 0.32), inset 0 -3px 8px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: slipStamp 380ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  animation-delay: calc(var(--i, 0) * 340ms + 1900ms);
+}
+@keyframes slipStamp {
+  from { opacity: 0; transform: scale(1.7) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+/* ── 收束页上的两件器械 ───────────────────────────────────── */
+.ending-actions { display: flex; gap: 26px; justify-content: center; align-items: center; margin-top: 34px; }
+.device {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-serif);
+  color: #e8dcc0;
+}
+.device-scroll .scroll-rod { width: 11px; height: 48px; border-radius: 6px; background: linear-gradient(90deg, #6a4f2c, #342413); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55); }
+.device-scroll .scroll-rod:last-child { box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.45); }
+.device-scroll .scroll-sheet {
+  padding: 13px 26px;
+  font-size: 16px;
+  letter-spacing: 0.24em;
+  color: #33260f;
+  background: linear-gradient(180deg, #e2d5b1, #c8b78d);
+  box-shadow: inset 0 0 0 1px rgba(92, 71, 40, 0.35), 0 10px 20px rgba(0, 0, 0, 0.5);
+  transition: background 180ms ease, transform 180ms ease;
+}
+.device-scroll:hover .scroll-sheet { background: linear-gradient(180deg, #f2e8c6, #d6c69c); transform: translateY(-1px); }
+.device-hourglass .hourglass {
+  position: relative;
+  width: 26px;
+  height: 42px;
+  margin-right: 12px;
+}
+.device-hourglass .hourglass::before,
+.device-hourglass .hourglass::after { content: ''; position: absolute; left: 0; right: 0; }
+.device-hourglass .hourglass::before {
+  top: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(200, 137, 47, 0.2), rgba(232, 190, 120, 0.9));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.device-hourglass .hourglass::after {
+  bottom: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(232, 190, 120, 0.85) 0 34%, rgba(200, 137, 47, 0.18) 34% 100%);
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+}
+.device-hourglass:hover .hourglass { animation: sandFlip 1.1s ease-in-out infinite; }
+.device-hourglass.flipping .hourglass { animation: sandFlip 620ms ease-in-out 1; }
+@keyframes sandFlip { 50% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+.hourglass-label { font-size: 16px; letter-spacing: 0.24em; color: var(--paper); }
+.device-hourglass:hover .hourglass-label { color: #f0d9a8; }
 
 .fatal-inner { text-align: center; max-width: 560px; }
 .fatal-line { font-family: var(--font-serif); font-size: 22px; letter-spacing: 0.16em; }
@@ -475,4 +629,28 @@ html, body {
   .scene-grant, .scene-grants { display: none; }
   .linebar { width: calc(100vw - 48px); }
   .mind { width: min(420px, 86vw); }
+}
+
+/* ── 窄屏（手机）：一案竹简竖着摞，器械改成上下两件 ───────── */
+@media (max-width: 620px) {
+  .objective { left: 12px; right: 12px; bottom: 148px; max-width: none; font-size: 14px; }
+  .ending-inner { max-width: 100%; }
+  .ending { padding: 18px 14px 26px; overflow-y: auto; }
+  .ending-badge { margin-bottom: 16px; }
+  .ending-lived { font-size: 17px; }
+  .ending-desk { margin-top: 16px; padding: 14px 12px 18px; }
+  .ending-slips { grid-template-columns: 1fr; gap: 9px; }
+  .ending-desk::before { inset: 5px; }
+  .slip { padding: 11px 14px 12px; }
+  .slip-act { font-size: 15px; letter-spacing: 0.12em; }
+  .slip-text { font-size: 13px; line-height: 1.8; }
+  .slip-last { padding-right: 14px; padding-bottom: 34px; }
+  .slip-seal { right: 50%; bottom: 2px; width: 46px; height: 46px; font-size: 17px; transform-origin: center; margin-right: -23px; }
+  @keyframes slipStamp {
+    from { opacity: 0; transform: scale(1.7) rotate(-12deg); }
+    to { opacity: 1; transform: scale(1) rotate(-6deg); }
+  }
+  .ending-actions { flex-direction: column; gap: 18px; margin-top: 26px; }
+  .device-scroll .scroll-sheet { font-size: 15px; letter-spacing: 0.18em; padding: 12px 20px; }
+  .hourglass-label { font-size: 15px; }
 }

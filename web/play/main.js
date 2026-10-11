@@ -16,6 +16,8 @@ const DIRECTOR = { lu: '陆导', shan: '单导' };
 const HOLDER = '门客（你）';
 // 收束页拿不到 scenes 里的幕名时兜底（正常都走 view 里的 title）
 const ACT_TITLE = { daliang: '大梁', yimen: '夷门', night: '取符之夜', ye: '邺城', granary: '暮色粮仓' };
+// 结局的来路（引擎里的 ending id）：刻在最后一片竹简的封泥旁边
+const ENDING_LABEL = { history: '本作的历史', broken: '本作的历史', 'jinbi-lives': '另一种可能' };
 
 const ITEM_PROP = {
   '赵使的竹简': 'prop:letter',
@@ -144,17 +146,19 @@ function anchorFor(opt, v) {
     return { key: `person:${v.granary.keeper}`, personId: v.granary.keeper, kind: 'intent' };
   }
   if (v.act === 'night') {
-    if (opt.item && ITEM_PROP[opt.item]) {
-      const to = opt.to && stage.anchors.has(`person:${opt.to}`) ? opt.to : null;
-      return to ? { key: `person:${to}`, personId: to, kind: 'intent' } : { key: 'prop:token' };
-    }
+    // 「摸令牌」这类动作挂在场景里那件令牌实物上：守卫常站在镜头外，签挂到人身上会点不到
+    if (opt.item && ITEM_PROP[opt.item]) return { key: 'prop:token' };
     return { key: 'path' };
   }
   if (opt.to && stage.anchors.has(`person:${opt.to}`)) {
     return { key: `person:${opt.to}`, personId: opt.to, kind: 'intent' };
   }
   if (opt.item && ITEM_PROP[opt.item]) return { key: ITEM_PROP[opt.item] };
-  if (v.act === 'ye') return { key: 'prop:tally' };
+  if (v.act === 'ye') {
+    // 案上有没有符，是取符之夜那一局的结果：没带出来，签就挂到那卷军令上
+    if (stage.anchors.has('prop:tally')) return { key: 'prop:tally' };
+    if (stage.anchors.has('prop:order')) return { key: 'prop:order' };
+  }
   return { key: 'device' };
 }
 
@@ -353,7 +357,13 @@ function showFinal(v) {
     title: a.title || ACT_TITLE[a.id] || a.id,
     outcome: a.outcome ?? a.text ?? '',
   }));
-  ui.showFinal(acts, { onRestart: () => location.reload(), onFilm: () => saveFilm() });
+  const coda = v?.coda ?? lastCoda ?? {};
+  ui.showFinal(acts, {
+    onRestart: () => location.reload(),
+    onFilm: () => saveFilm(),
+    // 最后一片竹简上刻的结局名（例如「援军未至」），以及它的来路（本作的历史 / 史记）
+    ending: { title: coda.end || '', kind: ENDING_LABEL[coda.ending] ?? '' },
+  });
 }
 
 /** 把这一局的动作录成一份电影（web/film/format.js 的 v1 录制），交给 /film.html 放 */
@@ -446,6 +456,8 @@ if (DEV) {
   window.__play = {
     get view() { return view; },
     get stage() { return { act: stage.actId, anchors: [...stage.anchors.keys()] }; },
+    // 谁的诉求签已经摊开了（冒烟脚本据此判断该不该再点一次，不然会点成收起来）
+    get opened() { return [...opened]; },
     choose: (id) => doChoose(id),
     watch: (id) => doWatch(id),
     ask: (id) => doAsk(id),

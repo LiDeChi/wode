@@ -301,36 +301,84 @@ export function createUI({ dev = false } = {}) {
       b2.addEventListener('click', () => onClose?.());
       el.endingActions.append(b1, b2);
     },
-    showFinal(acts, { onRestart, onFilm } = {}) {
+    /**
+     * 收束页做成一件案上装置：每一幕一片竹简，依次落到案上；最后一片盖朱红封泥，写「完」。
+     * @param {Array<{title?:string,id?:string,outcome?:string}>} acts
+     * @param {{onRestart?:Function,onFilm?:Function,ending?:{title?:string,kind?:string}}} opts
+     */
+    showFinal(acts, { onRestart, onFilm, ending } = {}) {
       el.ending.hidden = false;
-      el.endingBadge.textContent = '完';
+      // 案头挂的是这一局的结局名，封泥上的「完」留给最后一片竹简
+      el.endingBadge.textContent = ending?.title || '完';
       el.endingLived.textContent = '';
       el.endingBook.textContent = '';
       el.endingDays.textContent = '';
       el.endingSummary.hidden = false;
+      el.endingSummary.className = 'ending-desk';
       el.endingSummary.innerHTML = '';
-      for (const act of acts ?? []) {
-        const row = document.createElement('div');
-        row.className = 'ending-row';
-        row.innerHTML = `<span class="ending-row-act">${act.title ?? act.id ?? ''}</span>`
-          + `<span>${act.outcome ?? '（没有留下结果）'}</span>`;
-        el.endingSummary.appendChild(row);
+
+      const list = (acts ?? []).filter(Boolean);
+      const slips = document.createElement('div');
+      slips.className = 'ending-slips';
+
+      const slipOf = (i, actName, body) => {
+        const slip = document.createElement('article');
+        slip.className = 'slip';
+        slip.style.setProperty('--i', String(i));
+        const head = document.createElement('h3');
+        head.className = 'slip-act';
+        head.textContent = actName;
+        const text = document.createElement('p');
+        text.className = 'slip-text';
+        text.textContent = body;
+        slip.append(head, text);
+        return slip;
+      };
+
+      list.forEach((act, i) => {
+        slips.appendChild(slipOf(i, act.title ?? act.id ?? '', act.outcome || '（没有留下结果）'));
+      });
+      if (!list.length) slips.appendChild(slipOf(0, '这一局', '没有留下可记的幕。'));
+
+      // 最后一片：结局那一片，盖封泥
+      const last = slipOf(list.length, '完', ending?.title ? `结局：${ending.title}` : '这一局到此为止。');
+      last.classList.add('slip-last');
+      if (ending?.kind) {
+        const kind = document.createElement('span');
+        kind.className = 'slip-kind';
+        kind.textContent = ending.kind;
+        last.appendChild(kind);
       }
+      const seal = document.createElement('span');
+      seal.className = 'slip-seal';
+      seal.textContent = '完';
+      last.appendChild(seal);
+      slips.appendChild(last);
+      el.endingSummary.appendChild(slips);
+
       el.endingActions.innerHTML = '';
       if (onFilm) {
+        // 「把这一局拍成电影」＝案上一卷可以抽开的卷轴
         const f = document.createElement('button');
         f.type = 'button';
-        f.className = 'enter';
         f.id = 'film-btn';
-        f.textContent = '把这一局拍成电影';
+        f.className = 'device device-scroll';
+        f.title = '把这一局存成一份可以重放的电影';
+        f.innerHTML = '<span class="scroll-rod"></span><span class="scroll-sheet">把这一局拍成电影</span><span class="scroll-rod"></span>';
         f.addEventListener('click', () => onFilm());
         el.endingActions.appendChild(f);
       }
+      // 「再做一次」＝翻过来的沙漏
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'enter';
-      b.textContent = '再做一次';
-      b.addEventListener('click', () => onRestart?.());
+      b.id = 'restart-btn';
+      b.className = 'device device-hourglass';
+      b.title = '翻过沙漏，从头再来一局';
+      b.innerHTML = '<span class="hourglass"></span><span class="hourglass-label">再做一次</span>';
+      b.addEventListener('click', () => {
+        b.classList.add('flipping');
+        setTimeout(() => onRestart?.(), 620);
+      });
       el.endingActions.appendChild(b);
     },
     hideEnding() { el.ending.hidden = true; },

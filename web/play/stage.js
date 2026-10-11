@@ -245,7 +245,10 @@ export function createStage(scene, render) {
     });
   }
 
-  function stageYe() {
+  function stageYe(view) {
+    // 取符之夜没把兵符带出宫（flags.night !== 'clean'）：案上就不能还摆着两半铜符，
+    // 否则和正文「手里没有兵符」自相矛盾。改成案上一卷没递出去的军令。
+    const hasTally = view?.flags?.night === 'clean';
     put(P.groundPlane('#5f5340', 90));
     put(P.dustRing(0, -1, 7.2, '#c8892f'));
     for (let i = 0; i < 7; i += 1) {
@@ -257,16 +260,25 @@ export function createStage(scene, render) {
     }
     const t = P.table(1.9, 1.0, -0.6, -2.2, 0);
     put(t);
-    const tally = P.tallyPair(-0.6, 0.72, -2.2);
-    put(tally);
-    anchors.set('prop:tally', { kind: 'prop', label: '兵符', getPos: () => V(-0.6, 1.25, -2.2) });
-    live.push({
-      update: (t2) => {
-        tally.userData.halves.forEach((h, i) => {
-          h.position.y = 0.72 + Math.sin(t2 * 1.4 + i * 2.1) * 0.012;
-        });
-      },
-    });
+    if (hasTally) {
+      const tally = P.tallyPair(-0.6, 0.72, -2.2);
+      put(tally);
+      anchors.set('prop:tally', { kind: 'prop', label: '兵符', getPos: () => V(-0.6, 1.25, -2.2) });
+      live.push({
+        update: (t2) => {
+          tally.userData.halves.forEach((h, i) => {
+            h.position.y = 0.72 + Math.sin(t2 * 1.4 + i * 2.1) * 0.012;
+          });
+        },
+      });
+    } else {
+      // 空案：摊着一卷写了又卷起来的军令，边上放一只空木匣——本来该装那半块铜符
+      put(P.scrolls(-0.75, 0.72, -2.25, 0.35));
+      const box = P.sealBox(-0.35, 0.72, -2.05);
+      box.scale.set(0.72, 0.5, 0.72);
+      put(box);
+      anchors.set('prop:order', { kind: 'prop', label: '没递出去的军令', getPos: () => V(-0.62, 1.02, -2.2) });
+    }
     put(P.hammer(-4.2, 0.05, 1.6, 0.4));
     const b1 = P.brazier(3.4, 1.4);
     const b2 = P.brazier(-6.2, -3.4);
@@ -382,8 +394,13 @@ export function createStage(scene, render) {
       } else if (id === 'ye') {
         flavor = [
           { key: 'person:zhuhai', label: '朱亥的袖子', line: '袖子里藏着一柄四十斤的铁椎。他不说话，只看公子的眼色。' },
-          { key: 'prop:tally', label: '兵符', line: '两半铜符合在一处，纹路严丝合缝。凭这个，能叫动十万人的营。' },
         ];
+        // 兵符没出宫那一局，案上是空的：只留一卷没递出去的军令
+        if (view?.flags?.night === 'clean') {
+          flavor.push({ key: 'prop:tally', label: '兵符', line: '两半铜符合在一处，纹路严丝合缝。凭这个，能叫动十万人的营。' });
+        } else {
+          flavor.push({ key: 'prop:order', label: '没递出去的军令', line: '军令写了又卷起来。符不在手里，这张纸叫不动辕门。' });
+        }
       } else if (id === 'daliang') {
         flavor = [
           { key: 'prop:letter', label: '赵使的竹简', line: '竹简上的字很急。邯郸的使者已经写过三封了。' },
