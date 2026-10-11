@@ -1,6 +1,6 @@
 # 数字世界首版工程证据
 
-核对日期：2026-10-11。画布运行编号：`release-20261011-4`。以前只有设计稿，现在本机可走通《窃符》、粮仓交接、取符潜行、片场与事件电影；本报告记录实际执行结果，不代替真人体验或历史审定。
+核对日期：2026-10-11。八状态画布表本轮重采，运行编号 `recapture-1`；图像质量指标与运动录像沿用旧编号 `release-20261011-4`。以前只有设计稿，现在本机可走通《窃符》、粮仓交接、取符潜行、片场与事件电影；本报告记录实际执行结果，不代替真人体验或历史审定。
 
 ## 复验入口与范围
 
@@ -16,14 +16,16 @@
 
 ## 执行环境与验证
 
-macOS 26 / Apple M4；Node 26.2.0、npm 11.13.0。冻结源文件（src/server/tests 与构建配置，按路径排序）的 SHA-256 为 `3b45c889035105afddc8e951843c19c29d81d12aae9c660ad077ce83805259f9`。**该指纹与下文八状态画布表属于潜行场景改造之前的那一版修订**：本轮改动了 `src/game/night.ts`、`src/presentation/scene.ts`、`src/main.ts`、`src/style.css` 与潜行测试，因此两者都已过期。本机没有安装产生该报告的 `threejs-qa-release/scripts/inspect-threejs-canvas.mjs`，所以本轮没有重采，也没有自造一个算法不同的哈希去替换它——只有该工具自己算出的数字才可比。其余各行是本轮实测。浏览器检查使用 Playwright Chromium，电脑 1360×940 与 iPhone 13 模拟尺寸。画布检查连接硬件 ANGLE Metal，`softwareRendered:false`；这不是实际 iOS Safari 验收。
+**下文各项测量对应的源码修订是 git 提交 `3eae575`**（`d545cfa..3eae575` 推送到 `main`）；它之后的提交只新增采集脚本与文档，未改动 `src/`、`server/` 与 `tests/`。想复算的人可以直接 `git checkout 3eae575`，这比一个本机算不出来的指纹有用。
+
+macOS 26 / Apple M4；Node 26.2.0、npm 11.13.0。冻结源文件（src/server/tests 与构建配置，按路径排序）的 SHA-256 为 `3b45c889035105afddc8e951843c19c29d81d12aae9c660ad077ce83805259f9`。**该指纹属于潜行场景改造之前的那一版修订**，本轮改动了 `src/game/night.ts`、`src/presentation/scene.ts`、`src/main.ts`、`src/style.css` 与潜行测试，因此它已过期。本机没有安装产生它的 `threejs-qa-release/scripts/inspect-threejs-canvas.mjs`，所以没有重算，也没有自造一个算法不同的哈希去替换它——只有该工具自己算出的数字才可比。**下文的八状态画布表本轮已重采**（见该节），用的是本仓库自带的新脚本，不是那个缺失的工具。其余各行是本轮实测。浏览器检查使用 Playwright Chromium，电脑 1360×940 与 iPhone 13 模拟尺寸。画布检查连接硬件 ANGLE Metal，`softwareRendered:false`；这不是实际 iOS Safari 验收。
 
 | 检查 | 实际结果 |
 | --- | --- |
 | `npm test` | 25/25 通过；包含资源守恒、授予限制、视图隔离、反转、机制、重放、导入、网关缓存与失败计数，潜行场景的物理结果、蹲下缩短视距、走路响度与碎瓦单次消耗、重放拒绝伪造动作、三种结局形状，以及 `tests/playability.test.ts` 固化的可玩性下限（见下）。 |
 | `npm run build` | 类型检查与生产构建通过。 |
 | `npm run verify` | 退出码 0：内核 25/25（gateway 6、kernel 14、playability 5）、类型检查和生产构建通过；电脑 8 项＋手机 8 项浏览器检查全部通过，共 16/16，耗时 8.7 分钟，无跳过、意外失败或 flaky。原统计见 [browser-results.json](browser-results.json)。潜行区的两项长跑（历史结局与本作结局，各在电脑与手机上跑一遍，单项约 1.4 分钟）由真实按键输入驱动，包含取符、暂停返回与带符出门，是耗时上升的原因；本轮另加一项不依赖时机的回归检查「状态提示不得吃掉方向键的点击」。 |
-| 8 个命名状态画布检查 | 全部通过非空画布与各自 render budget；每个状态 console/page error 均为 0。 |
+| 8 个命名状态画布检查 | 本轮重采（`recapture-1`，`node scripts/canvas-states.mjs`）：8/8 非空画布、8/8 在各自 render budget 内、每个状态 console/page error 均为 0，GPU 为硬件 ANGLE Metal。四项计数与上一版报告逐项相同，见下一节。 |
 | `check_evidence.py . --manifest artifacts/evidence.json` | 通过，8 份报告和 1 个运动录像，共 9 个文件。 |
 | 粮仓实际输入探测 | 24/22/20/18 袋对应 9470/9410/9242/9074 三角面；再推进 6 日后 12 袋、8570 三角面。零 page error。首笔同时增加印信道具；同样凭证的后续交接每笔减少 168 三角面。 |
 | 单袋与省略 choice 探测 | 合法 give＋letter＋amount=1、未填 choice，刷新后库存 23，桌上显示借条，末堆缩小；截图本机保存为 captures/release-4/one-bag-letter.png。 |
@@ -34,24 +36,26 @@ macOS 26 / Apple M4；Node 26.2.0、npm 11.13.0。冻结源文件（src/server/t
 
 ## 本轮画布与运动证据
 
-完整清单：[evidence.json](evidence.json)。**这一节与上一节的八状态表、冻结指纹同属潜行场景改造之前的那一版修订**，本轮未重采（本机没有产生它的采样工具），其中电脑／手机潜行四行尤其可能因石台改为实体、屏风尺寸调整而改变，请勿当作当前数字。截图与原始报告保存在本机 `artifacts/captures/release-4/`，按仓库规则不提交历史截图或录像；下列链接在此工作区可打开。拉取仓库后的截图需重新采集。
+八状态表本轮**已重采**：运行编号 `recapture-1`，种子 42，用的入口是应用自己暴露的 `?qa=1` 测试面（`__THREE_GAME_TEST_HOOKS__.setState` 与 `__DIGITAL_WORLD__.getDiagnostics`），脚本见 `scripts/canvas-states.mjs`，原始报告 [canvas-states.json](canvas-states.json)。这张表此前无法重采，是因为它的采集工具 `threejs-qa-release/scripts/inspect-threejs-canvas.mjs` 没装在本机——一个没人能复算的数字等于没有证据，所以补了一个只用本仓库依赖的脚本。**四项计数与改造之前逐一相同**，说明「石台改为实体、屏风尺寸调整」只动了碰撞与位置，没有动网格数量；画布的 CSS 尺寸确实变了（电脑粮仓高 345→450、手机潜行 294→353），所以像素统计只与本轮自己可比，不与旧报告的方差／色彩数混用。
 
-| 状态 | 调用数 | 三角面 | 几何体 | 纹理 | 截图 |
-| --- | ---: | ---: | ---: | ---: | --- |
-| 电脑首页 | 21 | 2688 | 16 | 9 | [查看](captures/release-4/desktop-home.png) |
-| 手机首页 | 21 | 2688 | 16 | 9 | [查看](captures/release-4/mobile-home.png) |
-| 电脑粮仓 | 76 | 9470 | 54 | 12 | [查看](captures/release-4/desktop-granary.png) |
-| 手机粮仓 | 76 | 9470 | 54 | 12 | [查看](captures/release-4/mobile-granary.png) |
-| 电脑潜行 | 111 | 10676 | 78 | 13 | [查看](captures/release-4/desktop-active.png) |
-| 手机潜行 | 111 | 10676 | 78 | 13 | [查看](captures/release-4/mobile-active.png) |
-| 手机暂停 | 111 | 10676 | 78 | 13 | [查看](captures/release-4/mobile-pause.png) |
-| 电脑失败／重试 | 111 | 10676 | 78 | 13 | [查看](captures/release-4/desktop-failure.png) |
+| 状态 | 调用数 | 三角面 | 几何体 | 纹理 | 预算 | 截图 |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| 电脑首页 | 21 | 2688 | 16 | 9 | 通过 | [查看](captures/recapture-1/desktop-home.png) |
+| 手机首页 | 21 | 2688 | 16 | 9 | 通过 | [查看](captures/recapture-1/mobile-home.png) |
+| 电脑粮仓 | 76 | 9470 | 54 | 12 | 通过 | [查看](captures/recapture-1/desktop-granary.png) |
+| 手机粮仓 | 76 | 9470 | 54 | 12 | 通过 | [查看](captures/recapture-1/mobile-granary.png) |
+| 电脑潜行 | 111 | 10676 | 78 | 13 | 通过 | [查看](captures/recapture-1/desktop-active.png) |
+| 手机潜行 | 111 | 10676 | 78 | 13 | 通过 | [查看](captures/recapture-1/mobile-active.png) |
+| 手机暂停 | 111 | 10676 | 78 | 13 | 通过 | [查看](captures/recapture-1/mobile-pause.png) |
+| 电脑失败／重试 | 111 | 10676 | 78 | 13 | 通过 | [查看](captures/recapture-1/desktop-failure.png) |
+
+上面四列是可复算的场景属性：两次硬件采集完全相同，且与改造前那份报告逐项相同。八张全部非空——亮度范围 215–251、颜色桶 55–217，空白画布两项都会近乎为零；**这两项在同一状态两次运行之间会差几个桶**（例如手机潜行 159 与 154），来源是动画帧时序，所以只写区间、不写单次精确值，判定本身稳定。全部在分层预算内（电脑 300 调用／75 万三角面／300 几何体／60 纹理，手机 150／30 万／200／40），console 与 page error 均为 0，GPU 为 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4)`、`softwareRendered:false`。八张只出现 3 种场景签名（21/2688、76/9470、111/10676），这本身就是「八个状态确实是三个不同场景」的证明：若 `setState` 静默失效，八行会退化成同一种签名。**一个必须写下来的坑**：Playwright 在 macOS 上默认 headless 会静默退到 SwiftShader 软件光栅（实测默认启动报告 `SwiftShader Device`、`softwareRendered:true`），必须显式传 `--use-angle=metal` 才是真 GPU——否则一次「画布检查通过」其实描述的不是它声称的那台机器。旧报告里的图像质量指标（色彩熵、边缘密度、亮度分位、主色占比）来自那个缺失的工具，本轮没有用不同算法重造一套假装可比的数字，因此那部分仍是旧值。
 
 运动：[night-motion.webm](captures/release-4/night-motion.webm)、[采样](captures/release-4/motion.json)。实际按右键移动至 x=-3.16，暂停、恢复、再按左键至 x=-4.92；z=3.8，暴露 0，两次采样 19/17 fps，page error 0。录像期间同时运行验收，采样不是持续帧率或真机性能保证。角色用程序化步态，没有外部骨骼模型与攻击接触动画。
 
 采用实际输入端到端测试、命名截图与非空像素指标；尚未设立逐像素视觉回归基线。此次没有用户要求 AAA／premium 评分，因此不把主观评分写成通过证据。资产为原创程序化漆木剧场；身份、版本与授权说明见 [资产清单](../public/assets-manifest.json) 和 [视觉规范](../docs/visual-bible.md)。
 
-重新采集：启动服务后运行 `node scripts/capture.mjs` 与 `node scripts/motion.mjs`。完整八状态检查使用已安装的 `threejs-qa-release/scripts/inspect-threejs-canvas.mjs --manifest artifacts/evidence.json --url 'http://127.0.0.1:4318/?qa=1' --seed 42`；`?qa=1` 是专用验收入口，普通页面不暴露测试助手。
+重新采集：启动服务后运行 `node scripts/canvas-states.mjs`（八状态表，本仓库自带，写 `artifacts/canvas-states.json` 与 `artifacts/captures/recapture-1/`）、`node scripts/capture.mjs`（粮仓画布像素）与 `node scripts/motion.mjs`（运动录像）。旧报告里那份图像质量指标用的 `threejs-qa-release/scripts/inspect-threejs-canvas.mjs` 本机未安装，要重算那几列必须先装上它。`?qa=1` 是专用验收入口，普通页面不暴露测试助手。
 
 ## 实际模型探测与费用边界
 
