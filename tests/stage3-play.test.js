@@ -122,28 +122,33 @@ test('看心思只读不写：watch 前后他的心智状态一模一样', () =>
 });
 
 /* 5. 追问来自真实状态 */
-test('追问的答案来自他真实的心智读数，不是临场编的', () => {
+test('追问给的是人话，读数在 debug 里', () => {
   const { s, p } = start(A);
   p.choose('li');
   const react = s.ledger.last((e) => e.kind === 'actor.react');
   assert.equal(react.payload.act, 'daliang');
   assert.equal(react.payload.accepted, false, '只讲利，公子没被说服');
   const ans = p.ask('xinling');
-  const expect = `打动 ${s.state.play.acts.daliang.last.moved} < 门槛 ${s.state.play.acts.daliang.last.bar}`;
-  assert.ok(ans.answer.includes(expect), `追问该复述真实读数：${expect}；实际：${ans.answer}`);
+  assert.equal('debug' in ans, true, '追问要把读数（debug）一起带出来');
+  assert.equal(/\d/.test(ans.answer), false, `人话里不该出现读数：${ans.answer}`);
+  const last = s.state.play.acts.daliang.last;
+  assert.equal(ans.debug.moved, last.moved, 'debug 里是这一次真实的打动');
+  assert.equal(ans.debug.bar, last.bar, 'debug 里是这一次真实的门槛');
+  assert.equal(ans.debug.accepted, false);
+  assert.ok(ans.debug.reason, 'debug 里还带着为什么（那句话的来由）');
   assert.ok(s.trace(ans.seq).ok, '追问也写账，也追得回用户');
 });
 
 /* 6. 大梁的信任决定邺城能不能替公子说话 */
 test('大梁攒下的信任，决定邺城你能不能替公子说话', () => {
-  const high = playToYe(A, 'yi', 'back');
-  const low = playToYe(A, 'li', 'fear');
+  const high = playToYe(A, 'yi', 'back');   // 说义打动公子，侯嬴又替你把话带到
+  const low = playToYe(A, 'wait', 'hou');   // 在大梁只是等着，邺城你就是个生面孔
   const trustIn = (r) => r.v.people.find((x) => x.id === 'xinling').trust;
   assert.ok(trustIn(high) >= 0.45, `高信任局应过线：${trustIn(high)}`);
   assert.ok(trustIn(low) < 0.45, `低信任局应掉线：${trustIn(low)}`);
 
-  const hi = high.p.choose('yi');
-  const lo = low.p.choose('yi');
+  const hi = high.p.choose('en');   // 替公子许他全身而归
+  const lo = low.p.choose('en');
   assert.equal(hi.r.accepted, true);
   assert.match(hi.text, /解下印绶/, '公子信你，你就是替公子说话，晋鄙交出兵权');
   assert.equal(lo.r.accepted, false);
@@ -155,25 +160,25 @@ test('大梁攒下的信任，决定邺城你能不能替公子说话', () => {
 });
 
 /* 7. 夷门影响如姬犹豫 */
-// 已知缺陷（旧引擎就有，对照组照录）：如姬对你的信只有 0.3 / 0.4 两档，「记着恩」这一单元都吃得下，
-// 所以她从来不犹豫——夷门的一句话其实没改变取符之夜。抽完内核后修，修时重录对照组。
-test('夷门的一句话，决定如姬取符时犹不犹豫', { todo: '如姬永远不犹豫：夷门对取符之夜的影响目前是假的' }, () => {
+test('夷门的一句话，决定如姬取符时犹不犹豫', () => {
   const trusted = playToNight(A, 'yi', 'back');   // 侯嬴把话带给如姬
   const unknown = playToNight(A, 'yi', 'wait');   // 没人替你说，如姬还不认识你
   assert.equal(trusted.v.night.hesitant, false, '恩先吃下了，她不犹豫');
   assert.equal(unknown.v.night.hesitant, true, '被发现的怕先吃下了，她先问会不会被发现');
-  assert.equal(unknown.s.state.play.flags.rujiTrust, 0.3);
-  assert.equal(trusted.s.state.play.flags.rujiTrust, 0.4);
+  assert.equal(unknown.s.state.play.flags.rujiTrust, 0.18);
+  assert.equal(trusted.s.state.play.flags.rujiTrust, 0.55);
 
   const nightReact = (r) => r.s.ledger.last((e) => e.kind === 'actor.react' && e.payload.act === 'night' && e.payload.person === 'ruji');
-  assert.equal(trusted.s.ledger.get(nightReact(trusted)).payload.hesitant, false);
-  assert.equal(unknown.s.ledger.get(nightReact(unknown)).payload.hesitant, true);
+  assert.equal(nightReact(trusted).payload.hesitant, false);
+  assert.equal(nightReact(trusted).payload.trust, 0.55, '账本上写的是她当时的信任，不是含糊的形容词');
+  assert.equal(nightReact(unknown).payload.hesitant, true);
+  assert.equal(nightReact(unknown).payload.trust, 0.18);
 });
 
 /* 8. 三种结局可达 */
 test('三种结局都真的走得到：史书的、本作的历史、断链的', () => {
-  const history = playToGranary(A, 'yi', 'back', 'wait');       // 干净取符 + 铁椎
-  const lives = playToGranary(A, 'yi', 'back', 'yi');           // 干净取符 + 替公子说话
+  const history = playToGranary(A, 'yi', 'back', 'yi');         // 干净取符 + 拿军令压晋鄙（他反噬）
+  const lives = playToGranary(A, 'yi', 'back', 'en');           // 干净取符 + 替公子说话，晋鄙解下印绶
   const broken = playToGranary(A, 'yi', 'back', 'wait', NIGHT_SEEN);   // 取符失手
   assert.equal(history.s.state.play.ending, 'history');
   assert.equal(lives.s.state.play.ending, 'jinbi-lives');
