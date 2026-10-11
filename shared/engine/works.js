@@ -57,13 +57,15 @@ function normalize(choices = {}) {
 
 /**
  * 在一个已经见过导师的 session 上演一部作品。
+ * opts.reuseOpen：已经排过片的作品不再 commission。
  * 返回 { work, openSeq, chooseSeq, added:[claimId], touched:[{op,id}] }
  */
-export function playWork(session, workId, choice) {
+export function playWork(session, workId, choice, opts = {}) {
   const { ledger, claims } = session;
   if (!session.state.met) throw new Error('先见导师，再看作品');
   session.state.plays ||= {};
-  session.commission(workId);
+  // reuseOpen：作品已经由可玩的呈现排过片（第三阶段），不再重复排一次
+  if (!(opts.reuseOpen && session.state.designs?.[workId])) session.commission(workId);
   const openSeq = ledger.last((e) => e.kind === 'present.open' && e.payload.presentation === workId).seq;
   const touched = [];
   let chooseSeq = null;

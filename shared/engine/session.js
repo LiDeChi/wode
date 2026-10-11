@@ -35,6 +35,9 @@ export function createSession({ saved, speaker } = {}) {
     // 旁注表：账本记录 seq → { text, source:'model'|'rule' }（见 narrate.js）
     // 账本只追加、不改，所以“他当时的说法”单独放这里，存档时一起带走
     voices: saved?.voices || {},
+    // 第二阶段：每部作品演过没有、选了什么；第三阶段：可玩呈现的进度（play.js）
+    plays: saved?.plays || {},
+    play: saved?.play || null,
   };
 
   /** 第一次见面：用户回答三个粗问题，写一句自己的需求 */
