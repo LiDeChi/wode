@@ -46,6 +46,13 @@
   .tag{border:1px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--paper)}
   .tag.placeholder{border-color:#e0c39a;background:#fff6ee;color:var(--bad)}
   .tag.cloud{border-color:#c9d7c3;background:#f3f8f0;color:#3f5c35}
+  .tag.draft{border-color:#c9b48a;background:#fdf6e6;color:#7d6320}
+  .tag.reject{border-color:#d9a08a;background:#fdeee6;color:#8f3a22}
+  .reject{font-size:12.5px;color:#8f3a22;background:#fff4ee;border:1px solid #e6c3b0;border-radius:6px;padding:7px 9px}
+  .reject b{font-weight:600}
+  .note{font-size:12.5px;color:#7d6320;background:#fdf6e6;border:1px solid #e6d8b0;border-radius:6px;padding:7px 9px}
+  .note b{font-weight:600}
+  .card[data-rej="1"]{border-color:#d9a08a}
   .line{font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
   .prompt{font-size:12.5px;color:var(--ink-soft)}
   audio{width:100%;height:34px}
@@ -81,6 +88,7 @@
       <option value="">全部</option><option value="image">圖片</option><option value="sound">聲音</option>
     </select></label>
     <label><input type="checkbox" id="f-ph" /> 只看佔位／缺的</label>
+    <label><input type="checkbox" id="f-rej" /> 只看導演退回的</label>
     <span id="shown"></span>
   </div>
 </header>
@@ -92,6 +100,9 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const isPlaceholder = (e) => e.fallback === true || e.quality === 'placeholder';
+// 導演的兩句話：這一條是草稿（還不能當交付），或者他退回了（不算交付）
+const isDraft = (e) => e.draft === true || e.quality === 'draft';
+const isRejected = (e) => Boolean(e.review && e.review.verdict && e.review.verdict !== 'accept');
 const KIND_CN = { image: '圖', voice: '台詞', sfx: '音效', music: '音樂' };
 const SOUND = new Set(['voice', 'sfx', 'music']);
 
@@ -124,11 +135,15 @@ function sceneOf(e, names) {
 
 function card(e) {
   const ph = isPlaceholder(e);
+  const draft = isDraft(e);
+  const rejected = isRejected(e);
   const tags = [
     `<span class="tag">${esc(e.provider || '?')}</span>`,
     e.model ? `<span class="tag">${esc(String(e.model).slice(0, 34))}</span>` : '',
     ph ? '<span class="tag placeholder">替身／佔位</span>' : '<span class="tag cloud">正式</span>',
     e.quality ? `<span class="tag">${esc(e.quality)}</span>` : '',
+    draft ? '<span class="tag draft">草稿</span>' : '',
+    rejected ? '<span class="tag reject">導演退回</span>' : '',
     e.seconds ? `<span class="tag">${esc(e.seconds)}s</span>` : '',
   ].filter(Boolean).join('');
 
@@ -149,13 +164,24 @@ function card(e) {
   }
   if (e.bytes) meta.push(`${Math.max(1, Math.round(e.bytes / 1024))}KB`);
 
-  return `<article class="card" data-kind="${esc(e.kind)}" data-ph="${ph ? 1 : 0}">
+  // 導演的話要看得見：退回的寫清為什麼，草稿的說明它還不是交付
+  const bad = ((e.review && e.review.checks) || []).filter((c) => c.ok === false);
+  const verdictBox = rejected
+    ? `<div class="reject"><b>導演退回：</b>${esc(e.review.why || '（沒說理由）')}${bad.length
+      ? `<br />沒過的是 ${bad.map((c) => `${esc(c.name)}（實測 ${esc(c.value)}，要 ${esc(c.expect)}）`).join('；')}`
+      : ''}</div>`
+    : draft
+      ? '<div class="note"><b>草稿：</b>導演還沒要正式交付，這一條先當草稿看</div>'
+      : '';
+
+  return `<article class="card" data-kind="${esc(e.kind)}" data-ph="${ph ? 1 : 0}" data-rej="${rejected ? 1 : 0}">
     ${media}
     <div class="body">
       <div class="kicker"><span class="tag">${esc(KIND_CN[e.kind] || e.kind)}</span>${tags}</div>
       ${head}
       <div class="kicker">${meta.join(' · ')}</div>
       <div class="why">${esc(e.why || '')}</div>
+      ${verdictBox}
     </div>
   </article>`;
 }
@@ -164,11 +190,15 @@ function statChips(m) {
   const list = Object.values(m.assets || {});
   const n = (k) => list.filter((e) => e.kind === k).length;
   const ph = list.filter(isPlaceholder).length;
+  const rej = list.filter(isRejected).length;
+  const draft = list.filter(isDraft).length;
   const errs = Object.keys(m.errors || {}).length;
   const chips = [
     `<span class="chip">圖片 <b>${n('image')}</b> 張</span>`,
     `<span class="chip">聲音 <b>${list.filter((e) => SOUND.has(e.kind)).length}</b> 條（台詞 ${n('voice')} · 音效 ${n('sfx')} · 音樂 ${n('music')}）</span>`,
     ph ? `<span class="chip warn">替身／佔位 <b>${ph}</b> 條</span>` : `<span class="chip">替身／佔位 <b>0</b> 條</span>`,
+    rej ? `<span class="chip warn">導演退回 <b>${rej}</b> 條（不算交付）</span>` : `<span class="chip">導演退回 <b>0</b> 條</span>`,
+    draft ? `<span class="chip warn">草稿 <b>${draft}</b> 條</span>` : '',
     errs ? `<span class="chip warn">缺 <b>${errs}</b> 條</span>` : '',
     `<span class="chip">共 <b>${list.length}</b> 條</span>`,
     m.updatedAt ? `<span class="chip">更新 ${esc(String(m.updatedAt).replace('T', ' ').slice(0, 16))}</span>` : '',
@@ -258,6 +288,7 @@ function applyFilters() {
   const w = $('#f-work').value;
   const kind = $('#f-kind').value;
   const onlyPh = $('#f-ph').checked;
+  const onlyRej = $('#f-rej').checked;
   let shown = 0;
   document.querySelectorAll('.work').forEach((el) => {
     el.style.display = !w || el.dataset.work === w ? '' : 'none';
@@ -266,7 +297,8 @@ function applyFilters() {
     const k = el.dataset.kind;
     const okKind = !kind || (kind === 'sound' ? SOUND.has(k) : k === kind);
     const okPh = !onlyPh || el.dataset.ph === '1';
-    const ok = okKind && okPh;
+    const okRej = !onlyRej || el.dataset.rej === '1';
+    const ok = okKind && okPh && okRej;
     el.style.display = ok ? '' : 'none';
     if (ok) shown += 1;
   });
@@ -279,7 +311,7 @@ function applyFilters() {
 }
 
 function bindFilters() {
-  for (const id of ['#f-work', '#f-kind', '#f-ph']) {
+  for (const id of ['#f-work', '#f-kind', '#f-ph', '#f-rej']) {
     $(id).onchange = applyFilters;
   }
   applyFilters();
