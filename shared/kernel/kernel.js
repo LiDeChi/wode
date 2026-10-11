@@ -10,7 +10,7 @@ import { clamp, explainPerception } from '../core/mind.js';
 import { PLAYER, HOLDER, DEFAULT_PRESENTATION } from './roles.js';
 import { applyEffect, setTrust, specOf } from './effects.js';
 import { firstRule, fillText, readPath, readValue } from './rules.js';
-import { DEFAULT_TIER, ELIDED_NOTE, briefText, depthLine, downgrade, normalizeTier, oneLine, watchDepth, TIER_COST } from './depth.js';
+import { DEFAULT_TIER, ELIDED_NOTE, briefText, depthDebug, depthLine, downgrade, normalizeTier, oneLine, watchDepth, TIER_COST } from './depth.js';
 
 export { PLAYER, HOLDER };
 
@@ -111,7 +111,15 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     return list;
   }
 
-  /** 建控制器实例、init 状态；第二次 enter 同一场不再重来（watched/asked/last 留着） */
+  // 本内核实例已经为哪几场做过「开场那一遍」（init+enter，或者恢复存档时的 restore）。
+  const started = new Set();
+
+  /**
+   * 建控制器实例、init 状态；第二次 enter 同一场不再重来（watched/asked/last 留着）。
+   * 恢复存档时（world.entered 已经是 true，而本实例还没碰过这一场）不重跑 init——那会把存档里的
+   * 控制器状态盖掉——只调一次 ctrl.restore(ctx)，给控制器补装「不进存档的东西」（如把演员装进
+   * 人物心智）。restore 必须幂等；没写 restore 的控制器行为一字不变（docs/KERNEL.md §3）。
+   */
   function enter(sceneId) {
     const world = worldOf(sceneId);
     root.current = sceneId;
@@ -122,6 +130,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       world.ctrl = {};
       for (const { id, ctrl } of list) world.ctrl[id] = ctrl.init ? (ctrl.init(ctx) || {}) : {};
       for (const { ctrl } of list) ctrl.enter?.(ctx);      // 入场感知：这一场开门时谁意识到了什么
+      started.add(sceneId);
+    } else if (!started.has(sceneId)) {
+      started.add(sceneId);
+      const ctx = ctxOf(sceneId, world);
+      for (const { ctrl } of list) ctrl.restore?.(ctx);    // 恢复存档：补装一次（幂等）
     }
     return world;
   }
@@ -340,7 +353,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     // 等/看/问 没人认领时走内核自己那三条路（看与问不改世界，只读）
     else if (intent.verb === 'watch' && who) {
       const w = watch(sceneId, who);
-      res = { text: w.preview?.explain ?? null, readOnly: true, depth: w.depth?.line ?? null };
+      res = { text: w.preview?.explain ?? null, readOnly: true, depth: w.depth ?? null, debug: w.debug ?? null };
     }
     else if (intent.verb === 'ask' && who) res = { text: ask(sceneId, who).answer, readOnly: true };
     else if (intent.to) res = { r: react(sceneId, intent, resolveTo(world, intent.to), { channels: intent.channels, appeal: intent.appeal, bar: intent.bar ?? ctx.bar }) };
@@ -378,6 +391,8 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
         outcome.depth = line;
         outcome.text = outcome.text ? `${outcome.text} ${line}` : line;
       }
+      // 那句话背后的读数只放在 debug 里（?dev=1 与科研台），不进玩家看到的文字
+      if (outcome.r) outcome.debug = { depth: depthDebug({ name: outcome.r.name, mind: minds[outcome.r.person], perception: outcome.r.perception, heard: outcome.r.heard, trust: trustOf(outcome.r.person) }) };
     } else if (tier === '一笔带过') {
       // 一笔带过：旁白只留一两句，括号里的机制说明（打动多少、门槛多少）先不说
       if (outcome.text) {
@@ -442,8 +457,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       modules: mind.modules.map((m) => ({ id: m.id, label: m.label, cap: m.cap })),
       last: mine, preview,
     };
-    if (tier === '细演') out.depth = watchDepth({ name: mind.name, mind, perception: look, trust: trustOf(personId) });
-    else if (tier === '一笔带过') { out.elided = true; out.elidedNote = ELIDED_NOTE; }
+    if (tier === '细演') {
+      const w = watchDepth({ name: mind.name, mind, perception: look, trust: trustOf(personId) });
+      if (w.line) out.depth = w.line;          // 玩家看的是人话
+      out.debug = { watch: w.debug };          // 数字给 ?dev=1 与科研台
+    } else if (tier === '一笔带过') { out.elided = true; out.elidedNote = ELIDED_NOTE; }
     return out;
   }
 
@@ -454,20 +472,35 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     const last = world?.last ?? null;
     const n = name(personId);
     let answer;
+    // 玩家看到的只有人话：读数（打动多少、门槛多少）不往眼前放，放在下面的 debug 里
     if (!last || last.person !== personId) answer = `${n}看了你一眼，没说什么。（你还没对${n}做过什么）`;
-    else if (last.accepted === true) answer = `${n}：「你的话说到我心里去了。」（${last.reason}；打动 ${last.moved} ≥ 门槛 ${last.bar}）`;
-    else if (last.accepted === false) answer = `${n}：「你不懂我在想什么。」（${last.reason}；打动 ${last.moved} < 门槛 ${last.bar}）`;
-    else answer = `${n}：「我本来就要这么做。」（${last.explain}）`;
+    else if (last.accepted === true) answer = `${n}：「你的话说到我心里去了。」${last.reason ? `（${last.reason}）` : ''}`;
+    else if (last.accepted === false) answer = `${n}：「你不懂我在想什么。」${last.reason ? `（${last.reason}）` : ''}`;
+    else answer = `${n}：「我本来就要这么做。」${last.explain ? `（${last.explain}）` : ''}`;
     const tier = has ? sceneTier(sceneId) : DEFAULT_TIER;
+    let extra = null;
     if (tier === '细演') {
       // 答得更细：把现在真实的心思接在回答后面（他自己的目标、信任、压力）
       const line = depthLine({ name: n, mind: minds[personId], perception: null, heard: null, trust: trustOf(personId) });
       const goal = (minds[personId]?.def?.goals || [])[0];
-      const extra = [goal ? `他要的是「${goal}」` : null, line].filter(Boolean).join('；');
+      extra = [goal ? `他要的是「${goal}」` : null, line].filter(Boolean).join('；');
       if (extra) answer = `${answer} ${extra}`;
     } else if (tier === '一笔带过') answer = oneLine(answer);
     const seq = ledger.append({ kind: 'user.ask', from: 'user', to: `actor:${personId}`, cause: last ? [last.reactSeq] : [], payload: { act: scenes[sceneId] ? sceneId : null, person: personId, answer } }).seq;
-    return { person: personId, answer, seq };
+    // 数字只走这里：?dev=1 与科研台读它，玩家看到的是上面那句人话
+    const debug = {
+      accepted: last?.accepted ?? null,
+      moved: last?.moved ?? null,
+      bar: last?.bar ?? null,
+      stoppedAt: last?.stoppedAt ?? null,
+      action: last?.action ?? null,
+      reason: last?.reason ?? null,
+      goal: (minds[personId]?.def?.goals || [])[0] ?? null,
+      trust: trustOf(personId),
+      stress: round(minds[personId]?.state?.stress ?? 0),
+      depth: depthDebug({ name: n, mind: minds[personId], perception: null, heard: null, trust: trustOf(personId) }),
+    };
+    return { person: personId, answer, seq, extra, debug };
   }
 
   /** 页面按控制器顺序找小部件（docs/KERNEL.md §5） */

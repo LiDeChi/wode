@@ -150,10 +150,10 @@ export function createMind(def, saved) {
     for (const [k, v] of Object.entries(appeal || {})) {
       const w = vals[k] ?? 0;
       fit += v * w;
-      if (w * v > 0.15) why.push(`${k}打动了他`);
+      if (w * v > 0.15) why.push(`他认你讲的${k}`);
       for (const [emotion, coef] of Object.entries(def.resist?.[k] || {})) {
         backlash += v * coef;
-        why.push(`讲${k}反而激起他的${emotion}`);
+        why.push(`你提${k}，反倒激起了他的${emotion}`);
       }
     }
     fit = round(fit);
@@ -202,11 +202,10 @@ export function createMind(def, saved) {
   };
 }
 
-/** 把一次 perceive 的结果压成一句人能看懂的话，用于心智入口和片场 */
+/** 把一次 perceive 的结果压成一句人能看懂的话，用于心智入口和片场（只说话，不带数字） */
 export function explainPerception(r, name = '他') {
   const unitHit = r.trace.filter((x) => x.layer === 'unit' && x.took > 0).map((x) => x.label);
-  const mind = r.trace.find((x) => x.layer === 'mind');
-  if (r.stoppedAt === 'mind') return `${name}手上的几路（${unitHit.join('、') || '无'}）没吃下，剩下的${mind.took}一路递到心智：${r.action.act}`;
-  if (r.stoppedAt === 'module') return `${name}在模块那一层就把事消化了：${r.action.act}`;
-  return `${name}在${unitHit[0] || '手脚'}那一层就用掉了，已经动身：${r.action.act}`;
+  if (r.stoppedAt === 'mind') return `${name}手上的几路（${unitHit.join('、') || '无'}）都没吃下，剩下的一点递到了他心里：${r.action.act}`;
+  if (r.stoppedAt === 'module') return `${name}照着自己的老习惯就办了：${r.action.act}`;
+  return `${name}那点念头刚起，${unitHit[0] || '手脚'}就先动了：${r.action.act}`;
 }

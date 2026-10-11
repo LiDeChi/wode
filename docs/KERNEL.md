@@ -96,10 +96,13 @@ export default function speech(cfg) {
     before?(intent, ctx),                    // 任何意图执行前（站位在这里改信任，见邺城）
     apply?(intent, ctx) -> Reaction|null,    // 只处理自己 owns 的意图：变成事件、交给 ctx.react
     tick?(ctx),                              // 一步过去：钟走、灯走
+    restore?(ctx),                           // 恢复存档时补装一次（幂等）；不写就与以前一字不差
     view(ctx) -> object,                     // 页面画这个控制器要的东西
   };
 }
 ```
+
+**`init` 与 `restore` 的分工**（读档回来时）：`init(ctx)` 只在「这一场第一次开门」时跑一次，返回值就是这一场的控制器状态，随 `session.save()` 一起走。读档时不重跑 `init`（那会把存档里的状态盖掉），而是对**当前这一场**的每个控制器调一次 `restore?.(ctx)`——给那些不能进存档的东西补装：把演员装进人物心智、把外部表接回来之类。规矩：`restore` 必须幂等（同一场在一个内核实例里最多调一次，反复读档也不叠加），**不写 `restore` 的控制器行为一字不变**。自查 `/tmp/t33-restore.mjs`：假控制器数 init/restore 调用次数（无存档 → 只有 `init`；读档 → 只有一次 `restore`，控制器状态没被盖掉）；真实路径 play.js 存档 → `createSession({saved})` → 第一步 `watch` 只走 `restore`、不重跑 `init`。
 
 ```js
 Intent   = { id, verb:'say'|'give'|'go'|'wait'|'watch'|'ask', to?:personId, line, item?, appeal?, channels?, needs?:verb[], owner:controllerId }
@@ -136,8 +139,10 @@ export function createKernel(session, { scenes, controllers }) -> {
   react(sceneId, intent, personId, { channels, appeal, bar }) -> Reaction,   // = 旧 reactOf，逐字段照搬
   watch(sceneId, personId), ask(sceneId, personId),        // = 旧 watch / ask
 }
-Outcome = { r:Reaction|null, text, cost?, claims:[claimId], choice?, end?:string, refused?:true }
+Outcome = { r:Reaction|null, text, cost?, claims:[claimId], choice?, end?:string, refused?:true, debug?:object }
 ```
+
+**玩家看到的只有人话，读数走 `debug`。** `text`（以及 `watch()` 的 `preview.explain`、`ask()` 的 `answer`）里不出现「打动 0.72 ≥ 门槛 0.35」这类公式；同一件事的数字放在同一个结果的 `debug` 里：`dispatch` 的 `outcome.debug.depth`（细演档的读数）、`watch()` 的 `debug.watch`、`ask()` 的 `debug`（`accepted / moved / bar / stoppedAt / action / reason / goal / trust / stress / depth`）。`view()` 原样把它们带出去（play.js 的 `view()` 已经把 outcome/watch/ask 交给页面），调试面板与模拟玩家读 `debug`，玩家文字只读 `text`。`mind.hear()` 的 `reason` 与 `explainPerception()` 的 `explain` 也都是人话（不带数字）。
 
 **心智是唯一的裁判。** 反应只在 `react` 里算（`mind.hear` 与 `mind.perceive`）。规则只读心智的输出，**永远不能直接设定反应**——否则“一种诉求说服所有人”会回来。
 
@@ -153,7 +158,7 @@ Outcome = { r:Reaction|null, text, cost?, claims:[claimId], choice?, end?:string
 
 ## 5. 页面要的东西
 
-`view()` 旧字段不变；新增 `controllers: [{ id, view }]`，按场景里控制器的顺序。页面按 id 找小部件：`web/widgets/<id>.js` 默认导出 `render(el, view, act)`，`act(intentId)` 回调把意图交回去。说话显示成台词，递物显示成桌上的东西，空间显示成格子，时钟显示成剩余天数/步数，注意力显示成灯和视线。
+`view()` 旧字段不变；新增 `controllers: [{ id, view }]`，按场景里控制器的顺序。页面按 id 找小部件：`web/widgets/<id>.js` 默认导出 `render(el, view, act)`，`act(intentId)` 回调把意图交回去。说话显示成台词，递物显示成桌上的东西，空间显示成格子，时钟显示成剩余天数/步数，注意力显示成灯和视线。页面上的文字只念 `text` / `answer`；数字读数的 `debug` 字段（见 §4）留给调试面板与模拟玩家，不往玩家眼前放。
 
 ---
 

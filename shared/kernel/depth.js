@@ -80,52 +80,75 @@ export function oneLine(answer) {
   return head.slice(0, end).trim() || head;
 }
 
+/** 候选落在哪一层、叫什么（人话里的名字） */
+const labelOf = (p, c) => (p?.trace || []).find((x) => x.layer === c.layer && x.id === c.id)?.label || c.id;
+
 /**
- * 细演的那一句「他心里在盘算」。
- * 每一个分句都来自真实的心智状态：感知的候选（哪几路先吃下、各占多少）、
- * 他自己的目标、hear() 的打动/反弹与信任前后、压力。
+ * 细演的那一句「他心里在盘算」——**只说人话，不带数字**（数字在 depthDebug 里，给 ?dev=1 与科研台）。
+ * 每一个分句都来自真实的心智状态：感知的候选（哪几路先吃下）、他自己的目标、
+ * hear() 的打动/反弹与信任前后、压力。
  * 没有可用的真实状态时返回 null（宁可不说，也不编）。
  */
 export function depthLine({ name: n, mind, perception, heard, trust } = {}) {
   const p = perception || null;
-  const labelOf = (c) => (p?.trace || []).find((x) => x.layer === c.layer && x.id === c.id)?.label || c.id;
   const bits = [];
   const pulls = (p?.candidates || []).filter((c) => c.layer !== 'mind');
   if (pulls.length) {
     const [a, b] = pulls;
-    bits.push(`${labelOf(a)}先吃下（${round(a.weight)}）`);
-    if (b) bits.push(`${labelOf(b)}压在下面（${round(b.weight)}）`);
+    bits.push(`先冒出来的是「${labelOf(p, a)}」`);
+    if (b) bits.push(`「${labelOf(p, b)}」压在下面`);
   }
   if (p?.action?.act && (mind?.def?.goals || []).includes(p.action.act)) bits.push(`他要的正是「${p.action.act}」`);
   if (heard) {
-    bits.push(heard.fit > 0.3 ? `你这话落到了他在乎的地方（打动 ${round(heard.moved)}）`
-      : heard.backlash > 0.2 ? `你这话反倒激起了他的火（反弹 ${round(heard.backlash)}）`
+    bits.push(heard.fit > 0.3 ? '你这话说到他心里去了'
+      : heard.backlash > 0.2 ? '你这话反倒让他心里起了火'
         : '这话没落到他在乎的地方');
     const d = round((heard.trustAfter ?? 0) - (heard.trustBefore ?? 0));
-    bits.push(d >= 0.08 ? `他对你的信多了一点（${heard.trustBefore}→${heard.trustAfter}）`
-      : d <= -0.04 ? `他对你退了一步（${heard.trustBefore}→${heard.trustAfter}）`
-        : `他对你的信没动（${heard.trustBefore}）`);
+    bits.push(d >= 0.08 ? '他本来就信你，现在更信了'
+      : d <= -0.04 ? '他往后退了一步'
+        : '他对你的信没动');
   } else if (typeof trust === 'number') {
-    bits.push(trust >= 0.45 ? `他本来就信你（信任 ${trust}）`
-      : trust <= 0.25 ? `他本来就不太信你（信任 ${trust}）`
-        : `他对你半信半疑（信任 ${trust}）`);
+    bits.push(trust >= 0.45 ? '他本来就信你'
+      : trust <= 0.25 ? '他本来就不太信你'
+        : '他对你半信半疑');
   }
-  const stress = round(mind?.state?.stress ?? 0);
-  if (stress >= 0.5) bits.push(`他心里正绷着（压力 ${stress}）`);
+  if (round(mind?.state?.stress ?? 0) >= 0.5) bits.push('他心里正绷着一根弦');
   if (!bits.length) return null;
   return `${n}心里在盘算：${bits.join('；')}。`;
 }
 
-/** 细演时「看心思」多给的东西：几路拉扯各占多少、停在哪一层、压力与信任 */
-export function watchDepth({ name, mind, perception, trust } = {}) {
+/** 细演那句话背后的读数：全部是数字，给 ?dev=1、科研台和调试用，不往玩家眼前放 */
+export function depthDebug({ mind, perception, heard, trust } = {}) {
   const p = perception || null;
-  const labelOf = (c) => (p?.trace || []).find((x) => x.layer === c.layer && x.id === c.id)?.label || c.id;
   return {
-    pulls: (p?.candidates || []).map((c) => ({ layer: c.layer, label: labelOf(c), act: c.act, weight: round(c.weight) })),
+    pulls: (p?.candidates || []).filter((c) => c.layer !== 'mind')
+      .map((c) => ({ layer: c.layer, label: labelOf(p, c), act: c.act, weight: round(c.weight) })),
     stoppedAt: p?.stoppedAt ?? null,
     action: p?.action?.act ?? null,
+    goal: (mind?.def?.goals || [])[0] ?? null,
+    moved: heard ? round(heard.moved) : null,
+    fit: heard ? round(heard.fit) : null,
+    backlash: heard ? round(heard.backlash) : null,
+    trustBefore: heard ? round(heard.trustBefore) : (typeof trust === 'number' ? trust : null),
+    trustAfter: heard ? round(heard.trustAfter) : null,
     stress: round(mind?.state?.stress ?? 0),
-    trust: typeof trust === 'number' ? trust : null,
+  };
+}
+
+/**
+ * 细演时「看心思」多给的东西：人话一句（line）+ 读数（debug）。
+ * 看心思不该改人：这里的 perceive 只是拿真实拉扯，调用方已经把它写下的记忆撤回了。
+ */
+export function watchDepth({ name, mind, perception, trust } = {}) {
+  const p = perception || null;
+  return {
     line: depthLine({ name, mind, perception: p, trust }),
+    debug: {
+      pulls: (p?.candidates || []).map((c) => ({ layer: c.layer, label: labelOf(p, c), act: c.act, weight: round(c.weight) })),
+      stoppedAt: p?.stoppedAt ?? null,
+      action: p?.action?.act ?? null,
+      stress: round(mind?.state?.stress ?? 0),
+      trust: typeof trust === 'number' ? trust : null,
+    },
   };
 }
