@@ -9,7 +9,8 @@
 //     run.mjs 自己不再直调任何声音服务：没配 key、价格未知、超预算这些判断都在引擎里。
 //
 // 流程（docs/ASSETS.md §4）：建会话 → 请一位导演 → 让他 dress 出这一部作品的全部单子 → 对照 manifest 算一遍账 →
-// 按单生成（底版先做）→ 每条生成完立刻写回 manifest → 结尾打一张汇总表。
+// 按单生成（底版先做）→ 每条过一遍导演审片（docs/WORKSHOP.md §4.3：不过就重做，重做到头还不像就退回）→
+// 每条生成完立刻写回 manifest → 结尾打一张汇总表。
 //
 // 三条硬规矩：
 //   · 花钱和写文件只发生在这个工具里。演出（createPlay）和场景数据一条都不碰资产。
@@ -26,6 +27,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { createSession } from '../../shared/engine/session.js';
 import { ensureDir, scrub } from './providers/util.mjs';
+import { review } from './review.mjs';
 import * as magpie from './providers/magpie.mjs';
 import * as litellm from './providers/litellm.mjs';
 
@@ -58,6 +60,56 @@ const ANSWERS = {
 export const DIRECTOR_ANS = { lu: 'A', shan: 'B' };
 
 const isPlate = (brief) => brief?.kind === 'image' && brief?.spec?.role === 'plate';
+
+/**
+ * 服务出处（docs/WORKSHOP.md §4.4）：manifest 里每条都要写清是谁做的、按什么协议、什么授权。
+ * provider 自己声明了就用它声明的，没声明就照实写 unknown —— 不替服务方猜授权。
+ */
+export const PROVIDER_SOURCE = {
+  magpie: { protocol: 'openai-image', license: { id: 'gateway-unknown', commercial: 'unknown' } },
+  litellm: { protocol: 'openai-image', license: { id: 'gateway-unknown', commercial: 'unknown' } },
+};
+
+export function sourceOf(item, entry) {
+  const mod = PROVIDERS[item.provider];
+  const declared = PROVIDER_SOURCE[item.provider] || {};
+  const service = (entry && entry.provider) || item.provider || 'unknown';
+  const protocol = (mod && mod.protocol) || declared.protocol || (AUDIO[item.kind] ? 'audio-engine' : 'unknown');
+  const license = (entry && entry.license) || (mod && mod.license) || declared.license || { id: 'unknown', commercial: 'unknown' };
+  return { service, protocol, model: (entry && entry.model) || '', license };
+}
+
+/** 评审模型的配置：调用方给的 > 环境变量 DW_ASSETS_CRITIC(JSON) > ~/.digital-world/workshop.json 的 critic */
+export function loadCritic(opts = {}) {
+  if (opts.noCritic) return null;
+  if (opts.critic) return opts.critic;
+  const raw = process.env.DW_ASSETS_CRITIC;
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const file = process.env.DW_WORKSHOP_CONFIG || path.join(process.env.HOME || '.', '.digital-world', 'workshop.json');
+    const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return cfg.critic || null;
+  } catch {
+    return null;
+  }
+}
+
+/** 这条重做要不要再问一次钱：本地档、免费、占位、明码 0 元 → 直接放行（§0.5） */
+export function isFreeRetry(item, entry) {
+  const mod = PROVIDERS[item.provider];
+  if (mod && (mod.local === true || mod.free === true)) return true;
+  if (!entry) return false;
+  if (entry.priceSource === 'local-free') return true;
+  if (entry.quality === 'placeholder') return true;
+  if (entry.cost && entry.cost.estimated === 0) return true;
+  return false;
+}
 
 /** 占位/替身条目：本地合成或 mock 出来的（quality:'placeholder'），或早期 say/synth 留下的 fallback:true */
 export const isPlaceholder = (entry) => Boolean(entry && (entry.fallback === true || entry.quality === 'placeholder'));
@@ -126,6 +178,7 @@ export function parseArgs(argv = []) {
   const opts = {
     work: null, director: 'lu', kinds: null, max: null, dry: false, onlyMissing: false,
     help: false, json: false, audioMode: null, confirm: false,
+    maxRedo: 1, noCritic: false, want: 'production', critic: null, ledger: null,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -135,6 +188,10 @@ export function parseArgs(argv = []) {
     else if (a === '--kinds') opts.kinds = String(next() || '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (a === '--max') opts.max = Number(next());
     else if (a === '--audio-mode') opts.audioMode = next();
+    else if (a === '--max-redo') opts.maxRedo = Number(next());
+    else if (a === '--no-critic') opts.noCritic = true;
+    else if (a === '--draft') opts.want = 'draft';
+    else if (a === '--ledger') opts.ledger = next();
     else if (a === '--confirm') opts.confirm = true;
     else if (a === '--dry') opts.dry = true;
     else if (a === '--only-missing') opts.onlyMissing = true;
@@ -142,6 +199,7 @@ export function parseArgs(argv = []) {
     else if (a === '--help' || a === '-h') opts.help = true;
     else throw new Error(`不认识的参数：${a}（--help 看用法）`);
   }
+  if (!Number.isFinite(opts.maxRedo) || opts.maxRedo < 0) opts.maxRedo = 1;
   return opts;
 }
 
@@ -154,10 +212,15 @@ const USAGE = `用法：node tools/assets/run.mjs --work <qiefu|weicheng> [--dir
   --dry           只算账、打印计划，一个文件都不写、一次生成都不调
   --only-missing  只做还没有的（已经有的连占位重做也跳过）
   --audio-mode    透传给 AudioEngine：local-only | auto | cloud-quality | manual（默认引擎自己的 auto）
+  --max-redo N    审片不过时最多重做几次（默认 1；0 = 一次不过就退回）
+  --no-critic     这次不叫评审模型（只跑确定性检查）
+  --draft         这一轮只当草稿看（quality:'draft' 的产物不算违约）
+  --ledger FILE   把这一轮的会话账本（含每笔 director.review）写到 FILE，便于对账
   --confirm       允许价格未知或超过单次上限的付费调用（逐条打印估算再问；非交互环境一律拒绝）
   --json          结尾把汇总按 JSON 打出来（给脚本用）
 
-图片走 tools/assets/providers/（magpie → litellm）；声音一律交给 tools/audio 的 AudioEngine。`;
+图片走 tools/assets/providers/（magpie → litellm）；声音一律交给 tools/audio 的 AudioEngine。
+每条生成完都过一遍导演审片（tools/assets/review.mjs）：不过就重做，重做到头还不像就退回、不算交付。`;
 
 export function readManifest(file = MANIFEST_FILE) {
   try {
@@ -242,6 +305,8 @@ async function probeAudio({ mode, confirm }) {
 function makeAuthorize(confirm) {
   return async (estimate) => {
     const c = (estimate && estimate.cost) || {};
+    // 不花钱的调用不用问人：本地档 / 明码 0 元（docs/WORKSHOP.md §0.5）
+    if (c.estimated === 0 || c.priceSource === 'local-free') return true;
     const money = c.estimated == null ? '价格未知' : `${c.estimated} ${c.currency || 'USD'}`;
     const who = `${(estimate && estimate.provider) || '?'} / ${(estimate && estimate.model) || '?'}`;
     if (!confirm) {
@@ -262,6 +327,17 @@ function makeAuthorize(confirm) {
       });
     });
   };
+}
+
+/** 重做也要过一次预算闸门（docs/WORKSHOP.md §4.3）：不花钱的放行，要花钱的走同一条授权钩子 */
+async function gateRedo(item, entry, opts) {
+  if (isFreeRetry(item, entry)) return true;
+  return makeAuthorize(opts.confirm)({
+    provider: (entry && entry.provider) || item.provider,
+    model: (entry && entry.model) || '',
+    prompt: item.brief?.spec?.prompt || item.brief?.spec?.text || '',
+    cost: (entry && entry.cost) || { estimated: null, currency: 'USD', priceSource: 'unknown' },
+  });
 }
 
 function makeSession(director) {
@@ -350,6 +426,44 @@ async function transferAudio(item, engine, outPath, opts, work) {
   return entry;
 }
 
+/**
+ * 真做一条：声音交给引擎，图片交给 provider，返回 manifest 条目。
+ * 抽成函数是为了审片不过时能原样再做一次（§4.3 的 redo）。
+ */
+async function generateEntry(it, { audio, done, opts, work, outPath, rel }) {
+  ensureDir(outPath); // provider 可能直接让外部命令写这个路径，目录得先有
+  if (AUDIO[it.kind]) {
+    if (!audio.ok || !audio.engine) throw new Error(audio.note); // 不回退去直调声音服务
+    return transferAudio(it, audio.engine, outPath, opts, work);
+  }
+  const ctx = {};
+  const needPlate = it.brief?.spec?.plate;
+  if (it.kind === 'image' && needPlate) {
+    const p = done.get(needPlate);
+    if (p && fs.existsSync(p)) ctx.platePath = p;
+    else console.log(`  注意 ${it.key} 的底版 ${needPlate} 还没有，这张先不带上底版`);
+  }
+  const r = await PROVIDERS[it.provider].make(it.brief, outPath, ctx);
+  const entry = {
+    kind: it.kind,
+    file: rel,
+    director: opts.director,
+    work,
+    for: it.brief.for || {},
+    spec: it.brief.spec || {},
+    why: it.brief.why || '',
+    provider: r.provider || it.provider,
+    model: r.model || '',
+    quality: 'generated',
+    fallback: r.fallback === true,
+    bytes: r.bytes || (fs.existsSync(outPath) ? fs.statSync(outPath).size : 0),
+  };
+  if (r.note) entry.note = r.note;
+  if (r.seconds) entry.seconds = r.seconds;
+  if (r.license) entry.license = r.license;
+  return entry;
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv);
   if (opts.help) {
@@ -424,6 +538,11 @@ export async function main(argv = process.argv.slice(2)) {
   const done = new Map(); // key → 本地文件，plate 做完了后面的图要拿它当参考
   for (const [key, e] of Object.entries(manifest.assets)) if (e?.file) done.set(key, path.join(ASSETS_DIR, e.file));
 
+  const lock = sheet.lock || null;
+  const criticCfg = loadCritic(opts);
+  const maxRedo = Number.isFinite(opts.maxRedo) ? opts.maxRedo : 1;
+  if (lock) console.log(`  风格锁：底版 ${lock.plateKey} · 色板 ${lock.palette.join(' ')} · 响度 ${lock.loudness} LUFS${criticCfg ? ` · 评审模型 ${criticCfg.model || '?'}` : ' · 没配评审模型（只跑确定性检查）'}`);
+
   let i = 0;
   for (const it of executeOrder(plan)) {
     if (it.action === 'skip') continue;
@@ -435,46 +554,53 @@ export async function main(argv = process.argv.slice(2)) {
     const rel = path.join('gen', `${it.key}.${it.kind === 'image' ? PROVIDERS[it.provider].ext : 'm4a'}`);
     const outPath = path.join(ASSETS_DIR, rel);
     try {
-      ensureDir(outPath); // provider 可能直接让外部命令写这个路径，目录得先有
-      let entry;
-      if (AUDIO[it.kind]) {
-        if (!audio.ok || !audio.engine) throw new Error(audio.note); // 不回退去直调声音服务
-        entry = await transferAudio(it, audio.engine, outPath, opts, work);
-      } else {
-        const ctx = {};
-        const needPlate = it.brief?.spec?.plate;
-        if (it.kind === 'image' && needPlate) {
-          const p = done.get(needPlate);
-          if (p && fs.existsSync(p)) ctx.platePath = p;
-          else console.log(`  注意 ${it.key} 的底版 ${needPlate} 还没有，这张先不带上底版`);
+      // 生成 → 审片 → 不过就重做（redo 的次数由 review 按 maxRedo 把关）
+      let entry = null;
+      let attempt = 1;
+      for (;;) {
+        entry = await generateEntry(it, { audio, done, opts, work, outPath, rel });
+        entry.source = sourceOf(it, entry);
+        if (entry.quality === 'draft') entry.draft = true;
+        const platePath = it.brief?.spec?.plate ? done.get(it.brief.spec.plate) : undefined;
+        const rv = await review(it.brief, path.join(ASSETS_DIR, entry.file), lock, {
+          quality: entry.quality,
+          want: opts.want,
+          attempt,
+          maxRedo,
+          critic: criticCfg,
+          platePath,
+        });
+        entry.review = { verdict: rv.verdict, why: rv.why, checks: rv.checks, ...(rv.critic ? { critic: rv.critic } : {}) };
+        if (rv.verdict !== 'redo') break;
+        const allowed = await gateRedo(it, entry, opts);
+        if (!allowed) {
+          entry.review = { verdict: 'reject', why: `重做要再花一次钱，没过闸门 —— ${rv.why}`, checks: rv.checks };
+          console.log(`  退回 ${it.key}：重做要再花一次钱，没有 --confirm 不敢重做`);
+          break;
         }
-        const r = await PROVIDERS[it.provider].make(it.brief, outPath, ctx);
-        entry = {
-          kind: it.kind,
-          file: rel,
-          director: opts.director,
-          work,
-          for: it.brief.for || {},
-          spec: it.brief.spec || {},
-          why: it.brief.why || '',
-          provider: r.provider || it.provider,
-          model: r.model || '',
-          quality: 'generated',
-          fallback: r.fallback === true,
-          bytes: r.bytes || (fs.existsSync(outPath) ? fs.statSync(outPath).size : 0),
-        };
-        if (r.note) entry.note = r.note;
-        if (r.seconds) entry.seconds = r.seconds;
+        console.log(`  重做 ${pad(it.key, 28)} 第 ${attempt + 1} 次 —— ${rv.why}`);
+        attempt += 1;
       }
+      entry.delivered = entry.review.verdict === 'accept';
       manifest.assets[it.key] = entry;
       delete manifest.errors[it.key];
       done.set(it.key, path.join(ASSETS_DIR, entry.file));
       manifest.updatedAt = new Date().toISOString();
       manifest.counts = countAssets(manifest.assets);
       writeManifest(manifest); // 每条生成完立刻写回：中途断了也不丢已花的钱
-      made.push({ ...entry, key: it.key, action: it.action });
+      // 导演审片留痕（§4.4）：账本里一笔，沿 cause 追得回用户
+      session.ledger.append({
+        kind: 'director.review',
+        from: `director:${opts.director}`,
+        to: 'user',
+        cause: [sheet.seq].filter(Boolean),
+        payload: { key: it.key, verdict: entry.review.verdict, why: entry.review.why },
+      });
+      made.push({ ...entry, key: it.key, action: it.action, attempt });
       const cost = entry.cost && entry.cost.actual != null ? ` $${entry.cost.actual}` : '';
-      console.log(`  [${i}] ${it.action === 'substitute' ? '重做' : '生成'} ${pad(it.key, 28)} ${pad(entry.provider, 12)} ${humanBytes(entry.bytes)}${entry.fallback ? ' 占位' : ''}${cost}${entry.job_id ? ` job ${String(entry.job_id).slice(0, 10)}` : ''}${entry.note ? ` —— ${entry.note}` : ''}`);
+      const verdictTag = entry.review.verdict === 'accept' ? (entry.draft ? ' 草稿' : '') : entry.review.verdict === 'redo' ? ' 待重做' : ' 退回';
+      console.log(`  [${i}] ${it.action === 'substitute' ? '重做' : '生成'} ${pad(it.key, 28)} ${pad(entry.provider, 12)} ${humanBytes(entry.bytes)}${entry.fallback ? ' 占位' : ''}${cost}${entry.job_id ? ` job ${String(entry.job_id).slice(0, 10)}` : ''}${verdictTag}${entry.note ? ` —— ${entry.note}` : ''}`);
+      if (entry.review.verdict !== 'accept') console.log(`       导演退回：${entry.review.why}`);
     } catch (err) {
       // 报错只留一行、截断，免得一张表被一条长串冲垮（密钥已在 scrub 里抹掉）
       const message = scrub(err && err.message ? err.message : err).replace(/\s+/g, ' ').trim().slice(0, 240);
@@ -492,6 +618,9 @@ export async function main(argv = process.argv.slice(2)) {
     byKind[m.kind][m.fallback ? '占位' : '正式'] += 1;
   }
   const spent = made.reduce((s, m) => s + (m.cost && typeof m.cost.actual === 'number' ? m.cost.actual : 0), 0);
+  const reviewed = made.filter((m) => m.review);
+  const accepted = reviewed.filter((m) => m.review.verdict === 'accept');
+  const rejected = reviewed.filter((m) => m.review.verdict !== 'accept');
   const summary = {
     work,
     director: opts.director,
@@ -503,6 +632,11 @@ export async function main(argv = process.argv.slice(2)) {
     unavailable: noChannel.length,
     failed: failed.length,
     placeholder: made.filter((m) => m.fallback).length,
+    reviewed: reviewed.length,
+    accepted: accepted.length,
+    rejected: rejected.length,
+    redone: accepted.filter((m) => m.attempt > 1).length,
+    draft: made.filter((m) => m.draft).length,
     dropped,
     spent: Number(spent.toFixed(4)),
     byKind,
@@ -518,9 +652,19 @@ export async function main(argv = process.argv.slice(2)) {
   for (const [kind, c] of Object.entries(byKind)) console.log(`    ${pad(kind, 6)} 正式 ${c.正式} / 占位 ${c.占位}`);
   if (spent > 0) console.log(`    这一轮花掉约 $${spent.toFixed(4)}（引擎记的账为准）`);
   console.log(`    声音引擎：${audio.ok ? audio.note : audio.note}`);
+  if (reviewed.length) {
+    console.log(`    导演审片：收下 ${accepted.length}${summary.redone ? `（其中 ${summary.redone} 条是重做后才收的）` : ''}、退回 ${rejected.length}${rejected.length ? '（退回的不算交付）' : ''}${summary.draft ? `、草稿 ${summary.draft}` : ''}`);
+    for (const m of rejected) console.log(`    导演退回 ${m.key}：${m.review.why}`);
+  }
   for (const e of failed) console.log(`    出错 ${e.key}（${e.provider}）：${e.message}`);
   for (const it of noChannel) console.log(`    无通道 ${it.key}：${it.reason}`);
   console.log(`  manifest：${summary.manifest}（每条做完就写回）\n`);
+  if (opts.ledger) {
+    const file = path.resolve(opts.ledger);
+    ensureDir(file);
+    fs.writeFileSync(file, `${JSON.stringify(session.ledger.toJSON(), null, 2)}\n`);
+    console.log(`  账本：${file}（${session.ledger.size} 笔）\n`);
+  }
   if (opts.json) console.log(JSON.stringify(summary, null, 2));
 
   return failed.length ? 1 : 0;
