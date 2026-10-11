@@ -172,3 +172,38 @@ export function floorChecks(createSession) -> { deadEnds:[], endings:{history,ji
 - **押粮**（围城）：`space` + `clock` + `handover`。天黑之前把粮穿过城，不被饥民拦下。
 
 这一步的验收：`git diff shared/kernel` 为空；新场景文件只有控制器清单加规则表；地板检查自动覆盖它们。
+
+---
+
+## 8. 每场档位（细演 / 普通 / 一笔带过）
+
+导师按「一场」分算力：`shared/agents/mentor.js` 的 `allot()` 用 depth 与 centrality 加权定档，超预算时从最不中心的往下降，把结果记在 `mentor.allot` 里（**按 beat id 记**）。内核负责把档位真的演出来。
+
+```js
+// shared/kernel/depth.js
+export const TIERS = ['细演', '普通', '一笔带过'];
+export const TIER_COST = { 细演: 3, 普通: 2, 一笔带过: 1 };   // 档位即成本
+export const DEFAULT_TIER = '普通';
+export const ELIDED_NOTE = '这里被省略了';
+
+// shared/engine/play.js
+export function createPlay(session, opts)   // opts = { tiers, tierOf, budget }，都可选
+p.tierOf('night') -> '细演'                 // 这一场演到哪一档
+p.tiers() -> { night: '细演', … }           // 已经定下来的档位表（缓存在存档里）
+```
+
+`tiers` 可以是：函数 `(sceneId, scene) => 档位`；按场景 id 的表 `{ night: '细演' }`；按 beat 的表；按作品的表；或者字符串 `'mentor'`（读 `session.mentor.state().chosen`，那份表按 beat id 记，内核用 `scene.beat` 对上，如 `granary → 'dusk'`）。值认 `细演/普通/一笔带过`、`3/2/1`、`deep/normal/brief`。
+
+**默认不传 `tiers`/`tierOf` 时每一场都是「普通」，并且不碰任何状态**：档位表不写、账本不写、`view()` 一个字段都不多。所以 680 个脚本的对照组不受影响（`node --test tests/kernel-parity.test.js` 2/2）。
+
+三档只动三处文字——`dispatch()` 收尾、`watch()`、`ask()`；胜负规则一个字不改：
+
+| 档位 | 演出来是什么 |
+| --- | --- |
+| 细演 | 反应之后多一句「他心里在盘算」：感知里哪几路先吃下（候选与权重）、他要的正是哪件事、`hear()` 的打动/反弹与信任前后、压力大时的急。追问时一并说出「他要的是什么」；看心思即使刚对他做过事，也再算一次真实拉扯。**没有真实状态可说时不编**（那就不加这一句）。 |
+| 普通 | 与没有档位时逐字节相同。 |
+| 一笔带过 | 旁白只留第一句，括号里的机制说明不再念出来，真删掉了才用「（这里被省略了）」标出来；`view()` 带 `elided: true` 与 `elidedNote`。追问只答一句。没删东西时不加标记（不骗人）。 |
+
+算力：`budget` 非空时按 `TIER_COST` 记帐（内核的 `tierSpend()`），不够就从当前这场往下降档（细演→普通→一笔带过），**降到底照常演完，不抛错、不中断**——玩家只是看到「这里被省略了」。降档只改文字厚薄：680 个脚本 × 4 种档位来源（不传 / 细演 / 一笔带过 / `'mentor'`）逐一比对，结局、天数、旗标、每一幕的选择全一致；账本条数与其余内容一笔不差，只有 `user.ask` 那条的 `answer` 文字本身随档位变长变短。
+
+自查（`/tmp/t27-depth-check.mjs`）：同一串选择分别用三档跑完一局，打印每幕字数与 `elided` 标记，结局相同。
