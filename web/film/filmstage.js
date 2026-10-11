@@ -32,15 +32,17 @@ export function createFilmStage(render) {
 
   // ── 匾：片名与幕名 ──────────────────────────────────────
   const banner = new THREE.Group();
-  const bannerBoard = box(1, 0.66, 0.08, MAT.woodLight, 0, 0, 0);
+  // 记住 box() 的约定：它把「盒子底部」放在 y 上（position.y = y + h/2）。
+  // 板子要绕着原点翻/摆，所以这里把底放到 -h/2，让圆心落在原点上。
+  const bannerBoard = box(1, 0.66, 0.08, MAT.woodLight, 0, -0.33, 0);
   banner.add(bannerBoard);
   root.add(banner);
   function setBanner(title, place) {
     while (banner.children.length > 1) disposeTree(banner.children.pop());
     const face = textPlate(title || '窃符', { size: 78, weight: 500, color: '#f2e5c1', worldHeight: 0.4, letterSpacing: 6, maxWidth: 900 });
-    face.position.set(0, 0.03, 0.06);
+    face.position.set(0, 0.1, 0.06);
     const sub = textPlate(place || '魏国', { size: 58, color: '#cbbb98', worldHeight: 0.17, letterSpacing: 7 });
-    sub.position.set(0, -0.42, 0.06);
+    sub.position.set(0, -0.19, 0.06);
     bannerBoard.scale.x = Math.max(1.2, face.scale.x * 1.25);
     banner.add(face, sub);
   }
@@ -56,17 +58,35 @@ export function createFilmStage(render) {
     const door = new THREE.Group();
     door.position.set(0, 1.1, 0);
     const face = textPlate(nameOf(id), { size: 92, weight: 500, color: '#f4e7c4', worldHeight: 0.56, vertical: true, letterSpacing: 12 });
+    // textPlate 的 worldHeight 是「单位缩放」，竖排时字号会被画布长宽比（3 字≈2.15、
+    // 2 字≈1.56）再乘一遍——牌面文字会高过门板、从板子下面漏出去。这里按画布比例
+    // 重算：想要文字多少世界高，就直接把它设成那么高。
+    const faceH = 0.62;
+    const fa = face.userData.aspect;
+    face.scale.set(faceH * fa, faceH * fa, 1);
     // 整块门往前挪半个板宽：翻正的时候才是绕自己转，而不是绕着旗杆甩。
     const pivot = 0.24;
-    const backboard = box(face.scale.x * 1.42, 0.84, 0.05, MAT.woodLight, 0, 0, 0.04 + pivot);
-    face.position.set(0, 0, 0.075 + pivot);
-    door.add(backboard, face, sph(0.036, MAT.bronze, 0, 0.46, pivot, 8));
+    // 板面比字宽一圈：牌翻过去的时候只剩一条斜边，板子窄了手指就点不着
+    // （竖屏/横屏都要留出上下左右各 22px 都能点到的地方）。
+    const backboard = box(Math.max(0.34, face.scale.x * 1.5), 0.92, 0.05, MAT.woodLight, 0, 0, 0.04 + pivot);
+    // 门板底下沿在 y=0、板心在 0.45；文字要落在板心上，不然会从板子下面漏出去。
+    face.position.set(0, 0.46, 0.075 + pivot);
+    // 牌子背面也写上名字：没点到的牌会翻过去让出正面，翻过去的那面若是空白，
+    // 就没人知道该点哪一枚。
+    const back = face.clone();
+    back.position.set(0, 0.46, 0.04 + pivot - 0.03);
+    back.rotation.y = Math.PI;
+    door.add(backboard, face, back, sph(0.036, MAT.bronze, 0, 0.46, pivot, 8));
+    // 起个名字：探针要拿射线问「这块牌子有没有被前面那块挡住」。
+    door.name = `door:${id}`;
+    face.name = `face:${id}`;
     g.add(door);
     boardStand.add(g);
     const node = render.add({
       id: `eye:${id}`, kind: 'eye', name: `换到${nameOf(id)}的眼睛`, act: 'perspective',
       group: g, explicit: V(0, 1.2, 0), radius: 0.72,
     });
+    g.name = `board:${id}`;
     node.perspective = id;
     node.door = door;
     node.face = face;
@@ -220,17 +240,14 @@ export function createFilmStage(render) {
     anchor.lerp(eye, 1 - Math.exp(-dt * 7));
     if (!laidOut) {
       // 三枚木牌在架上排成阶梯：主角在最左、侯嬴在最右，高度略微递降。
+      // 竖屏比横屏窄一半，间距要收，不然最左那枚会被切在框外。
       const last = boardStand.children.length - 1;
-      const spread = innerHeight > innerWidth ? 0.86 : 0.62;
+      const spread = innerHeight > innerWidth ? 0.80 : 0.89;
       boardStand.children.forEach((g, i) => {
         g.position.set(i * spread, (last - i) * 0.34, 0);
       });
       laidOut = true;
     }
-    // 整架木牌转过来对着镜头，牌面才是正面。
-    boardStand.lookAt(anchor);
-    boardStand.rotation.x = 0;
-    boardStand.rotation.z = 0;
     // 竖屏的可视宽度只有 0.42×高度，横向偏移必须跟着收：wide 就是「半宽」
     // 的比例尺（横屏 1，竖屏 0.42）。纵向上竖屏更高，改用 (1-wide) 补偿。
     // 偏移量再除以深度：物件摆得越远，屏幕上偏得越少，位置才稳。
@@ -239,14 +256,30 @@ export function createFilmStage(render) {
     // 竖屏：三枚木牌排开一点，免得牌面互相压住；信拉近、放大、抬到字幕带以上，
     // 封泥才够得着（手指点下去要 ≥44px，也不能落在字幕底下）。
     const portrait = innerHeight > innerWidth;
-    placeAt(banner, 15, 0, 3.6, 8);
-    placeAt(boardStand, 8, -2.6 * wide, -0.5 + 0.3 * tall, 8);
-    placeAt(incense.group, 7, -1.9 * wide, -0.15 + 0.6 * tall, 8);
-    placeAt(letter.group, portrait ? 9.5 : 12, (portrait ? 3.0 : 4.1) * wide, portrait ? -0.35 : -1.0 - 0.35 * tall, 8);
+    placeAt(banner, 15, 0, 3.78, 8);
+    if (portrait) {
+      // 竖屏：牌架原来太高，最左那枚（信陵君）被切在画面外；香炉原来正挡在他身前，
+      // 现在挪到左下角的台边、抬到字幕带以上。信封放到人物右边偏下——字幕带在 y≈600，
+      // 什么东西压上去就看不见、也点不着。
+      placeAt(boardStand, 7, -0.55, -0.28, 8);
+      placeAt(incense.group, 9, -0.95, -1.5, 8);
+      placeAt(letter.group, 9.5, 0.9, -0.6, 8);
+      placeAt(slipHolder, 12, 3.4 * wide, 1.7, 8);
+    } else {
+      // 横屏：牌架原先正落在香炉后面，香炉也一并挪到画面最左边。
+      placeAt(boardStand, 7, -2.4 * wide, -0.45, 8);
+      placeAt(incense.group, 7, -4.2 * wide, 0.05, 8);
+      placeAt(letter.group, 12, 4.1 * wide, -1.15 - 0.3 * tall, 8);
+      placeAt(slipHolder, 12, 4.1 * wide, 2.3 - 0.3 * tall, 8);
+    }
     letter.group.scale.setScalar(portrait ? 1.35 : 1);
     // 信是平放的：立起来 75 度，封泥朝镜头，不然只能看见一条边。
     letter.group.rotation.x = 1.31;
-    placeAt(slipHolder, 12, 4.1 * wide, 2.3 - 0.3 * tall, 8);
+    // 牌架朝着**镜头**摆，不朝场景里的锚点：锚点还在缓动的那一两秒里，
+    // 整排牌子会跟着甩——一会儿挤成一团、一会儿甩到画面外。
+    boardStand.lookAt(camera.position);
+    boardStand.rotation.x = 0;
+    boardStand.rotation.z = 0;
   }
 
   function update(dt, t, hovered) {
@@ -261,7 +294,9 @@ export function createFilmStage(render) {
       const on = node.perspective === perspective;
       const hot = hovered === node;
       // 翻正 = 牌面朝镜头（正着站）；没点到的牌翻过去，让出正面。
-      const target = on ? 0 : (hot ? -0.85 : -2.6);
+      // 转过去的那些牌只剩背面朝镜头（背面也刻着名字）。转到 -2.6 时背面偏 31°，
+      // 名字还读得出来；再往 -2.0 转反而更侧、更薄，点到它的地方也更小。
+      const target = on ? 0 : (hot ? -0.8 : -2.6);
       node.door.rotation.y += (target - node.door.rotation.y) * Math.min(1, dt * 5);
       node.face.material.opacity = on ? 1 : 0.82;
     }
@@ -303,12 +338,47 @@ export function createFilmStage(render) {
       out.incense = [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
       return out;
     },
+    /** 各件装置在屏幕上的矩形：只用来量「整块在不在画面里、够不够手指点」。 */
+    rects(camera) {
+      const out = { actors: actors.map(a => rectOf(a.group, camera)) };
+      for (const [id, node] of boards) out['eye:' + id] = rectOf(node.door, camera);
+      out.share = rectOf(letter.group, camera);
+      out.incense = rectOf(incense.bowl, camera);
+      out.face = {};
+      for (const [id, node] of boards) {
+        out.face[id] = { text: rectOf(node.face, camera), plate: rectOf(node.door.children[0], camera) };
+      }
+      out.size = { boards: [...boards.keys()].map(id => boxInfo(boards.get(id).door, camera)), share: boxInfo(letter.group, camera), incense: boxInfo(incense.bowl, camera) };
+      return out;
+    },
     get sharePulse() { return sharePulse; },
     get view() { return { eye: eye.clone(), look: look.clone() }; },
   };
 }
 
 /* ── 小构件 ─────────────────────────────────────────────── */
+
+/** 量出来的世界尺寸与离镜头的距离：屏幕上多大，先看这两个数。 */
+function boxInfo(obj, camera) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const s = box.getSize(new THREE.Vector3());
+  const c = box.getCenter(new THREE.Vector3());
+  return [+s.x.toFixed(2), +s.y.toFixed(2), +c.distanceTo(camera.position).toFixed(2)];
+}
+
+/** 一件装置在屏幕上的矩形（世界包围盒八个角投影后的外框）。 */
+function rectOf(obj, camera) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const v = new THREE.Vector3();
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    v.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(camera);
+    const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight;
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return [Math.round(x0), Math.round(y0), Math.round(x1), Math.round(y1)];
+}
 
 function floor() {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(160, 160),
@@ -322,14 +392,15 @@ function floor() {
 /** 香：铜座 + 一根香。烧到哪，余下的就短到哪。 */
 function incenseStand() {
   const group = new THREE.Group();
-  group.add(cyl(0.3, 0.38, 0.6, MAT.bronze, 0, 0, 0, 16));
+  const bowl = cyl(0.3, 0.38, 0.6, MAT.bronze, 0, 0, 0, 16);
+  group.add(bowl);
   group.add(cyl(0.13, 0.09, 0.14, MAT.bronzeLit, 0, 0.6, 0, 12));
   const stick = cyl(0.014, 0.016, 0.9, MAT.paperDim, 0, 0.74, 0, 8);
   const ember = sph(0.032, MAT.emberTip, 0, 1.64, 0, 8);
   const smoke = smokeColumn(0, 1.66, 0);
   group.add(stick, ember, smoke.group);
   return {
-    group,
+    group, bowl,
     setProgress(p) {
       const left = 1 - Math.max(0, Math.min(1, p));
       const h = Math.max(0.05, 0.9 * left);

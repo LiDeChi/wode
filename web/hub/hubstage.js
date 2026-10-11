@@ -14,6 +14,13 @@ const WALL_Z = -5.6;
 
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smooth = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+/** 两个角度之间最短的差——收「正对镜头」的时候不能绕远路。 */
+const angDelta = (from, to) => {
+  let d = (to - from) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+};
 
 export function createHubStage(render, items = []) {
   const { scene, camera } = render;
@@ -137,6 +144,8 @@ export function createHubStage(render, items = []) {
     node.home = group.position.clone();
     if (node.sign) {
       node.sign.userData.restYaw = node.sign.rotation.y;
+      // 木签原来挂在哪、多大：拿起的时候要缩、要挪，放下的时候得原样还回去。
+      node.signHome = { p: node.sign.position.clone(), s: node.sign.scale.x };
       tags.push(node.sign);
     }
     if (node.ring) rings.push(node.ring);
@@ -178,7 +187,34 @@ export function createHubStage(render, items = []) {
 
   // ── 拿起：物件飞到镜头前，转半圈，亮出木签 ──────────────────
   const camLocal = new THREE.Vector3();
+  const camRight = new THREE.Vector3();
+  const signNdc = new THREE.Vector3();
+  const camUp = new THREE.Vector3();
+  const signWant = new THREE.Vector3();
   let lift = null;
+
+  /**
+   * 木签：拿起时缩到约 1/3，挪到物件右手边——它本来是挂在物件上的，
+   * 不缩不挪就会在镜头前摊开半屏，把物件本身挡得看不见。
+   * k = 0 还挂在原处，k = 1 完全拿开。位置在世界里算，再换算回物件的局部坐标，
+   * 这样物件转不转都不影响「签在它旁边」这件事。
+   */
+  function signAside(node, k) {
+    const home = node.signHome;
+    if (!node.sign || !home || k <= 0.001) return;
+    node.group.updateMatrixWorld(true);
+    camera.updateMatrixWorld();
+    node.group.getWorldPosition(signWant);
+    const hw = camera.position.distanceTo(signWant) * Math.tan(((camera.fov || 44) * Math.PI / 180) / 2) * camera.aspect;
+    // 往画面里宽敞的那一边让（手机竖屏时物件常在偏右，签再往右就出框了）。
+    signNdc.copy(signWant).project(camera);
+    const dir = signNdc.x > 0 ? -1 : 1;
+    camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+    camUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    signWant.addScaledVector(camRight, dir * 0.42 * hw * k).addScaledVector(camUp, 0.10 * hw * k);
+    node.sign.scale.setScalar(home.s * (1 - 0.66 * k));
+    node.sign.position.copy(node.group.worldToLocal(signWant.clone()));
+  }
 
   function liftUp(node) {
     return new Promise(resolve => {
@@ -199,7 +235,11 @@ export function createHubStage(render, items = []) {
   function releaseLift() {
     const node = lift?.node;
     if (!node) return;
-    lift = { node, phase: 'back', t: 0, dur: 0.34, from: node.group.position.clone(), fromYaw: node.group.rotation.y, resolve: null };
+    lift = {
+      node, phase: 'back', t: 0, dur: 0.34,
+      from: node.group.position.clone(), fromYaw: node.group.rotation.y, resolve: null,
+      signFrom: node.sign && node.signHome ? { p: node.sign.position.clone(), s: node.sign.scale.x } : null,
+    };
   }
 
   function updateLift(dt) {
@@ -212,6 +252,10 @@ export function createHubStage(render, items = []) {
       node.group.position.lerpVectors(lift.from, node.home, e);
       node.group.rotation.y = lift.fromYaw * (1 - e);
       node.group.scale.setScalar(node.baseScale * (1 + 0.22 * (1 - e)));
+      if (node.sign && node.signHome && lift.signFrom) {
+        node.sign.position.lerpVectors(lift.signFrom.p, node.signHome.p, e);
+        node.sign.scale.setScalar(node.signHome.s * (1 - 0.66 * (1 - e)));
+      }
       if (lift.t >= lift.dur) {
         node.group.position.copy(node.home);
         node.group.rotation.y = 0;
@@ -224,11 +268,19 @@ export function createHubStage(render, items = []) {
     const flight = smooth(Math.min(1, lift.t / (lift.dur * 0.6)));
     // 送到镜头前多远：按物件自身的体积定，跟镜头当时离它多远无关——
     // 否则镜头一推近，"镜头前 d 米"就正好落回它原来的位置，看不出被拿起。
-    const d = Math.max(2.5, Math.min(5.0, node.radius * 2.6));
-    camLocal.set(0.13 * d, -0.12 * d + Math.sin(flight * Math.PI) * 0.5, -d).applyMatrix4(camera.matrixWorld);
+    // 2.6 倍半径时物件正好顶满画面、上下被切掉，看上去像一根木头；放到 3.6 倍，
+    // 物件整件在框里，才认得出「拿起来的是一卷轴」。
+    const d = Math.max(3.1, Math.min(6.4, node.radius * 3.6));
+    camLocal.set(0.12 * d, -0.05 * d + Math.sin(flight * Math.PI) * 0.5, -d).applyMatrix4(camera.matrixWorld);
     node.group.position.lerpVectors(lift.from, camLocal, flight);
-    node.group.rotation.y = lift.fromYaw + flight * Math.PI;
+    // 转半圈是花活，但末了必须停在「物件正面朝镜头」上——否则签挂在物件的背面，
+    // 看上去就是一块板横在物件前面。后半程把角度收到正对镜头。
+    const halfTurn = lift.fromYaw + Math.PI;
+    node.group.updateMatrixWorld(true);
+    const facing = faceYaw(node.group, camera);
+    node.group.rotation.y = halfTurn + angDelta(halfTurn, facing) * smooth(Math.max(0, (flight - 0.4) / 0.6));
     node.group.scale.setScalar(node.baseScale * (1 + flight * 0.24));
+    signAside(node, flight);
     if (lift.t >= lift.dur && !lift.done) {
       lift.done = true;
       node.held = true;
