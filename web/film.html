@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>窃符 · 你的电影</title>
+<link rel="stylesheet" href="/film/style.css">
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
+</head>
+<body data-film-status="loading">
+<canvas id="stage" aria-label="窃符的自动放映画面"></canvas>
+<div class="shade" aria-hidden="true"></div>
+<header class="film-header">
+  <a href="/hub.html">回排片表</a>
+  <p>窃符 <span id="film-origin">一局，成为一部电影</span></p>
+  <button id="share" type="button">分享这部电影</button>
+</header>
+<main>
+  <div class="scene-title"><p id="scene-place">魏国</p><h1 id="scene-title">灯亮，戏开。</h1></div>
+  <div class="subtitles" aria-live="off">
+    <p id="choice" class="choice"></p>
+    <p id="speaker" class="speaker"></p>
+    <p id="dialogue" class="dialogue">正在装片……</p>
+    <p id="thought" class="thought"></p>
+  </div>
+  <section id="ending" class="ending" hidden>
+    <p>这一局的落幕</p><h2 id="ending-title"></h2><p id="ending-line"></p>
+    <button id="replay" type="button">再看一遍</button>
+    <a href="/play.html">回到世界，换一种选择</a>
+  </section>
+  <div id="error" class="error" role="alert" hidden><h2>这卷电影还放不了</h2><p id="error-line"></p><a href="/film.html?demo=history">看一条完整示范片</a></div>
+</main>
+<footer class="film-footer">
+  <div class="perspectives" aria-label="换一个人的视角重放">
+    <span>换眼睛看</span><button data-perspective="xinling" aria-pressed="true">主角</button><button data-perspective="ruji" aria-pressed="false">如姬</button><button data-perspective="houying" aria-pressed="false">侯嬴</button>
+  </div>
+  <p id="progress-label">自动放映，无需做选择</p><progress id="progress" value="0" max="1" aria-label="放映进度"></progress>
+</footer>
+<div id="share-box" class="share-box" hidden><label for="share-link">电影链接</label><input id="share-link" readonly><p id="share-message" role="status"></p><button id="close-share">收起</button></div>
+<details id="debug" hidden><summary>回放记录</summary><pre></pre></details>
+<script type="module" src="/film/main.js"></script>
+</body>
+</html>
