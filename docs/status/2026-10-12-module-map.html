@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>數字世界 · 模組推進圖</title>
+<style>
+  :root{
+    --ink:#14110e; --panel:#1c1815; --line:#312a23;
+    --white:#f2ece2; --dim:#9c9184; --faint:#6d655c;
+    --bronze:#c8a15a; --seal:#a83a2b; --jade:#6f8f78;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--white);
+    font-family:"Songti SC","Noto Serif TC",Georgia,serif;
+    padding:56px 64px 64px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:36px}
+  h1{margin:0;font-size:34px;letter-spacing:.14em;font-weight:600}
+  .sub{margin-top:10px;font-size:14px;color:var(--dim);letter-spacing:.06em}
+  .facts{text-align:right;font-size:13px;color:var(--dim);line-height:2}
+  .facts b{color:var(--white);font-weight:600}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:2px;
+    padding:20px 22px 18px;position:relative}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tone,var(--jade))}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .name{font-size:19px;letter-spacing:.06em}
+  .path{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;
+    color:var(--faint);letter-spacing:0}
+  .badge{font-size:11px;letter-spacing:.1em;padding:3px 9px;border:1px solid var(--tone);
+    color:var(--tone);border-radius:2px;white-space:nowrap}
+  dl{margin:14px 0 0;display:grid;grid-template-columns:58px 1fr;gap:7px 12px;font-size:14px;line-height:1.72}
+  dt{color:var(--faint);font-size:12px;letter-spacing:.08em;padding-top:3px}
+  dd{margin:0;color:var(--white)}
+  dd.was{color:var(--dim)}
+  dd.gap{color:#b3786c}
+  dd.verify{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12.5px;color:var(--bronze)}
+  .strip{margin-top:30px;border:1px solid var(--line);border-left:3px solid var(--bronze);
+    padding:18px 22px;background:var(--panel)}
+  .strip h2{margin:0 0 10px;font-size:15px;letter-spacing:.14em;color:var(--bronze);font-weight:600}
+  .strip ol{margin:0;padding-left:22px;font-size:13.5px;line-height:1.95;color:var(--dim)}
+  .strip li b{color:var(--white);font-weight:600}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>數字世界 · 模組推進圖</h1>
+    <div class="sub">《窃符》＋《圍城》為底的一個會自己走的戲世界 · 2026-10-12 15:00 快照</div>
+  </div>
+  <div class="facts">
+    任務 <b>68</b> 條 → 完成 <b>64</b>、叫停 2、未完工 2<br>
+    測試 <b>145 通過 / 0 失敗</b>（11 條在等未完工的那塊）<br>
+    最新提交 <b>e7dac47</b> 14:54 · 工作區乾淨<br>
+    入口 <b>127.0.0.1:4320</b>
+  </div>
+</header>
+
+<div class="grid">
+
+  <div class="card" style="--tone:#6f8f78">
+    <div class="top">
+      <div><div class="name">交互內核</div><div class="path">shared/kernel · shared/core</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">每一幕自己一套 if/else，改一處要動四處</dd>
+      <dt>現在</dt><dd>只有一條循環：玩家做一個動作 → 事件 → 心智收到 → 心智自己算反應 → 反應改世界。心智是唯一裁判。680 個腳本逐項同結果</dd>
+      <dt>驗證</dt><dd class="verify">node --test tests/kernel-parity.test.js</dd>
+      <dt>不支持</dt><dd class="gap">只有「對白」真的接了模型；「設想/改造」兩檔額度還沒有調用方</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#6f8f78">
+    <div class="top">
+      <div><div class="name">場景與玩法</div><div class="path">shared/scenes</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">義氣一路通吃，四個人都吃同一套；沒拿到兵符時鄴城照樣演</dd>
+      <dt>現在</dt><dd>義只打動信陵君（1/9），侯嬴、如姬、晉鄙聽了會反感；鄴城按手上有沒有符擺不同的實物；兩個新組合（大梁被偷聽、圍城押糧）沒動內核就長出來</dd>
+      <dt>驗證</dt><dd class="verify">node tools/mechanics-probe.mjs</dd>
+      <dt>不支持</dt><dd class="gap">模擬玩家是四種固定人格，不等於真人玩家的隨機</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#c8a15a">
+    <div class="top">
+      <div><div class="name">角色自己活起來</div><div class="path">shared/life · shared/core/memory</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">你不選，戲就停著等你</dd>
+      <dt>現在</dt><dd>你不動，世界按拍自己走。站著空等 20 秒：4 件事、3 個人、3 句話，每一句都追得回帳本；單導＋高托付、站在門口，第 8 拍如姬自己把符遞出來。經歷跨局留著</dd>
+      <dt>驗證</dt><dd class="verify">node tools/living-probe.mjs --seeds 1,2</dd>
+      <dt>不支持</dt><dd class="gap">記憶被淘汰等於沒發生過；「不可逆」目前只有測試在讀</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#6f8f78">
+    <div class="top">
+      <div><div class="name">導師 · 導演 · 資產</div><div class="path">shared/agents · tools/assets</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">美術靠手寫清單；導師不分輕重，每句都花一樣的力氣</dd>
+      <dt>現在</dt><dd>導演自己開單（陸導 50 件水墨黃昏冷光、單導 47 件水粉暖光），生成完自己審片，不合格退回重做；導師算力分檔（細演／普通／一筆帶過），預算不夠自動降檔</dd>
+      <dt>驗證</dt><dd class="verify">node tools/assets/run.mjs --dry</dd>
+      <dt>不支持</dt><dd class="gap">自建聲音引擎已被叫停；雲端出圖/出聲只到封存狀態</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#a83a2b">
+    <div class="top">
+      <div><div class="name">工坊本地服務</div><div class="path">tools/local</div></div>
+      <div class="badge">未完工</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">—</dd>
+      <dt>現在</dt><dd>只剩這一塊沒落地：接自己機器上的出圖／出聲服務、授權閘門、體檢指令</dd>
+      <dt>驗證</dt><dd class="verify">npm test → 11 條 skip 全在等它</dd>
+      <dt>不支持</dt><dd class="gap">t15、t18 兩條判失敗，沒有排下一輪</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#c8a15a">
+    <div class="top">
+      <div><div class="name">量測與探針</div><div class="path">shared/engine/simulate · tools/*probe</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">玩法好不好只能靠人玩一遍說感想</dd>
+      <dt>現在</dt><dd>機器替你跑：40 局（2 導演 × 4 玩家 × 5 種子）只要 0.28 秒；空等探針量 0/10/20/40 秒世界走到哪；十處接縫釘成回歸測試</dd>
+      <dt>驗證</dt><dd class="verify">node tools/living-probe.mjs --seeds 1,2</dd>
+      <dt>不支持</dt><dd class="gap">量的是機制與計數，不是「好不好玩」</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#c8a15a">
+    <div class="top">
+      <div><div class="name">五個看得見的裝置</div><div class="path">web/play · hub · film · lab · text</div></div>
+      <div class="badge">已成形</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">網頁像報表；用戶原話「不要那種粗製濫造的網頁風格」</dd>
+      <dt>現在</dt><dd>可玩現場是三維的（點人物木牌、左側三條心思刻痕、兵符按實情擺、收束頁是竹簡木案）；排片表是黑夜裡一座戲台擺實物；放映廳不用按選擇就播到落幕、可換視角、封泥分享；推演機是一顆豆子一局、落進八隻陶罐；中文閱讀器有題簽→長頁→出處</dd>
+      <dt>驗證</dt><dd class="verify">開 http://127.0.0.1:4320/play.html</dd>
+      <dt>不支持</dt><dd class="gap">閱讀器還是靜態樣頁，沒接真帳本與存檔</dd>
+    </dl>
+  </div>
+
+  <div class="card" style="--tone:#a83a2b">
+    <div class="top">
+      <div><div class="name">文件契約</div><div class="path">docs/**</div></div>
+      <div class="badge">待收口</div>
+    </div>
+    <dl>
+      <dt>以前</dt><dd class="was">契約散在各處，實作跑得比文件快</dd>
+      <dt>現在</dt><dd>內核、生活、呈現抽象、文本渲染器、分辨率、機制各有正式契約；剛收進你的 note1 原稿</dd>
+      <dt>驗證</dt><dd class="verify">docs/REMAINING-WORK.md</dd>
+      <dt>不支持</dt><dd class="gap">還有 18 處過期或互相矛盾的條文沒收</dd>
+    </dl>
+  </div>
+
+</div>
+
+<div class="strip">
+  <h2>剛交接進來 · 還沒開工（5 件）</h2>
+  <ol>
+    <li><b>折疊的第一件真原型</b>——在最看重的器物上，做「合上／展開」：折疊不刪事實，恢復不編事實，變化先顯在原物上（燈芯變粗、手稿多一道批註）。唯一「有契約、零實現」的一塊</li>
+    <li><b>記憶的後果</b>——現在忘掉一條記憶等於沒發生過</li>
+    <li><b>讓不可逆真的不可逆</b>——「不可替換」目前只有測試在讀</li>
+    <li><b>給「設想／改造」接上第一個調用方</b>——額度開著，沒人用</li>
+    <li><b>口徑統一</b>——收掉 18 處過期與衝突</li>
+  </ol>
+</div>
+
+<div class="two">
+  <div class="strip" style="margin-top:0">
+    <h2>等你拍板（4 條）</h2>
+    <ol>
+      <li>AI 科學家到底研究誰：人類／有限機器的存在／玩家</li>
+      <li>「世界自己流逝」拆成兩件事嗎：狀態要持久（要）、後台推進（不要）</li>
+      <li>期限歸不歸導演管（卡住第 3 件）</li>
+      <li>玩家已經拿到的交互，能不能被收回</li>
+    </ol>
+  </div>
+  <div class="strip" style="margin-top:0;border-left-color:#6f8f78">
+    <h2 style="color:#6f8f78">現在可以直接複驗的三件事</h2>
+    <ol>
+      <li><b>世界自己走</b>　<code>node tools/living-probe.mjs --seeds 1,2</code></li>
+      <li><b>行為一筆沒變</b>　<code>node --test tests/kernel-parity.test.js</code></li>
+      <li><b>五個裝置</b>　開 <code>127.0.0.1:4320/play.html</code>（也可換 hub / film / lab / text）</li>
+    </ol>
+  </div>
+</div>
+</body>
+</html>
