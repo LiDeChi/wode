@@ -15,15 +15,30 @@ import { createPlay } from '../shared/engine/play.js';
 import { MEMORY_DEFAULTS, createMemoryStore, impactOf, sigOf } from '../shared/core/memory.js';
 import { CADENCE_BY_PACE } from '../shared/life/plan.js';
 import { taste } from '../shared/agents/stagecraft.js';
+import { QIFU_SCENES } from '../shared/scenes/qiefu.js';
+import { WEICHENG_SCENES } from '../shared/scenes/weicheng.js';
+
+// 生活测试明示可生活的场；原玩家规则保留，实际夜晚配方另在 living-seams 验证。
+// 无声明的大梁/夷门不会自行发事件，不能拿它们逼内核制造脉搏。
+const LIFE_SCENES = Object.fromEntries(Object.entries({ ...QIFU_SCENES, ...WEICHENG_SCENES }).map(([id, scene]) => [id,
+  ['daliang', 'yimen'].includes(id) ? {
+    ...scene,
+    life: {
+      actors: scene.people.slice(), verbs: [],
+      stimulus: Object.fromEntries(scene.people.map((person) => [person, { 义: 0.4 }])),
+      environment: { cadenceTicks: 8, schedule: [{ at: 8 }] },
+    },
+  } : scene,
+]));
 import { ANSWERS, NEED, runScript, scripts } from './fixtures/play-mechanics-v2-scripts.mjs';
 
 const v2 = JSON.parse(readFileSync(new URL('./fixtures/play-mechanics-v2-golden.json', import.meta.url), 'utf8'));
 
 /** 一场已经见过导师、已经开场进入第一幕的会话；living 打开时才带生活入口 */
-function freshPlay({ dir = 'A', seed = 'ep-1', living = true } = {}) {
+function freshPlay({ dir = 'A', seed = 'ep-1', living = true, scenes = LIFE_SCENES } = {}) {
   const session = createSession();
   session.meet(ANSWERS[dir], NEED);
-  const play = createPlay(session, living ? { living: 'director', seed } : {});
+  const play = createPlay(session, living ? { living: 'director', seed, scenes } : {});
   play.begin();
   play.next();
   return { session, play };
@@ -76,7 +91,7 @@ test('开关只多生活那几样：不传 living 时存档、画面与返回对
 test('入口打开后，玩家自己走的每一步仍然走同一个世界', () => {
   const sample = scripts().filter((s) => s.group === 'legacy').filter((_, i) => i % 170 === 0).slice(0, 4);
   for (const sc of sample) {
-    const { play } = freshPlay({ dir: sc.dir });
+    const { play } = freshPlay({ dir: sc.dir, scenes: { ...QIFU_SCENES, ...WEICHENG_SCENES } });
     let v = play.view();
     const finish = () => {
       while ((v.stage === 'act' || v.stage === 'granary') && v.done) v = play.next();
@@ -135,7 +150,7 @@ test('续档：存档之后重开接着走，与一直走到底一样', () => {
   assert.equal(typeof saved.play.life, 'object', '存档里带着生活状态');
 
   const session2 = createSession(saved);
-  const play2 = createPlay(session2, { living: 'director', seed: 'ep-save' });
+  const play2 = createPlay(session2, { living: 'director', seed: 'ep-save', scenes: LIFE_SCENES });
   const resumed = play2.advance({ toTick: 8 });
   assert.equal(resumed.tick, 8, '续档后接着推到同一拍');
   assert.deepEqual(session2.state.play.life, straight.session.state.play.life, '续档后的生活状态与一直走的一样');
@@ -231,8 +246,11 @@ test('环境脉搏按世界签名去重，演员对同一条脉搏只感知一�
   const seen = new Set();
   for (const e of kindsOf(session, 'actor.react')) {
     const frag = play.lifeTrace(e.seq);
-    if (!frag?.signature?.startsWith('pulse:')) continue;
-    const key = `${frag.person}|${frag.signature}`;
+    assert.ok(frag, '真实反应必须能追到当时片段');
+    const pulse = session.ledger.entries.find((x) => x.seq === e.cause?.[0] && x.kind === 'world.pulse');
+    if (!pulse) continue;
+    assert.ok(frag.signature.startsWith('life:'), '同类心智签名独立于事件序号');
+    const key = `${frag.person}|${pulse.seq}`;
     assert.equal(seen.has(key), false, `${key} 被同一件事算了两次`);
     seen.add(key);
   }
@@ -383,15 +401,18 @@ test('经历跨场留着：换到下一场以后，上一场真看过的还在�
   const { play } = freshPlay();
   play.advance({ toTick: 8 });
   const afterFirst = Object.keys(play.life.state().experiences);
-  assert.ok(afterFirst.some((k) => k.includes('pulse:daliang:')), '第一场该留下真看过的经历');
+  assert.ok(afterFirst.length > 0, '第一场该留下真看过的经历');
+  assert.ok(afterFirst.every((k) => /^seq:\d+$/.test(k)), '索引按真实反应序号去重');
+  const firstSeqs = afterFirst.map((k) => Number(k.slice(4)));
+  assert.ok(firstSeqs.some((seq) => play.lifeTrace(seq).scene === 'daliang'));
 
   play.choose('yi');
   play.next();
   play.lifeEnter('yimen');
   play.advance({ toTick: 24 });
   const keys = Object.keys(play.life.state().experiences);
-  assert.ok(keys.some((k) => k.includes('pulse:daliang:')), '换场以后上一场的经历还在');
-  assert.ok(keys.some((k) => k.includes('pulse:yimen:')), '这一场也留下自己的经历');
+  assert.ok(afterFirst.every((k) => keys.includes(k)), '换场以后上一场的经历索引还在');
+  assert.ok(keys.some((k) => play.lifeTrace(Number(k.slice(4))).scene === 'yimen'), '这一场也留下自己的经历');
   const sceneIds = new Set(play.life.save().store.entries.map((e) => e.sceneId).filter(Boolean));
   assert.ok(sceneIds.has('daliang') && sceneIds.has('yimen'), '两场的经历都在同一份记忆装置里');
 });
