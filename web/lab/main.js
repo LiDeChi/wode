@@ -1,7 +1,7 @@
 // 科研台：把 runner.js 跑出来的每一局，变成案上一颗滚进陶罐的豆子。
 // 这里只做装配与账目；机器在 rig.js，豆子在 beans.js，人在 figures.js。
 import * as THREE from 'three';
-import { BASE, VARIABLES } from './world.js';
+import { BASE, VARIABLES, makeWorld } from './world.js';
 import { PERSONAS } from '/shared/engine/simulate.js';
 import { createBench } from './scene.js';
 import { setPlateAnisotropy } from './labels.js';
@@ -12,6 +12,8 @@ import { createSlip } from './slip.js';
 import { createScroll } from './scroll.js';
 import { createIncense } from './incense.js';
 import { createStages } from './stages.js';
+import { buildLifeBench } from './lifebench.js';
+import { createLifeRun, SCRIPTS, SEEDS, DIRECTORS, CARRIES, TRUSTS } from './liferun.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -38,16 +40,97 @@ const scroll = createScroll(bench, { onFilm: () => toFilm() });
 const incense = createIncense(bench, { onPick: () => readColumn(baseline ? 'before' : 'after') });
 // 竖屏上有两种看法：wide 全景（整台机器装得下）/ knobs·pots·ask 凑近看一件实物（见 stages.js）。
 // 桌面不走这套，屏幕上还是原来那台镜头。
+// 生活台（t48）在机器左边那张矮案上：它不在默认镜头里，靠眼前那块「手摇生活台」的挂牌进出。
+const LIFE_AT = [-8.8, -1.62, 4.2];
 const stages = createStages(bench, rig, {
   figures: tiles,
+  life: { at: new THREE.Vector3(LIFE_AT[0], LIFE_AT[1] + 1.05, LIFE_AT[2] + .1), label: '手摇生活台' },
   onStage: name => {
     if (name === 'knobs') setTop('凑近看这一排铜钮：拨一枚，再拉闸。');
     else if (name === 'pots') setTop('凑近看这几只陶罐：点一只，看一粒豆子怎么走的。');
     else if (name === 'ask') setTop('四张牌摆开了：点一张，等于向五个人各讲一次同一种话。');
+    else if (name === 'life') setTop('这台是生活台：摇一拍拍地走，看「铜槽 → 脉搏 → 眼睛 → 身段 → 手 → 史简」哪一环真的动了。');
   },
 });
 VARIABLES.forEach(v => rig.setKnob(v.id, v.base));
 $('debug').hidden = !dev;
+
+/* ---------------- 生活台：手摇一拍，看链子哪一环动了（t48 / LIVING.md §10 E） ----------------
+   这台机子不跟上面那台共用任何一处状态：每上弦一次都新建一个私有会话与玩法，
+   摇出来的账、记忆、感知留档全留在那一份里。下面这本「主世界」的账只用来对账——
+   无论在这儿摇多少回，它一行都不该多。 */
+const mainWorld = makeWorld(BASE);
+const liferun = createLifeRun({ settings: BASE, main: mainWorld.session.ledger });
+const nextId = (list, id) => list[(Math.max(0, list.findIndex(x => x.id === id)) + 1) % list.length].id;
+const lifebench = buildLifeBench(bench, {
+  at: LIFE_AT,
+  onCrank: () => {
+    const r0 = liferun.read();
+    if (r0.done) { setTop('这一段已经摇到天亮了。上弦：点铜槽换脚本，或者点「摇到天亮」旁边那块牌子换个条件。'); return; }
+    lifebench.kick();
+    liferun.crank(1);
+    const r = lifeRefresh();
+    const c = r.chain || {};
+    if (c.hand) setTop(`这一拍有人真的动了手：${handName(c.hand)}。`);
+    else if (c.eyes?.length) setTop(`这一拍 ${c.eyes.map(e => lifePerson(e.person)).join('、')} 各自把这事过了一遍——身段牌上写着停在哪一层。`);
+    else if (c.pulse) setTop(`这一拍没人的事：${cut(c.pulse.text, 40)}`);
+    else setTop('这一拍什么都没动：环境没变，心里也没翻页。');
+    lifeHint(r);
+  },
+  onEnd: () => {
+    const r0 = liferun.read();
+    if (r0.done) { setTop('已经天亮了，这一段走完了。点铜槽换脚本，或者换一把锁再摇一段。'); lifeHint(r0); return; }
+    // 没上弦也照样能摇到天亮：liferun 会先按现在锁着的条件上一回弦（这样这一杆永远点得动，不会崩）。
+    const fresh = !r0.armed;
+    lifebench.kick();
+    liferun.toEnd();
+    const r = lifeRefresh();
+    setTop(`${fresh ? '刚上弦，' : ''}${r.verdict.text}：${r.verdict.why}`);
+    lifeCompare(r);
+  },
+  onSlot: () => lifeLock('script'),
+  onLock: id => lifeLock(id),
+});
+lifebench.refresh(liferun.read());
+
+const lifePerson = id => ({ ruji: '如姬', guard_a: '守卫甲', guard_b: '守卫乙', xinling: '信陵君', houying: '侯嬴', jinbi: '晋鄙', weiwang: '魏王' }[id] || id);
+const handName = h => `${lifePerson(h.person)}「${cut(h.text, 24)}」`;
+
+/** 重画牌子，顺带报「主世界那本账有没有被我摇长」（这是这台机子跟主世界隔开的证据）。 */
+function lifeRefresh() {
+  const r = liferun.read();
+  lifebench.refresh(r);
+  return r;
+}
+function lifeHint(r) {
+  const iso = r.isolation || {};
+  const clean = iso.mainBefore != null && iso.mainNow === iso.mainBefore;
+  setHint(`摇到第 ${r.tick} 拍，天亮在第 ${r.span} 拍。${clean ? '主世界那本账没有多一行。' : '注意：主世界的账动了，这不正常。'}`);
+}
+/** 到天亮时把两回摆在一起看：这一回跟上一回的判决一样不一样。 */
+function lifeCompare(r) {
+  const prev = r.prev?.text;
+  setHint(prev
+    ? `上一回是「${prev}」。${prev === r.verdict.text ? '换成这个样子，机会还是这么走。' : '只换了一样，机会的走法就变了。'}`
+    : '第一次摇到天亮。换个条件再摇一遍，就能对着看。');
+}
+/** 上弦：锁里换一样（换一样就重来一段，这是「每次只换一个变量」的做法）。 */
+function lifeLock(id) {
+  const table = { script: ['script', SCRIPTS], seed: ['seed', SEEDS], director: ['director', DIRECTORS], carry: ['carry', CARRIES], trust: ['rujiTrust', TRUSTS] }[id];
+  if (!table) return;
+  const [key, list] = table;
+  const before = liferun.locks[key];
+  const to = nextId(list, before);
+  if (key === 'carry' && to === 'carry' && !liferun.read().armed) {
+    setTop('「带着上一段」要先用「空手进场」摇出一段来——先摇一段吧。');
+    return;
+  }
+  liferun.arm({ [key]: to });
+  const r = lifeRefresh();
+  const label = r.changedText?.join('、') || '什么都没换';
+  setTop(`只改了一样：${label}。${r.locks.scriptNote ? `${r.locks.scriptNote}——` : ''}摇一拍拍地看，或者点「摇到天亮」。`);
+  lifeHint(r);
+}
 
 /* ---------------- 账目：worker 里跑 runner.js ---------------- */
 let settings = { ...BASE }, baseline = null, changed = null, active = null, busy = false, director = 'lu';
@@ -501,4 +584,11 @@ if (dev) window.__lab = {
   /* 手机换观察距离那套：现在在哪一处、镜头会停在哪、横拖到哪儿了。 */
   stage: () => ({ name: stages.stage, close: stages.close, rest: bench.rest, panOff: bench.panOff, tall: bench.tall }),
   lanes: run => lanesOf(run),
+  /* 生活台（t48）：读数、上弦、主世界那本账现在几行。 */
+  lifebench, liferun,
+  life: () => liferun.read(),
+  lifeArm: patch => { liferun.arm(patch); return lifeRefresh(); },
+  lifeCrank: n => { liferun.crank(n); return lifeRefresh(); },
+  lifeEnd: () => { liferun.toEnd(); return lifeRefresh(); },
+  mainLedger: () => mainWorld.session.ledger.entries.length,
 };

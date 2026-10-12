@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { makePlate } from './labels.js';
 
-export function createStages(bench, rig, { figures, onStage } = {}) {
+export function createStages(bench, rig, { figures, onStage, life } = {}) {
   const tags = new THREE.Group();
   tags.name = '眼前的木牌';
   bench.scene.add(tags);
@@ -28,7 +28,8 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
     });
     g.add(plate.mesh);
     bench.register(g, name, {
-      pad: [width + .3, height + .34, .55, 0],
+      // 手感区比牌面本身高一点：手机竖屏上牌面只有 42px 高，手指够不到。
+      pad: [width + .3, height + .5, .55, 0],
       onHoverStart: () => { g.userData.lift = 1; },
       onHoverEnd: () => { g.userData.lift = 0; },
       onClick,
@@ -46,6 +47,13 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
     lines: ['左右拖动 · 看全这一排'],
     onClick: () => { guideTag.group.visible = false; },
   });
+  /* 生活台在别处（机器左边那张矮案）。桌面上镜头本来照不到它，所以给一块挂牌：
+     全景里写着「手摇生活台」，进去以后写着「回推演机」。 */
+  const lifeTag = life ? makeTag('stage:life', {
+    width: 1.6, height: .44, sx: .56, sy: -.34, toward: .74,
+    lines: [life.label || '手摇生活台'],
+    onClick: () => { show(stage === 'life' ? (bench.tall ? 'wide' : 'plain') : 'life'); },
+  }) : null;
 
   /** 全景那台机位：把整台机器装进画面（二分求最近距离），斜角小一点，四层岔路才看得见。
    *  留的余量比「刚好」多一点：罐口木签、木牌这些还在慢慢翻面，量的时候和站定之后差几个点。 */
@@ -71,6 +79,14 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
       target: figures.askPoint(), dist: 10.8, yaw: -.02, pitch: .28, ty: 1.3, tz: 2.55,
       pan: { ax: 1, az: 0, span: 1.2 },
     }),
+    // 生活台不是「手机才有的问题」，桌面也能推近：它是旁边那张矮案。
+    life: () => ({
+      // 竖屏那条窄缝装不下整张案：站远一点，剩下的靠左右拖（一排控制件跨 5 个单位）。
+      // 案上那条链子从案面一直挂到史简顶，取景要把它整条装进来：镜头比案面高一点、退到 8.4。
+      target: life.at, dist: bench.tall ? 13.4 : 8.4, yaw: -.05, pitch: .24,
+      ty: life.at.y + .85, tz: life.at.z + .3,
+      pan: { ax: 1, az: 0, span: 3.0 },
+    }),
   };
 
   function applyPose(to) {
@@ -88,19 +104,25 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
     knobs: ['knob:'],
     pots: ['pot:'],
     ask: ['appeal:', 'ask:open'],
+    life: ['life:'],
   };
 
-  /** 换一种看法。stage 只在竖屏下离开 plain。 */
+  /** 换一种看法。stage 只在竖屏下离开 plain；生活台是个例外——桌面上也去得了。 */
   function show(to) {
-    if (!bench.tall) to = 'plain';
+    if (!bench.tall && to !== 'life') to = 'plain';
     stage = to;
     const close = to !== 'wide' && to !== 'plain';
     // 四张诉求牌：全景里收起来立一块入口牌，近看时摆成一排。
     figures?.setStage(to === 'ask' ? 'ask' : (bench.tall ? 'wide' : 'plain'));
     rig.setStage?.(to);
-    bench.only?.(to === 'plain' ? null : KEEP[to]);
+    bench.only?.(to === 'plain' || to === 'life' ? KEEP[to] ?? null : KEEP[to]);
     applyPose(to);
-    backTag.group.visible = close;
+    backTag.group.visible = bench.tall && close;
+    if (lifeTag) {
+      // 生活台里手机上已经有「回全景」那块牌；桌面上没有，就留这块当出口。
+      lifeTag.group.visible = to === 'life' ? !bench.tall : !close;
+      lifeTag.plate.setText([to === 'life' ? '回推演机' : (life.label || '手摇生活台')]);
+    }
     if (close && !guided) { guideTag.group.visible = true; guideUntil = performance.now() + 6000; }
     if (!close) guideTag.group.visible = false;
     onStage?.(stage);
@@ -116,8 +138,8 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
 
   /** 回到全景（眼前木牌、入口牌都跟着换）。 */
   function back() {
-    if (!bench.tall) return 'plain';
-    return show('wide');
+    if (!bench.tall && stage !== 'life') return 'plain';
+    return show(bench.tall ? 'wide' : 'plain');
   }
 
   bench.onTallChange(() => {
@@ -134,14 +156,21 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
   });
 
   bench.addUpdater((dt, now) => {
-    if (!bench.tall) { backTag.group.visible = guideTag.group.visible = false; return; }
-    if (guideTag.group.visible && performance.now() > guideUntil) { guideTag.group.visible = false; guided = true; }
-    for (const t of [backTag, guideTag]) {
-      if (!t.group.visible) continue;
-      t.group.position.copy(bench.anchor(t.sx, t.sy, t.toward));
-      t.group.lookAt(bench.camera.position);
-      const lift = t.group.userData.lift ? .06 : 0;
-      t.group.position.y += lift;
+    if (!bench.tall) { backTag.group.visible = guideTag.group.visible = false; }
+    else {
+      if (guideTag.group.visible && performance.now() > guideUntil) { guideTag.group.visible = false; guided = true; }
+      for (const t of [backTag, guideTag]) {
+        if (!t.group.visible) continue;
+        t.group.position.copy(bench.anchor(t.sx, t.sy, t.toward));
+        t.group.lookAt(bench.camera.position);
+        const lift = t.group.userData.lift ? .06 : 0;
+        t.group.position.y += lift;
+      }
+    }
+    if (lifeTag?.group.visible) {
+      lifeTag.group.position.copy(bench.anchor(lifeTag.sx, lifeTag.sy, lifeTag.toward));
+      lifeTag.group.lookAt(bench.camera.position);
+      lifeTag.group.position.y += lifeTag.group.userData.lift ? .06 : 0;
     }
   });
 
@@ -151,7 +180,7 @@ export function createStages(bench, rig, { figures, onStage } = {}) {
     show, back, entry, pose: applyPose,
     get stage() { return stage; },
     get close() { return stage !== 'wide' && stage !== 'plain'; },
-    get tags() { return [backTag, guideTag]; },
+    get tags() { return [backTag, guideTag, lifeTag].filter(Boolean); },
     /** 竹简/推近取消以后：回到「当前这一处」而不是一路退回全景。 */
     release() { applyPose(stage === 'plain' && bench.tall ? 'wide' : stage); },
   };
