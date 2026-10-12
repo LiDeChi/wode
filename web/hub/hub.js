@@ -20,8 +20,12 @@ try {
 } catch { /* 坏掉的本地录制不能拖垮整张排片表 */ }
 
 // ── 导师的笔记：还是那一句真的 ────────────────────────────────
-let mentorLines = ['先把能玩的、录好的排在眼前，其余作品备好再来。'];
-let mentorSource = '临时排片说明；导师笔记尚未读取';
+// notes() 给的是以字段为键的对象（每个值是 {value, source, seq}），不是数组：
+// 一律经 experienceOf() 逐条读真记录（web/hub/experience.js），这里不再 find/map 原始对象。
+const NO_NOTES_LINE = '先把能玩的、录好的排在眼前，其余作品备好再来。';
+const NO_NOTES_SOURCE = '临时排片说明；导师笔记尚未读取';
+let mentorLines = [NO_NOTES_LINE];
+let mentorSource = NO_NOTES_SOURCE;
 let world = null, experience = null;
 try {
   world = loadWorld();
@@ -31,11 +35,14 @@ try {
   experience = experienceOf(session);
   const notes = session.mentor.notes();
   mentorLines = experience.notes.map(n => n.text).filter(Boolean);
-  mentorSource = world ? '同一个世界里留下的导师笔记' : '初次见面的笔记；还没有上次的经历';
+  // 一条真笔记都没读到（例如这一局的笔记还是空的）就照实说是临时排片说明：
+  // 牌上不能出现 undefined，也不能替他编一句话。
+  if (mentorLines.length) mentorSource = world ? '同一个世界里留下的导师笔记' : '初次见面的笔记；还没有上次的经历';
+  else mentorLines = [NO_NOTES_LINE];
   if (DEV) window.__hub = { notes, experience, answers, need, director: session.state.directorId };
 } catch {
-  mentorLines = ['先把能玩的、录好的排在眼前，其余作品备好再来。'];
-  mentorSource = '临时排片说明；导师笔记尚未读取';
+  mentorLines = [NO_NOTES_LINE];
+  mentorSource = NO_NOTES_SOURCE;
 }
 
 // ── 台上摆什么：一件实物 = 一行排片 ───────────────────────────
@@ -197,7 +204,7 @@ window.addEventListener('keydown', (e) => {
 
 if (DEV) {
   window.__hub = Object.assign(window.__hub ?? {}, {
-    render, stage, records, mentorSource, world, last: Boolean(last),
+    render, stage, records, mentorSource, world, last: Boolean(last), mentorLines: [...mentorLines],
     items: ITEMS.map(({ id, row, act, x, scale }) => ({ id, row, act, x, scale })),
   });
   $('dev').hidden = false;
