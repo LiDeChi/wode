@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>一页留存 · 中文阅读样页</title><link rel="stylesheet" href="/text/style.css"><link rel="stylesheet" href="/text/demo.css"></head>
+<body>
+<a class="skip" href="#reading-material">跳到阅读材料</a>
+<header class="demo-header"><a href="/hub.html">数字世界</a><span>独立中文阅读样页</span><span class="sample-label">演示文字</span></header>
+<main>
+<section class="opening" aria-labelledby="page-title">
+ <aside class="margin-note"><span class="vertical-sign" aria-hidden="true">取符之夜</span><p>一段台词<br>一页手稿<br>一份来处</p></aside>
+ <div class="opening-content"><p class="scene-line">宫门以内，灯还在走。</p><h1 id="page-title">把这一页<br>留在手边。</h1><p class="intro">短题签先说清一件事。想多读一点，就翻开正文；想知道它从哪里来，再追看同一份留存。</p><div class="opening-actions"><button id="read-long" type="button">读取符之夜的长页</button><button id="read-director" type="button" class="plain-button">打开导演手稿</button></div><p class="honest">以下角色、记录与版本均为静态样例。没有连接正在运行的世界。</p></div>
+</section>
+<section class="reading-grid" id="reading-material" aria-label="阅读材料">
+ <aside class="reading-margin"><h2>听她说完</h2><p>台词保留完整句子。<br>显示整句之后，<br>再由你明确继续。</p><label class="notification-label"><input id="notifications" type="checkbox" checked> 提示后续与缺来源</label></aside>
+ <div class="reading-column"><div id="dialogue"></div><p id="dialogue-status" role="status" class="demo-status"></p>
+  <div class="material-heading"><h2>翻开留存</h2><span>心思、行动，各有来处</span></div><div id="reader"></div>
+  <div class="demo-version"><button id="next-version" type="button" class="plain-button">送入第二版手稿（演示）</button><p id="demo-status" role="status">读页固定在打开时的版本。后续先作提示，等你点开。</p></div>
+ </div>
+</section>
+</main>
+<footer class="demo-footer"><span>一页留存</span><p>只读文字，不推进世界。</p><a href="/docs/design/TEXT-RENDERER.md">阅读设计契约</a></footer>
+<script type="module" src="/text/demo.js"></script>
+</body></html>
