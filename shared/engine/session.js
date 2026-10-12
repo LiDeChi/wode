@@ -38,6 +38,8 @@ export function createSession({ saved, speaker } = {}) {
     // 第二阶段：每部作品演过没有、选了什么；第三阶段：可玩呈现的进度（play.js）
     plays: saved?.plays || {},
     play: saved?.play || null,
+    // 本段经历的边界（开场 seq / 继承的主张）。没开过经历时这个键不出现，存档形状一字不变。
+    ...(saved?.episode ? { episode: saved.episode } : {}),
   };
 
   /** 第一次见面：用户回答三个粗问题，写一句自己的需求 */
@@ -85,17 +87,29 @@ export function createSession({ saved, speaker } = {}) {
    * 开了持续生活（state.episode 存在）时只看「本段经历」的反应：
    * 上一次走进同一部作品的反应不再算进来（docs/design/LIVING.md §7 历史不串台）。
    */
+  function learnLife() {
+    const ep = state.episode;
+    if (!ep) return null;
+    const pred = state.predictions[ep.work];
+    if (!pred) return null;
+    const rx = ledger.entries.filter((e) => e.kind === 'user.react' && e.payload.scene === ep.work && e.seq >= ep.from && e.seq > (ep.learnedThrough ?? 0));
+    if (!rx.length) return null;
+    const r = director().learn(pred.list, rx.map((e) => ({ beat: e.payload.beat, signal: e.payload.signal, seq: e.seq })), [pred.seq, ...rx.map((e) => e.seq)]);
+    ep.learnedThrough = rx.at(-1).seq;
+    return r;
+  }
+
   function wrap(presentationId) {
     const pred = state.predictions[presentationId];
     if (!pred) return null;
     const ep = state.episode;
     const scope = ep && ep.work === presentationId ? ep : null;
     const reactions = ledger.entries
-      .filter((e) => e.kind === 'user.react' && e.payload.scene === presentationId && (!scope || e.seq >= scope.from))
+      .filter((e) => e.kind === 'user.react' && e.payload.scene === presentationId && (!scope || (e.seq >= scope.from && e.seq > (scope.learnedThrough ?? 0))))
       .map((e) => ({ beat: e.payload.beat, signal: e.payload.signal, seq: e.seq }));
     const r = director().learn(pred.list, reactions, [pred.seq, ...reactions.map((x) => x.seq)]);
     ledger.append({ kind: 'present.deliver', from: `presentation:${presentationId}`, to: 'user', cause: [r.seq], payload: { presentation: presentationId } });
-    if (ep) ep.to = ledger.size;
+    if (scope) { scope.to = ledger.size; if (reactions.length) scope.learnedThrough = reactions.at(-1).seq; }
     return r;
   }
 
@@ -131,15 +145,38 @@ export function createSession({ saved, speaker } = {}) {
     return { ...ep, claimIds: ep.claimIds.slice() };
   }
 
-  /** 导演给这一场的生活计划：一个 beat 只提交一次（恢复存档后不重复记账） */
+  /**
+   * 原始观察：玩家在这一场停了多久（可追溯，不替代导师的纸条）。
+   * 记的是所属场与起止拍，账本上是一条 user.pause。
+   */
+  function recordPause({ scene = null, fromTick = null, toTick = null, ticks = null } = {}) {
+    const seq = ledger.append({
+      kind: 'user.pause', from: 'user', to: 'world',
+      payload: { scene, fromTick, toTick, ticks: ticks ?? (toTick != null && fromTick != null ? toTick - fromTick : null) },
+    }).seq;
+    return { seq, seqs: [seq] };
+  }
+
+  /**
+   * 导演给这一场的生活计划：同一份决定只提交一次（内容没变就不再记账）；
+   * 手艺变了、或逻辑拍推进后重新算出的决定不一样时，才落新的一条。
+   */
   function commitLifeDesign({ work, beat, policy, cause = [] } = {}) {
-    const b = state.designs?.[work]?.beats?.find((x) => x.id === beat);
-    if (b?.lifePolicy) return { seq: b.lifePolicy.sourceSeq ?? null, policy: b.lifePolicy, committed: false };
+    const design = state.designs?.[work];
+    const i = design?.beats?.findIndex?.((x) => x.id === beat) ?? -1;
+    if (i < 0) return null;
+    const b = design.beats[i];
+    const same = (x, y) => x && y && ['waitForPlayer', 'cadenceTicks', 'historyReveal', 'why', 'version', 'autonomy', 'environment', 'stimulus', 'conditions', 'gate', 'directorId'].every((k) => JSON.stringify(x[k]) === JSON.stringify(y[k]));
+    if (b?.lifePolicy && same(b.lifePolicy, policy)) {
+      return { seq: b.lifePolicy.sourceSeq ?? null, policy: b.lifePolicy, committed: false };
+    }
     const d = director();
     if (!d || typeof d.lifeDesign !== 'function') return null;
     const r = d.lifeDesign({ work, beat, policy }, cause);
-    if (b) b.lifePolicy = { ...policy, sourceSeq: r.seq };
-    return { seq: r.seq, policy: b?.lifePolicy ?? policy, committed: true };
+    const pinned = { ...policy, sourceSeq: r.seq };
+    // 只换 state 里那一份：账本里那条 director.design 的 payload 不能被就地改（改了存档指纹就不符）
+    state.designs[work] = { ...design, beats: design.beats.map((x, j) => (j === i ? { ...x, lifePolicy: pinned } : x)) };
+    return { seq: r.seq, policy: pinned, committed: true };
   }
 
   function editNote(field, value) {
@@ -163,7 +200,9 @@ export function createSession({ saved, speaker } = {}) {
     return d.dress({ work, scenes, places: PLACES, people: PEOPLE, items: ITEMS }, cause);
   }
 
+  const saveLife = () => api.saveLife?.();
   function save() {
+    if (state.play?.life) saveLife();
     return {
       ledger: ledger.toJSON(),
       claims: claims.toJSON(),
@@ -174,14 +213,15 @@ export function createSession({ saved, speaker } = {}) {
     };
   }
 
-  return {
+  const api = {
     ledger, claims, mentor, directors, minds, state, speaker,
     // voices 是 state.voices 的同一个对象：narrate 直接往会话上写旁注，save 也一起存
     voices: state.voices,
     meet, commission, react, wrap, editNote, director, dress, save,
     // 生活循环（docs/design/LIVING.md §7）：一段经历的范围与导演的生活计划
-    beginEpisode, episodeScope, commitLifeDesign,
+    beginEpisode, episodeScope, commitLifeDesign, recordPause, learnLife,
     audit: () => auditService(ledger),
     trace: (seq) => traceToUser(ledger, seq),
   };
+  return api;
 }

@@ -160,7 +160,16 @@ export function createPlay(session, opts = {}) {
   const life = living ? createLife({
     session, kernel: kern, plan: lifePlanRef, seed: opts.seed ?? 'life',
     store: lifeState, scenes, input: (inp) => runInput(inp),
+    sync: () => { syncLifeScene(); },
+    refresh: () => {
+      session.learnLife?.();
+      syncEpisodeProgress();
+      const id = currentActId();
+      if (id) life.enter(id, lifePolicyFor(id));
+    },
+    ended: (end) => finishActFromLife(end),
   }) : null;
+  if (life) session.saveLife = () => { Object.assign(lifeState, life.save()); };
   Object.defineProperty(session.state.play, 'days', {
     configurable: true, enumerable: true,
     get: () => kern.days(),
@@ -215,8 +224,8 @@ export function createPlay(session, opts = {}) {
 
   function find(subject, predicate) {
     // 开了持续生活时只看「本段经历 + 明确继承」里的主张：上一局的结局、下场不参与这一段的计算
-    const scope = session.episodeScope?.() ?? null;
-    const only = scope ? scope.claimIds : null;
+    const scope = life ? session.episodeScope?.() ?? null : null;
+    const only = life && scope ? scope.claimIds : null;
     return claims.consensus(subject, predicate, only)
       || claims.find((c) => c.subject === subject && c.predicate === predicate && c.status !== STATUS.FORMER && (!only || only.includes(c.id))).slice(-1)[0];
   }
@@ -295,6 +304,8 @@ export function createPlay(session, opts = {}) {
     a.done = false; a.choice = null; a.outcome = null; a.watched = []; a.asked = [];
     s.extra = { id: sceneId, ending: null };
     s.stage = 'extra';
+    openEpisode(scenes[sceneId].work ?? 'qiefu');   // 持续生活：新组合也是一段经历（只开一次）
+    lifeEnter(sceneId);
     kern.enter(sceneId);                       // 建场（幂等）：各控制器 init
     log({ kind: 'extra', text: scenes[sceneId].scene });
     return view();
@@ -330,6 +341,7 @@ export function createPlay(session, opts = {}) {
     if (s.stage !== 'intro') return view();
     if (!session.state.plays?.changping) playWork(session, 'changping');
     session.commission('qiefu');
+    openEpisode('qiefu');                      // 持续生活：本段经历从这里算起（只开一次）
     s.stage = 'film';
     log({ kind: 'film', text: '长平之后，秦军围邯郸。赵使一路向魏国求救；魏王令晋鄙的十万军停在邺，不许再走。' });
     return view();
@@ -337,13 +349,14 @@ export function createPlay(session, opts = {}) {
 
   function next() {
     const s = P();
-    if (s.stage === 'film') { s.stage = 'act'; s.actIndex = 0; return view(); }
+    if (s.stage === 'film') { s.stage = 'act'; s.actIndex = 0; lifeEnter(ACT_ORDER[0]); return view(); }
     if (s.stage === 'act') {
       const id = ACT_ORDER[s.actIndex];
       if (!actState(id).done) throw new Error('这一幕还没做出选择');
       s.actIndex += 1;
       if (s.actIndex >= ACT_ORDER.length) return coda();
       if (ACT_ORDER[s.actIndex] === 'night') nightStart();
+      lifeEnter(ACT_ORDER[s.actIndex]);        // 进场就把这一场的生活计划提交好（暂停也不多记一笔）
       return view();
     }
     if (s.stage === 'coda') { return startGranary(); }
@@ -444,7 +457,9 @@ export function createPlay(session, opts = {}) {
     const s = P();
     s.stage = 'granary';
     session.commission('weicheng');
+    openEpisode('weicheng');
     const g = kern.enter('granary').ctrl.desk;      // 建桌子（幂等）；旧代码在这里新建 s.granary
+    lifeEnter('granary');
     g.keeper = g.keeper || 'keeper_doubt';
     g.phase = 'inspect';
     g.inspected = null;
@@ -492,9 +507,11 @@ export function createPlay(session, opts = {}) {
   function lifePlan() {
     const designs = session.state.designs || {};
     // 导演案可能晚于 createPlay 才落（先 meet 再 begin）：案一变就重算
-    const key = Object.keys(designs).sort().map((w) => `${w}:${(designs[w].beats || []).map((b) => b.id).join(',')}`).join('|');
+    const director = session.director?.() ?? null;
+    const craft = (() => { try { return JSON.stringify(director?.craft?.() ?? {}); } catch { return '{}'; } })();
+    // 案一变、导演换人、手艺变了 → 重新算（手艺版本就是 M1 说的「决定要能跟着学变」）
+    const key = [session.state.directorId ?? '-', craft, Object.keys(designs).sort().map((w) => `${w}:${(designs[w].beats || []).map((b) => b.id).join(',')}`).join('|')].join('#');
     if (!lifePlanCache || lifePlanKey !== key) {
-      const director = session.director?.() ?? null;
       const works = [...new Set(Object.values(scenes).map((s) => s.work).filter(Boolean))];
       const policies = {};
       const decisions = [];
@@ -509,16 +526,27 @@ export function createPlay(session, opts = {}) {
     return lifePlanCache;
   }
 
-  /** 一个 beat 只提交一次生活计划（第二次进这一场直接读存档里的那份） */
+  /** 每拍读取计划；只有导演或决定内容改变才提交新来源。 */
   function lifePolicyFor(sceneId) {
     const scene = scenes[sceneId];
     if (!scene) return null;
     const work = workOf(sceneId);
     const beat = scene.beat ?? sceneId;
-    const planned = lifePlan().policies[beat] || lifePlan().policies[sceneId];
+    const base = lifePlan().policies[beat] || lifePlan().policies[sceneId];
+    const planned = base && { ...base, decidedAt: life?.tick() ?? 0, directorId: session.state.directorId };
     if (!planned) return null;
     const done = session.commitLifeDesign({ work, beat, policy: planned, cause: [openSeqOf(work)].filter(Boolean) });
     return done?.policy ?? planned;
+  }
+
+  /**
+   * 开一段经历（只在启用持续生活时）：记下开场 seq 与继承项，之后本段以外的主张不参与结局。
+   * 恢复存档时已经开过就不再开（历史范围不能因为重进作品而重置）。
+   */
+  function openEpisode(work) {
+    if (!life) return null;
+    if (session.state.episode && session.state.episode.work === work && !session.state.episode.to) return session.state.episode;
+    return session.beginEpisode({ work, inherit: [] });
   }
 
   function lifeEnter(sceneId) {
@@ -527,6 +555,59 @@ export function createPlay(session, opts = {}) {
     if (!id || !scenes[id]) return null;
     life.enter(id, lifePolicyFor(id));
     return id;
+  }
+
+  /**
+   * 段落切换：新一段重置进度（拍、输入去重、队列、结束标记），但经验与记忆接着用。
+   * 恢复原来的那一段不会重开（openEpisode 已经返回存档里的那一段）。
+   */
+  function syncEpisodeProgress() {
+    if (!life) return null;
+    const ep = session.state.episode;
+    const ls = life.state();
+    if (!ep || ep.id === ls.episodeId) return ep?.id ?? null;
+    ls.episodeId = ep.id;
+    ls.memoryOffset = (ls.memoryOffset ?? 0) + ls.tick;
+    ls.tick = 0;
+    ls.sceneId = null;
+    ls.sceneTick = 0;
+    ls.processed = {};
+    ls.pendingInputs = [];
+    ls.queue = [];
+    ls.ended = false;
+    ls.endedOutcome = null;
+    ls.paused = false;
+    ls.pause = { sinceTick: 0, sceneId: null, recorded: {} };
+    return ep.id;
+  }
+
+  /**
+   * M10：演员自己把这幕做完了——落作品与本幕进度，让玩家能进下一幕。
+   * 不写 user.act / user.react：这不是玩家做的，也不冒充「很快通过」。
+   */
+  function finishActFromLife(end) {
+    if (!end) return null;
+    const sceneId = end.scene || currentActId();
+    if (!sceneId) return null;
+    const work = workOf(sceneId);
+    const choice = end.choice ?? end.outcome?.choice ?? end.outcome?.r ?? null;
+    const a = actState(sceneId);
+    if (a.done) return a;
+    // work 效果已经落作品时不要再写一遍；没有 work 的 end 只收幕。
+    if (end.work?.touched) a.work = end.work.touched;
+    a.done = true;
+    a.choice = choice ?? a.choice ?? null;
+    a.outcome = {
+      text: end.text ?? a.outcome?.text ?? null,
+      cost: end.outcome?.cost ?? null,
+      claims: end.claims ?? [],
+      choice: end.outcome?.choice ?? choice ?? null,
+      end: end.outcome ?? null,
+      by: end.from === 'world' ? 'world' : (end.from ? `actor:${end.from}` : null),
+      seq: end.seq ?? null,
+    };
+    remember(sceneId);
+    return a;
   }
 
   /** 这一拍走完，舞台可能已经翻到下一场：把生活循环挪过去（同一 beat 不重复提交） */
@@ -539,23 +620,29 @@ export function createPlay(session, opts = {}) {
 
   /** 玩家做的事仍然走原来那几条路：账本、反应、文字一字不变，只是由逻辑拍来触发 */
   function runInput(inp) {
-    const a = inp?.args || {};
-    if (inp?.op === 'choose') return choose(a.id ?? a.option);
-    if (inp?.op === 'watch') return watch(a.person ?? a.id);
-    if (inp?.op === 'ask') return ask(a.person ?? a.id);
-    if (inp?.op === 'chooseKeeper') return chooseKeeper(a.id ?? a.keeper);
-    if (inp?.op === 'granary') return granaryChoose(a.id ?? a.choice);
-    if (inp?.op === 'begin') return begin();
-    if (inp?.op === 'next') return next();
+    // 字面接口（§9）：args 允许三种写法——{id:'x'}、['x']、'x'，也可以把 id 直接放在输入上
+    const raw = inp?.args ?? inp;
+    const a = Array.isArray(raw) ? (raw[0] ?? {}) : raw;
+    const id = typeof a === 'string' ? a : (a?.id ?? a?.option ?? a?.person ?? a?.choice ?? a?.keeper ?? null);
+    const op = inp?.op;
+    if (op === 'choose') return choose(id);
+    if (op === 'watch') return watch(typeof a === 'object' ? (a.person ?? a.id) : id);
+    if (op === 'ask') return ask(typeof a === 'object' ? (a.person ?? a.id) : id);
+    if (op === 'chooseKeeper') return chooseKeeper(typeof a === 'object' ? (a.id ?? a.keeper) : id);
+    if (op === 'granary') return granaryChoose(typeof a === 'object' ? (a.id ?? a.choice) : id);
+    if (op === 'begin') return begin();
+    if (op === 'next') return next();
     return null;
   }
 
   /** 推进到某一拍：同一 toTick 重复调用、同一 input id 重复提交都只发生一次 */
   function advance(args = {}) {
     if (!life) return null;
+    syncEpisodeProgress();
     lifeEnter(life.state().sceneId || currentActId());
     const r = life.advance(args);
-    syncLifeScene();
+    if (!life.state().paused) syncLifeScene();
+    if (r?.end) finishActFromLife(r.end);
     return r;
   }
 

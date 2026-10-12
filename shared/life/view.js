@@ -7,6 +7,8 @@
 // 账本位置（seq）、以及一条开发可读的字段路径（path）。
 // 说成人话在最后一步，走 say()——今天是一层模板，以后换成 LLM 措辞也不影响任何结果。
 
+import { PLAYER } from '../kernel/roles.js';
+
 const asMap = (x) => (x && typeof x === 'object' ? x : {});
 
 /** 可替换的翻译层：结构化片段 → 人话。只读，不参与任何判定。 */
@@ -52,22 +54,47 @@ export function createLifeView({ session, kernel, life } = {}) {
     })).sort((a, b) => b.activation - a.activation || (a.signature < b.signature ? -1 : 1));
   }
 
+  /** 这个人在持续生活里最后一条真实感知（按反应 seq 留的档），用来给 log 补账本位置 */
+  function latestPerception(person) {
+    const ps = asMap(life?.state?.()?.perceptions);
+    let best = null;
+    for (const k of Object.keys(ps)) {
+      const rec = ps[k];
+      if (rec?.person !== person) continue;
+      const s = Number(k);
+      if (!best || s > best.seq) best = { seq: s, rec };
+    }
+    return best;
+  }
+
   function lastOf(person) {
     const st = minds[person]?.state || {};
-    const last = (st.log || [])[st.log.length - 1];
-    if (!last) return null;
+    const log = st.log || [];
+    const last = log[log.length - 1] || null;
+    const p = latestPerception(person);
+    if (!last && !p) return null;
+    // mind.log 的真实字段是 { sig, stoppedAt, act, error }（shared/core/mind.js 的 perceive）
+    const matched = p && (!last || (last.sig === p.rec.signature && last.act === p.rec.action));
+    const rec = matched ? p.rec : null;
+    const stoppedAt = rec?.stoppedAt ?? last?.stoppedAt ?? null;
+    const act = rec?.action ?? last?.act ?? null;
+    const sig = rec?.signature ?? last?.sig ?? null;
     return frag({
       source: 'perception',
-      layer: last.stoppedAt === 'mind' ? 'mind' : last.stoppedAt === 'module' ? 'module' : 'unit',
+      layer: stoppedAt === 'mind' ? 'mind' : stoppedAt === 'module' ? 'module' : 'unit',
       person,
-      object: last.action?.act ?? last.signature ?? null,
-      signature: last.signature ?? null,
-      reasonId: last.reasonId ?? null,
-      seq: last.seq ?? null,
-      at: last.at ?? null,
-      stoppedAt: last.stoppedAt ?? null,
-      action: last.action?.act ?? null,
-      path: `minds.${person}.state.log[${(st.log || []).length - 1}]`,
+      object: act ?? sig,
+      signature: sig,
+      reasonId: rec?.reasonId ?? last?.reasonId ?? null,
+      seq: (matched ? p.seq : null) ?? last?.seq ?? null,
+      at: rec?.tick ?? last?.at ?? null,
+      stoppedAt,
+      action: act,
+      actionLayer: rec?.actionLayer ?? null,
+      actionFrom: rec?.actionFrom ?? null,
+      error: rec?.error ?? last?.error ?? null,
+      moved: rec?.moved ?? null,
+      path: last ? `minds.${person}.state.log[${log.length - 1}]` : `play.life.perceptions[${p.seq}]`,
     });
   }
 
@@ -89,8 +116,8 @@ export function createLifeView({ session, kernel, life } = {}) {
       return {
         id,
         name: mind.name ?? id,
-        at: st.at ?? world?.ctrl?.space?.[id]?.at ?? null,
-        trust: st.trust?.['门客（你）'] ?? st.trust?.user ?? null,
+        at: st.at ?? world?.places?.[id] ?? world?.ctrl?.space?.positions?.[id] ?? null,
+        trust: st.trust?.[PLAYER] ?? st.trust?.['门客（你）'] ?? st.trust?.user ?? null,
         stress: st.stress ?? null,
         goal: st.goal ?? mind.def?.goals?.[0] ?? null,
         installed: (st.installed || []).slice(),
@@ -110,18 +137,45 @@ export function createLifeView({ session, kernel, life } = {}) {
       path: `ledger[${e.seq - 1}]`,
     }));
 
-    const experiences = (life?.recall?.({ limit: 6 }) || []).map((m) => frag({
-      source: 'memory',
-      layer: 'mind',
-      person: m.person,
-      object: m.key,
-      reasonId: m.note ?? null,
-      seq: m.seq,
-      at: m.tick,
-      activation: m.activation,
-      consolidation: m.consolidation,
-      path: `life.store[${m.id}]`,
-    }));
+    // 经历：**只读投影**——直接读记忆条目，不调 recall（recall 命中会写 lastAccess，
+    // 看扣片不能变成经历）。按「谁 / 这一场」筛，保留账本 seq 与派生量。
+    const seenExp = new Set();
+    const allExp = [];
+    const expEntries = (life?.memory?.()?.all?.() || [])
+      .filter((e) => e.sceneId === sceneId || people.includes(e.actorId))
+      .sort((a, b) => (b.activation - a.activation) || (b.seq ?? 0) - (a.seq ?? 0) || (a.id < b.id ? -1 : 1))
+      .slice(0, 8);
+    for (const e of expEntries) {
+      const m = {
+        id: e.id, person: e.actorId ?? null, key: (e.keywords || []).join('、') || e.sig, sig: e.sig,
+        seq: e.seq ?? null, tick: e.tick ?? null, depth: e.depth, impact: e.impact,
+        activation: e.activation, consolidation: e.consolidation,
+        score: { relevance: 0, importance: e.impact, recency: 0, rrf: 0, total: e.impact },
+      };
+      {
+        if (seenExp.has(m.id)) continue;
+        seenExp.add(m.id);
+        allExp.push(frag({
+          source: 'memory',
+          layer: 'mind',
+          person: m.person ?? null,
+          object: m.key ?? m.sig ?? null,
+          key: m.key ?? null,
+          signature: m.sig ?? null,
+          reasonId: m.seq ?? null,
+          seq: m.seq,
+          at: m.tick,
+          depth: m.depth,
+          impact: m.impact,
+          activation: m.activation,
+          consolidation: m.consolidation,
+          score: m.score,
+          path: `life.store[${m.id}]`,
+        }));
+      }
+    }
+    allExp.sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0) || (b.activation ?? 0) - (a.activation ?? 0));
+    const experiences = allExp.slice(0, 6);
 
     const dir = session?.state?.directorId ? session?.directors?.[session.state.directorId] : null;
     const mentorState = session?.mentor?.state?.() || null;
@@ -141,6 +195,8 @@ export function createLifeView({ session, kernel, life } = {}) {
         historyReveal: policy.historyReveal,
         why: policy.why,
         sourceSeq: policy.sourceSeq ?? null,
+        version: policy.version ?? null,
+        decidedAt: policy.decidedAt ?? null,
         path: `designs.${work}.beats[${beat}].lifePolicy`,
       },
       actors,
@@ -149,10 +205,13 @@ export function createLifeView({ session, kernel, life } = {}) {
         name: dir.def?.name ?? dir.id ?? null,
         why: policy?.why ?? null,
         sourceSeq: policy?.sourceSeq ?? null,
+        craft: dir.craft?.() ?? null,
+        learned: ledger?.last?.((e) => e.kind === 'director.learn' && e.from === dir.role)?.payload ?? null,
         path: `directors.${session.state.directorId}`,
       } : null,
       mentor: mentorState ? {
         notes: mentorState.notes,
+        chosen: mentorState.chosen, spent: mentorState.spent, budget: mentorState.budget,
         pause: mentorState.notes?.pause ?? null,
         path: 'mentor.state().notes',
       } : null,
@@ -179,6 +238,9 @@ export function createLifeView({ session, kernel, life } = {}) {
       signature: rec.signature ?? null,
       stoppedAt: rec.stoppedAt ?? null,
       action: rec.action ?? null,
+      actionLayer: rec.actionLayer ?? null,
+      actionFrom: rec.actionFrom ?? null,
+      cause: (rec.cause || []).slice(),
       moved: rec.moved ?? null,
       reason: rec.reason ?? null,
       trace: rec.trace ?? null,

@@ -240,39 +240,45 @@ play.lifeTrace(seq);             // 当时那条感知片段
 ### 逻辑拍（`shared/life/life.js`）
 
 - 一个整数逻辑拍 = 一秒；浏览器把前台秒数换成 `toTick` 传进来，**内核里没有帧循环**。
-- `advance({toTick, inputs}) -> {from,to,processed,reactions,outcomes,events,view}`：先收输入，再逐拍推进；同一拍**先处理玩家输入，再按场景声明顺序处理环境和演员**；`state.ended` 或 `state.paused` 时不推进（关掉入口等二十秒 = 没等）。
+- `advance({toTick, inputs, paused}) -> {from,to,tick,scene,processed,reactions,outcomes,events,ended,end,paused,view}`；`events` 是 `outcomes` 的同一份投影。输入 `args` 可用数组、字符串或 `{id/person/option}`；每个输入后立刻同步新场，结束就停止旧场事件。`paused` 不推进；`ended` 只接受 `next/begin` 续场，不再演旧场。
+- `tick` 是段内全局拍，`sceneTick` 入场归零；规则事实 `tick` 和日程 `at` 用本场拍。日程任意整数 `at` 到期即派环境事件，8/16/24/32 不是硬编码。未声明 `scene.life` 的场不派生活事件。
 - 幂等：同一个 `input.id` 只跑一次（第二次记 `repeated:true`）；`toTick` 不大于当前拍则原地返回。**分两段推进到同一拍 = 一次推进**（digest 相同）。
 - 子种子：`makeRng(\`${seed}/${episodeId}/${sceneId}/${tick}/${actorId}/${eventId}\`)`（`shared/core/rng.js`）；不需要抽签就不消费随机。禁 `Math.random` / `Date` / `window` / `document` / `fs` / `process`。
 
 ### 脉搏与自主（`shared/kernel/kernel.js` 的 `dispatchEvent`）
 
 - `dispatchEvent(sceneId, event)`，`event = {id,tick,origin:'actor'|'environment',from,kind,channels,cause,policy}`。
-- 环境：世界签名（天数 / 旗标 / 最近反应 / 控制器状态 / 已知地点 / 最近动作）没变 → `{silent:true}`，**不落 `world.pulse`、不形成经历**；真变了才落一条 `world.pulse`。
-- 演员：他已经看过这个脉搏（`world.seenPulse`）→ `{silent:true}`；否则走一次真实感知（写 `actor.react`），停在 unit 且 `policy.autonomy.verbs` 允许时才写 `actor.act`——`from` 一定是 `actor:<id>`，`cause` 指向他自己的那条反应（`world.pulse → actor.react → actor.act`）。
+- 环境签名只看天数、旗标、控制器、已知地点、可见动作与到期日程刻度，**不含内部 reactSeq**。没变且无到期事件 → `{silent:true}`；变化才落 `world.pulse`。环境后果的 cause 指向该 pulse，静候不会反复生经历。
+- 演员每个 pulse 只看一次；真实接收事件另按 `actor:actSeq` 去重。自主动作须停在 unit、获 `autonomy.people/verbs` 独立授予、通过 `life.gate`、本拍未行动，才写 `actor.act`（cause 指自己的 react）。规则后果挂成功 act；事实 `acted/actSeq/refused/verb/unit/actionLayer` 区分想法与执行，refused 为 `autonomy/gate/already`。
+- `life.receivers[from]` 可用 ID 数组或 `[{person,when}]`；未声明时只投给已知同地点的人（`world.places`、`ctrl.space.positions` 或 `life.positions`），未知位置不广播。已行动者的可听/可见收件人下拍先收动作、再普通巡查；链为 `actor.act → 收件人的 actor.react → 其 actor.act`。
 - 演员的授予来自导演的 `policy.autonomy`（**独立授予，不借玩家的 `beat.grants`**）；两套授予内核分别检查。
 - 规则：这类场景的规则表里多 `event` / `pulse` / `tick` / `policy` 四个事实；效果清单多一条 `['act', person, spec]`（写 `actor.act`，`verb` 默认 `'think'`，没授予则返回 `{refusedAct:true}`）。
 
 ### 导演的生活计划（`shared/life/plan.js`）
 
 - `designLife({director, design, scenes, work, seed}) -> {policies, decisions}`；纯函数，不写状态，**按 work 逐个调用**。
-- `policy = {beat, scene, work, waitForPlayer, cadenceTicks, autonomy:{people,verbs}, warning:{ticks,why}, historyReveal, environment:{cadenceTicks,kind,channels}, why, sourceSeq}`。
+- `policy = {beat,scene,work,waitForPlayer,cadenceTicks,autonomy:{people,verbs},warning:{ticks,why},historyReveal,environment:{cadenceTicks,kind,channels,schedule},stimulus,conditions,gate,why,version,decidedAt,directorId,sourceSeq}`。
+- 场景的 `life.conditions:[{name,when}]` 选 `stimulus[person][name]`；直接通道或 `{when,channels,else}` 亦可。`gate[person][verb]:{when}` 或 `{any:[{when},…]}` 读同一份规则事实；父级 `verbs` 可进一步限动词。`plans.need` 与中文 label 仅说明，内核只读结构字段。
 - 读 `stagecraft.taste(director).craft`：`freedomBias > lockBias` → 演员不等玩家（`autonomy.verbs` 加上该场声明的动词），否则只想不动；`节奏` 分档决定 `cadenceTicks`（2 / 3 / 4 拍）；`悲剧 > 0.6` → `historyReveal:'slow'`，否则 `'after-decision'`。
-- 提交一次：`session.commitLifeDesign({work,beat,policy})` 写 `director.life-design` 一条并把 `policy.sourceSeq` 钉成那条 seq；同一场同一拍再提交返回 `{committed:false}`。
+- 每拍评估：只对新真实 `user.react` 学习一次（`episode.learnedThrough`），导演/手艺版本进入计划缓存键。`commitLifeDesign` 只在决定内容改变时写 `director.life-design` 并钉 `sourceSeq/decidedAt`；同决定返回 `{committed:false}`，其余拍沿用该真实来源。
 
 ### 读镜（`shared/life/view.js`）
 
 - `createLifeView({session,kernel,life}).read(sceneId)`：**只读**——不调 `play.view()`，不碰心智（不 `tick` / `perceive` / `hear`，也不调会写 `user.ask` 的 `ask`）。返回 `{scene,beat,work,tick,place,title,policy,actors,director,mentor,causes,experiences,watching}`。
 - 每个片段带 `source / layer / object / reasonId / seq / at / path`：来源、层级、对象、原因 id、账本 seq 全在结构里。`say(rec)` 只是模板翻译层，改措辞不参与任何计算（以后可换 LLM 措辞）。
-- `life.perception(seq)` 取的是**感知当时**留下的片段（`state.play.life.perceptions`），不是拿现在的记忆倒算。
+- `life.perception(seq)` / `lifeTrace(seq)` 取**当时**留下的 signature/action/actionLayer/actionFrom/cause/trace；`actors.last` 对齐真实 mind.log 的 sig/act，再匹配该人反应 seq；托付读 `actor:player`，位置也读 `world.places`。
+- `experiences` 从 store 按 actorId/sceneId 作只读投影，含 `person/key/signature/seq/activation/consolidation/impact/depth`，不调用会改 lastAccess 的 recall。`lifeRecall({actorId,sceneId,keywords,k})` 是显式召回，补 person/key/activation；读镜重复调用 save 不变。
+- 所有真实感知（包括玩家输入与开场）按 seq 去重索引，重要度来自 error/goalHit/first/moved；事件 seq 与同类签名分开，同类再次发生点亮同槽并更新最新 seq。导演投影含 craft/learned，导师含 notes/chosen/spent/budget。
 
 ### 导师心智（`shared/agents/mentor.js`）
 
 - 只在启用持续生活的会话里 `enableMind()`（用已有 `STAFF.mentor` 定义），关掉入口就没有这个心智，存档里也没有 `mind` 键。
-- 场中停留满 8 拍且本场没记过 → `observe({kind:'pause',tick,scene})` 记一条 `notes.pause`（**不调 `learn`**，不凭停留断言「你爱深层人心」）；后台 / 暂停不算。
+- 每段连续停留满 8 拍只记一次：先落 `user.pause:{scene,fromTick,toTick,ticks}`，再 `observe(input,[pauseSeq])` 写 `notes.pause`，纸条说停留时长；入场/真实输入/恢复前台重新计时，手改 `source:'你改的'` 不被观察覆盖。**不调 learn**，后台/暂停不算。
 
 ### 经验跨局留、历史不串台
 
-- 经历与手艺分开存：`state.play.life.experiences`（本段经历）与 `state.play.life.store`（记忆存储）随存档走；`session.state.episode` 记本段开场 seq、继承主张 id 与本段产出的主张 id。
+- living 开局显式 `beginEpisode`；恢复保留原 `episode:{id,n,work,openSeq,from,to,inherit,claimIds,previous,learnedThrough}`，不重开。新段重置拍、sceneTick、输入去重、队列与 ended，记忆/心智/手艺继承；memoryOffset 让衰减时序跨段连续。
+- `life.experiences` 是已索引反应 seq 的去重表，store 是记忆；`session.save()` 同步当前 store，二者与 perceptions/episode 一起续档。自动 end 回接 `act.done/outcome`，已有 work 效果不重写；可 next，且不伪造 user.react。
 - `find(subject,predicate)` 只在**本段**（`session.episodeScope().claimIds`）里找下场 / 结局 / 学习反应 → 上一局晋鄙的下场不参与新分支的结局计算。不开生活时 `episodeScope()` 为 null，行为与旧版逐字节相同。
 
 ### 记忆存储的字面契约（`shared/core/memory.js`）
@@ -294,3 +300,4 @@ play.lifeTrace(seq);             // 当时那条感知片段
 - `/tmp/t44-parity.mjs`：680 个脚本结果的 digest，工作树与 HEAD 相同（默认关闭生活 → 行为逐字段不变）。
 - `/tmp/t44-life.mjs`：两段 = 一次、输入幂等、纯读零写、关入口等二十秒 = 没等、同种子同结果、没新刺激不伪造经历、授予允许时演员自己动（`cause` 指向他自己的反应）、经历跨局留而旧局下场不串台。
 - `/tmp/t44-memory.mjs`：上面 9 条字面契约逐条断言。
+- t52 当前复验：`node /tmp/t52-sol3.mjs` 覆盖 M1–M10/S2/S5；`node /tmp/t52-night-sol3.mjs` 只走公共 advance，验一次递符、有限听见的非空原因链、等拍与宫门外零行动、8/16/24/32 巡灯及自动 next；`node /tmp/t52-parity-sol3.mjs` 得到 680 / `530555aae5c4774a`。这些是临时最小脚本，未跑仓库测试。

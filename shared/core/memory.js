@@ -113,7 +113,7 @@ export function createMemoryStore(opts = {}) {
     if (dup) {
       // 同一件事再次发生：只让它更亮一点，不新增条目
       dup.activation = round3(Math.min(2, dup.activation + 0.2));
-      if (e.seq != null && dup.seq == null) dup.seq = e.seq;
+      if (e.seq != null) dup.seq = e.seq;   // 唯一指针指向最近一次真实发生
       return dup.id;
     }
     e.id = e.id || `m${nextId++}`;

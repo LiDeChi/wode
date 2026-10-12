@@ -255,9 +255,16 @@ export function createMentor({ ledger, def, budget = 10, saved } = {}) {
   function observe(input = {}, cause = []) {
     if (!mind) return null;
     const tick = input.tick ?? 0;
-    const p = mind.perceive({ kind: input.kind || 'pause', signature: `${input.kind || 'pause'}:${input.scene ?? '-'}`, channels: { 停顿: 1 } });
-    const seq = setNote('pause', tick, '观察', cause, `你在这一场停到第 ${tick} 秒。`);
-    return { seq, stoppedAt: p.stoppedAt, action: p.action.act, trace: p.trace, layer: p.stoppedAt, why: `导师注意到你停了 ${tick} 秒。` };
+    const stayed = input.ticks ?? (input.fromTick != null ? tick - input.fromTick : tick);
+    const scene = input.scene ?? null;
+    // 心智照旧真感知一次（停顿本身学不到口味，学口味要走 learn 的信号表）
+    const p = mind.perceive({ kind: input.kind || 'pause', signature: `${input.kind || 'pause'}:${scene ?? '-'}`, channels: { 停顿: 1 } });
+    // 手改过的那一页不覆盖：只把观察记下来，纸条留你写的
+    if (notes.pause?.source === '你改的') {
+      return { seq: null, kept: true, stoppedAt: p.stoppedAt, action: p.action.act, trace: p.trace, layer: p.stoppedAt, why: '这一页你改过，我不动它。' };
+    }
+    const seq = setNote('pause', `这一场待了 ${stayed} 秒（第 ${input.fromTick ?? tick} 拍进场）`, '观察', cause, `你在这一场停了 ${stayed} 秒。`);
+    return { seq, stoppedAt: p.stoppedAt, action: p.action.act, trace: p.trace, layer: p.stoppedAt, why: `导师注意到你停了 ${stayed} 秒。` };
   }
 
   function state() {

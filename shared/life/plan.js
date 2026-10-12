@@ -44,9 +44,11 @@ export function designLife({ director, design, scenes = {}, work, seed = 'life' 
 
   for (const beat of beats) {
     const scene = scenes[beat.scene] || scenes[beat.id] || {};
-    const life = scene.life || {};
-    const people = Array.isArray(life.actors) ? life.actors.slice() : (Array.isArray(scene.people) ? scene.people.slice() : []);
-    const verbs = ['think', ...(autonomous ? (Array.isArray(life.verbs) ? life.verbs.slice() : []) : [])];
+    // 每场按自己的候选能力挑人：声明 life:false（粮仓这类）就是只读，不派演员进去乱动
+    const life = scene.life || null;
+    const readOnly = !scene.life;
+    const people = readOnly ? [] : (Array.isArray(life?.actors) ? life?.actors.slice() : (Array.isArray(scene.people) ? scene.people.slice() : []));
+    const verbs = readOnly ? ['think'] : ['think', ...(autonomous ? (Array.isArray(life?.verbs) ? life?.verbs.slice() : []) : [])];
     const policy = {
       beat: beat.id ?? beat.scene,
       scene: beat.scene,
@@ -59,12 +61,22 @@ export function designLife({ director, design, scenes = {}, work, seed = 'life' 
         why: '更鼓与近灯先响，人还没到跟前。',
       },
       historyReveal: tragedy > 0.6 ? 'slow' : 'after-decision',
+      // 按人取的刺激、分支条件与动作闸门：内核读这三样，场景只声明数据
+      stimulus: life?.stimulus ?? null,
+      conditions: life?.conditions ?? null,
+      gate: life?.gate ?? null,
+      // 手艺版本：手艺变了就是新决定（缓存与去重都按它算）
+      version: `${round(craft.lockBias)}/${round(craft.freedomBias)}/${round(craft.paceBias)}/${round(craft.tragedyBias)}`,
       environment: {
-        cadenceTicks: Number(life.environment?.cadenceTicks ?? ENVIRONMENT_CADENCE),
+        cadenceTicks: Number(life?.environment?.cadenceTicks ?? ENVIRONMENT_CADENCE),
         kind: scene.ambient?.kind ?? 'idle',
         channels: scene.ambient?.channels ?? {},
+        // 日程：到拍就推进（巡灯 / 期限这类外部条件），不等「世界变了」
+        schedule: life?.environment?.schedule ?? life?.schedule ?? 'due',
       },
-      why: autonomous
+      why: readOnly
+        ? '这一场没有生活声明，演员只看不动。'
+        : autonomous
         ? `不等你：「${people.join('、') || '场里的人'}」会自己动身，你在不在场都一样。`
         : `「${people.join('、') || '场里的人'}」先等你开口，但心里的事照旧往前走。`,
       sourceSeq: null,

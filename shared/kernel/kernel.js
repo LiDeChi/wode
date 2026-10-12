@@ -9,7 +9,7 @@
 import { clamp, explainPerception } from '../core/mind.js';
 import { PLAYER, HOLDER, DEFAULT_PRESENTATION } from './roles.js';
 import { applyEffect, setTrust, specOf } from './effects.js';
-import { firstRule, fillText, readPath, readValue } from './rules.js';
+import { firstRule, matchRule, fillText, readPath, readValue } from './rules.js';
 import { DEFAULT_TIER, ELIDED_NOTE, briefText, depthDebug, depthLine, downgrade, normalizeTier, oneLine, watchDepth, TIER_COST } from './depth.js';
 
 export { PLAYER, HOLDER };
@@ -102,7 +102,11 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
 
   // ---- 生活循环（docs/KERNEL.md §9）：真实感知当时留档、事件、世界脉搏 ----
   // 只在调用方显式传 perceptions（state.play.life.perceptions）时才记；旧路径一个字段都不多。
-  function recordPerception(seq, rec) { if (perceptions && seq) perceptions[seq] = rec; }
+  function recordPerception(seq, rec) { if (perceptions && seq) {
+    const episode = holder.life;
+    const m = minds[rec.person]?.state.memory[rec.signature];
+    perceptions[seq] = { ...rec, scene: ledger.entries[seq - 1]?.payload?.act ?? root.current, tick: episode?.tick ?? 0, first: m?.trace === 1, goalHit: (minds[rec.person]?.def.goals || []).includes(rec.action) };
+  } }
 
   /** 稳定签名：用来判断「世界是不是真的变了」，决定要不要落一次 world.pulse */
   function sig(v) {
@@ -110,15 +114,18 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     if (Array.isArray(v)) return `[${v.map(sig).join(',')}]`;
     return `{${Object.keys(v).sort().map((k) => `${k}:${sig(v[k])}`).join(',')}}`;
   }
-  function pulseSignature(world) {
+  function pulseSignature(world, event) {
     return [
       `d${root.days}`,
       `f${sig(root.flags)}`,
-      `r${world.last?.reactSeq ?? 0}`,
       `c${sig(world.ctrl)}`,
       `n${Object.keys(world.noticed || {}).sort().join(',')}`,
       `p${sig(world.places || {})}`,
+      // 只算「看得见的动作」（玩家做了事、演员真的动了）；内部反应序号不算——
+      // 否则演员自己想过一次，下一次检查就把同一处境当成新脉搏，全体再感知一遍。
       `a${world.lastAct?.seq ?? 0}`,
+      // 日程刻度（巡灯挪到哪、更鼓几巡）也是外部条件，八拍一巡各是一次真变化
+      ...(event?.mark != null ? [`s${event.mark}`] : []),
     ].join('|');
   }
 
@@ -200,7 +207,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       policy: () => ctx._policy ?? null,
       rng: () => ctx._rng ?? null,
       autonomy: (person, verb) => allowedAutonomy(ctx._policy, person, verb),
-      _end: null, _verdict: null, _work: null, _intent: null, _lastSeq: null, bar: null,
+      _end: null, _verdict: null, _work: null, _intent: null, _lastSeq: null, _cause: null, bar: null,
       _event: null, _policy: null, _tick: null, _rng: null,
     };
     Object.defineProperty(ctx, 'days', { get: () => root.days, set: (v) => { root.days = v; } });
@@ -288,17 +295,20 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     // 感知那一刻的真实片段（只有开了生活的会话才留）：读镜以后用它，不用现在的记忆倒算
     recordPerception(reactSeq, {
       source: 'perception', person: personId, signature: `${sceneId}:${intent.id}`, object: intent.id,
-      stoppedAt: perception.stoppedAt, layer: perception.stoppedAt, action: perception.action.act,
+      stoppedAt: perception.stoppedAt, layer: perception.stoppedAt, actionLayer: perception.action.layer, actionFrom: perception.action.from, verb: perception.action.verb, action: perception.action.act,
       reasonId: userSeq, cause: [userSeq], seq: reactSeq, trace: perception.trace,
-      moved: heard?.moved ?? null, accepted, reason: heard?.reason || explainPerception(perception, n),
+      moved: heard?.moved ?? null, accepted, error: perception.error ?? null,
+      reason: heard?.reason || explainPerception(perception, n),
     });
     remember(world, {
       person: personId, reactSeq, stoppedAt: perception.stoppedAt, action: perception.action.act,
       reason: heard?.reason || null, explain: explainPerception(perception, n),
       accepted, moved: heard?.moved ?? null, bar: heard ? round(bar ?? mind.def.threshold) : null,
     });
-    // 把刚写的那条 user.act 记下来，规则里的效果要用它当 cause
+    // 把刚写的那条 user.act 记下来，规则里的效果要用它当 cause；
+    // 同时也是「看得见的动作」：世界签名变了，演员下一拍才可能真看见（内部反应不算）。
     lastSeq = userSeq;
+    if (perceptions) world.lastAct = { seq: userSeq, kind: 'user.act', person: 'player', action: intent.line ?? intent.id };
     return r;
   }
 
@@ -323,9 +333,10 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
     remember(world, { person: personId, reactSeq, stoppedAt: perception.stoppedAt, action: perception.action.act, explain: explainPerception(perception, n), reason });
     recordPerception(reactSeq, {
       source: 'perception', person: personId, signature: event.signature, object: event.signature ?? event.kind ?? 'look',
-      stoppedAt: perception.stoppedAt, layer: perception.stoppedAt, action: perception.action.act,
+      stoppedAt: perception.stoppedAt, layer: perception.stoppedAt, actionLayer: perception.action.layer, actionFrom: perception.action.from, verb: perception.action.verb, action: perception.action.act,
       reasonId: (event.cause || []).slice(-1)[0] ?? null, cause: (event.cause || []).slice(), seq: reactSeq,
       trace: perception.trace, reason, kind: event.kind || 'look',
+      moved: null, error: perception.error ?? null,
     });
     const r = { person: personId, name: n, perception, reactSeq, accepted: null, backlash: false, heard: null, tell: TELL[perception.stoppedAt](n) };
     if (ctx) ctx._perception = r;
@@ -362,6 +373,7 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       payload: { act: sceneId, option: intent.id, ...extra },
     }).seq;
     lastSeq = seq;
+    if (perceptions) ctx.world.lastAct = { seq, kind: 'user.act', person: 'player', action: intent.id };
     return seq;
   }
 
@@ -387,7 +399,12 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
       noticed: world.noticed, seen: !!by, seenBy: by, seenReason: by ? world.noticed[by] : null,
       verdict: ctx?._verdict ?? null, workOut: ctx?._work ?? null,
       // 生活循环的事件事实：只有事件路径上才有；旧路径这几个键根本不出现
-      ...(ctx?._event ? { event: ctx._event, pulse: world.pulseSeq ?? null, tick: ctx._tick ?? null, policy: ctx._policy ?? null } : {}),
+      ...(ctx?._event ? {
+        event: ctx._event, pulse: world.pulseSeq ?? null, tick: ctx._tick ?? null, policy: ctx._policy ?? null,
+        // 实际落成的动作序号（没有成功动作就是 null）与被拒的原因：规则据此判断闸门要不要立
+        actSeq: ctx._actSeq ?? null, acted: ctx._actSeq != null, refused: ctx._refused ?? null,
+        verb: r?.perception?.action?.verb ?? null, unit: r?.perception?.action?.from ?? null, actionLayer: r?.perception?.action?.layer ?? null,
+      } : {}),
     };
   }
 
@@ -486,56 +503,167 @@ export function createKernel(session, { scenes = {}, controllers = {}, store, da
    * 心智判到「手已经动了」且导演给了这个动词，才落 actor.act（from 是演员）。
    * 这条路上不写 user.act——不伪造玩家信号。事件照样过一遍这一场的规则表。
    */
+  const isChannels = (v) => !!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every((x) => typeof x === 'number');
+
+  /**
+   * 一个演员这一拍面对什么刺激。优先按人取，再退回事件通道、退回全场 ambient。
+   * scene.life.stimulus[person] 允许三种写法（数据而已，内核只做挑选）：
+   *   1) { when:{…规则匹配…}, channels:{…}, else:{…} }   按条件分两支
+   *   2) { 恩:0.6, 惧:0.4 }                              直接就是通道
+   *   3) { 高托付:{…}, 低托付:{…} } + scene.life.conditions:[{name,when}]   按声明挑一支
+   */
+  function stimulusFor(sceneId, world, ctx, policy, person) {
+    const scene = sceneOf(sceneId);
+    const raw = policy?.stimulus?.[person] ?? scene?.life?.stimulus?.[person] ?? null;
+    if (!raw || typeof raw !== 'object') return null;
+    if (raw.when !== undefined || raw.channels || raw.else) {
+      const facts = buildFacts(sceneId, world, null, null, ctx);
+      const hit = raw.when === undefined ? true : matchRule(raw.when, facts);
+      const pick = hit ? (raw.channels ?? raw.then ?? null) : (raw.else ?? null);
+      return isChannels(pick) ? pick : null;
+    }
+    if (isChannels(raw)) return raw;
+    const facts = buildFacts(sceneId, world, null, null, ctx);
+    for (const c of scene?.life?.conditions || []) {
+      const branch = raw[c.name];
+      if (branch == null) continue;
+      if (matchRule(c.when ?? {}, facts)) return isChannels(branch) ? branch : (branch.channels ?? null);
+    }
+    return null;   // 认不出的分支名：退回事件通道 / 全场 ambient（不猜）
+  }
+
+  /**
+   * 动作前的世界条件闸门：场景声明的 life.gate[person]（或 gate.default）是一个 when 匹配式，
+   * 用与规则表同样的匹配器读同一份事实（位置、旗标、托付、谁看见了、动作次数…）。
+   * 没声明就是不额外拦（与旧行为一致），授权与「每拍每人一次」由内核自己管。
+   */
+  const policyGate = (policy, scene) => policy?.gate ?? scene?.life?.gate;
+  function gateOpen(sceneId, world, ctx, person, verb, r) {
+    const scene = sceneOf(sceneId);
+    const byPerson = policyGate(ctx._policy, scene)?.[person] ?? policyGate(ctx._policy, scene)?.default;
+    if (Array.isArray(byPerson?.verbs) && !byPerson.verbs.includes(verb)) return false;
+    const g = byPerson?.[verb] ?? byPerson;
+    if (!g) return true;
+    if (Array.isArray(g.verbs) && !g.verbs.includes(verb)) return false;
+    const facts = buildFacts(sceneId, world, null, r, ctx);
+    return Array.isArray(g.any) ? g.any.some((x) => matchRule(x.when ?? x, facts)) : matchRule(g.when ?? {}, facts);
+  }
+
   function dispatchEvent(sceneId, event = {}) {
     const world = enter(sceneId);
     const ctx = ctxOf(sceneId, world);
     const policy = event.policy || null;
     const tick = event.tick ?? null;
-    ctx._intent = null; ctx._end = null; lastSeq = null; ctx._verdict = null; ctx._work = null; ctx.bar = null;
-    ctx._event = { id: event.id ?? null, tick, origin: event.origin ?? null, from: event.from ?? null, kind: event.kind ?? null, channels: event.channels ?? null };
-    ctx._policy = policy; ctx._tick = tick; ctx._rng = event.rng || null;
-    const base = { scene: sceneId, tick, origin: event.origin ?? null, from: event.from ?? null, event: ctx._event };
+    ctx._intent = null; ctx._end = null; lastSeq = null; ctx._verdict = null; ctx._work = null; ctx._cause = null; ctx.bar = null;
+    ctx._event = { id: event.id ?? null, tick: event.sceneTick ?? tick, origin: event.origin ?? null, from: event.from ?? null, kind: event.kind ?? null, channels: event.channels ?? null };
+    ctx._policy = policy; ctx._tick = event.sceneTick ?? tick; ctx._rng = event.rng || null;
+    const base = { scene: sceneId, tick: event.sceneTick ?? tick, origin: event.origin ?? null, from: event.from ?? null, event: ctx._event };
 
     if (event.origin === 'environment') {
-      const signature = pulseSignature(world);
-      if (signature === world.pulseSig) return { ...base, silent: true };   // 世界没变：不落脉搏，也不留经历
-      world.pulseSig = signature;
-      const cause = (event.cause || []).length ? event.cause : [openSeqOf(workOf(sceneId))].filter(Boolean);
-      const seq = ledger.append({
-        kind: 'world.pulse', from: 'world', to: `presentation:${workOf(sceneId)}`, cause,
-        payload: { scene: sceneId, kind: event.kind || 'idle', tick, signature },
-      }).seq;
-      world.pulseSeq = seq;
-      return { ...base, seq, pulseSeq: seq, ...eventRules(sceneId, world, ctx, null) };
+      const signature = pulseSignature(world, event);
+      const changed = signature !== world.pulseSig;
+      // 日程到期（event.force）也要跑规则：巡灯 / 期限这类外部条件不能因为「世界没变」被挡住
+      if (!changed && !event.force) return { ...base, silent: true };   // 世界没变：不落脉搏，也不留经历
+      let seq = null;
+      if (changed) {
+        world.pulseSig = signature;
+        const cause = (event.cause || []).length ? event.cause : [openSeqOf(workOf(sceneId))].filter(Boolean);
+        seq = ledger.append({
+          kind: 'world.pulse', from: 'world', to: `presentation:${workOf(sceneId)}`, cause,
+          payload: { scene: sceneId, kind: event.kind || 'idle', tick, signature },
+        }).seq;
+        world.pulseSeq = seq;
+        ctx._lastSeq = seq;
+      }
+      ctx._lastSeq = seq ?? world.pulseSeq;
+      ctx._cause = [ctx._lastSeq].filter(Boolean);
+      const result = { ...base, seq, pulseSeq: seq ?? world.pulseSeq, forced: !changed && !!event.force, ...eventRules(sceneId, world, ctx, null) };
+      world.pulseSig = pulseSignature(world, event);
+      return result;
     }
 
-    // 演员：只有看见新脉搏才形成真感知（没新刺激就不伪造经历）
-    const pulseSeq = world.pulseSeq ?? null;
-    const seen = world.seenPulse || (world.seenPulse = {});
-    if (!pulseSeq || seen[event.from] === pulseSeq) return { ...base, silent: true };
-    seen[event.from] = pulseSeq;
+    // 演员：一条脉搏只感知一次（没新刺激就不伪造经历）
     if (!minds[event.from]) return { ...base, silent: true };
+    const seen = world.seenPulse || (world.seenPulse = {});
+    const fromAct = event.actSeq != null;
+    if (fromAct) {
+      const seenActs = world.seenActs || (world.seenActs = {});
+      const key = `${event.from}:${event.actSeq}`;
+      if (seenActs[key]) return { ...base, silent: true };
+      seenActs[key] = true;
+    }
+    const cause = fromAct ? [event.actSeq] : [world.pulseSeq ?? null].filter(Boolean);
+    if (!fromAct) {
+      const pulseSeq = world.pulseSeq ?? null;
+      if (!pulseSeq || seen[event.from] === pulseSeq) return { ...base, silent: true };
+      seen[event.from] = pulseSeq;
+    }
     const r = perceive(sceneId, world, ctx, event.from, {
-      kind: event.kind || 'think', signature: `pulse:${sceneId}:${pulseSeq}`, channels: event.channels, cause: [pulseSeq],
+      kind: event.kind || 'think',
+      signature: event.signature || `life:${sceneId}:${event.from}:${event.kind || 'think'}`,
+      // 刺激按人取：每个人的通道不同（如姬看恩/惧，守卫看人），不是全场共用一份 ambient
+      channels: stimulusFor(sceneId, world, ctx, policy, event.from) ?? event.channels,
+      cause,
     });
     const verb = r.perception?.action?.verb ?? 'think';
     let actSeq = null;
-    if (r.perception?.stoppedAt === 'unit' && allowedAutonomy(policy, event.from, verb)) {
-      // 他自己动了：from 是演员，cause 指向他自己的那次反应
-      const spec = { person: event.from, verb, action: r.perception.action.act, tick, pulseSeq, policySeq: policy?.sourceSeq ?? null };
-      actSeq = ledger.append({ kind: 'actor.act', from: `actor:${event.from}`, to: 'world', cause: [r.reactSeq], payload: spec }).seq;
-      world.lastAct = { seq: actSeq, ...spec };
-      ctx._lastSeq = actSeq;
+    let refused = null;
+    if (r.perception?.stoppedAt === 'unit') {
+      // 动作前校验：独立授权 → 世界条件（场景声明的闸门）→ 这一拍这个人还没动过
+      if (!allowedAutonomy(policy, event.from, verb)) refused = 'autonomy';
+      else if (world.actedTick?.[event.from] === tick) refused = 'already';
+      else if (!gateOpen(sceneId, world, ctx, event.from, verb, r)) refused = 'gate';
+      else {
+        // 他自己动了：from 是演员，cause 指向他自己的那次反应
+        const spec = { person: event.from, verb, action: r.perception.action.act, tick, pulseSeq: world.pulseSeq ?? null, policySeq: policy?.sourceSeq ?? null };
+        actSeq = ledger.append({ kind: 'actor.act', from: `actor:${event.from}`, to: 'world', cause: [r.reactSeq], payload: spec }).seq;
+        world.lastAct = { seq: actSeq, ...spec };
+        (world.actedTick || (world.actedTick = {}))[event.from] = tick;
+        ctx._lastSeq = actSeq;
+      }
     }
+    // 规则能看见「动作到底有没有真的落成」：有 act 才有 actSeq，被拒记 refused
+    ctx._actSeq = actSeq;
+    ctx._refused = refused;
     const fragment = (perceptions && perceptions[r.reactSeq]) || null;
-    return { ...base, person: event.from, reactionSeqs: [r.reactSeq], actSeq, verb, stoppedAt: r.perception?.stoppedAt ?? null, fragment, ...eventRules(sceneId, world, ctx, r) };
+    // 后果挂真实执行的动作（不是他自己的反应序号）
+    ctx._cause = actSeq != null ? [actSeq] : cause;
+    const here = { ...base, person: event.from, reactionSeqs: [r.reactSeq], actSeq, actRefused: refused, verb, stoppedAt: r.perception?.stoppedAt ?? null, fragment, fragments: [{ person: event.from, seq: r.reactSeq, fragment }], ...eventRules(sceneId, world, ctx, r) };
+
+    // 下一拍只把已获可见性授权的动作送给接收者；来源 seq 不丢，也不再送回自己。
+    if (actSeq != null) here.receivers = receiversOf(sceneId, world, event, event.from, r, ctx);
+    return here;
+  }
+
+  /**
+   * 一件事能被谁看见 / 听见：点名叫他的、渠道点名叫他的、跟他同处一地的。
+   * 位置未知不广播；接收者可由场景显式名单或结构条件声明。
+   */
+  function receiversOf(sceneId, world, event, from, r, ctx) {
+    const scene = sceneOf(sceneId);
+    const people = Array.isArray(scene?.people) ? scene.people : Object.keys(minds);
+    const ch = event.channels || {};
+    const placeOf = (id) => world.places?.[id] ?? world.ctrl?.space?.positions?.[id] ?? scene.life?.positions?.[id] ?? null;
+    const at = event.at ?? placeOf(from) ?? scene?.place ?? null;
+    const explicit = scene.life?.receivers?.[from];
+    const facts = buildFacts(sceneId, world, null, r, ctx);
+    return people.filter((id) => {
+      if (id === from || !minds[id]) return false;
+      if (event.to && (event.to === id || event.to === `actor:${id}`)) return true;
+      if (Number(ch[id]) > 0 || Number(ch[name(id)]) > 0) return true;
+      if (Array.isArray(explicit)) return explicit.some((x) => typeof x === 'string' ? x === id : x.person === id && matchRule(x.when ?? {}, facts));
+      const place = placeOf(id);
+      return place != null && at != null && place === at;
+    });
   }
 
   /** 事件路径上的规则：同一套规则表与效果，facts 里多了 event/pulse/tick/policy */
   function eventRules(sceneId, world, ctx, r) {
-    const rule = firstRule(sceneOf(sceneId).rules || [], buildFacts(sceneId, world, null, r, ctx));
+    const factsBefore = buildFacts(sceneId, world, null, r, ctx);
+    const rule = firstRule(sceneOf(sceneId).rules || [], factsBefore);
+    if (r && ctx._refused && rule && !Object.hasOwn(rule.when || {}, 'refused')) return {};
     if (!rule) return {};
-    const auto = [r?.reactSeq ?? ctx._lastSeq].filter(Boolean);
+    const auto = (ctx._cause?.length ? ctx._cause : [r?.reactSeq ?? ctx._lastSeq]).filter(Boolean);
     const out = { claims: [] };
     for (const item of rule.then || []) {
       const { effect, cause } = specOf(item);
