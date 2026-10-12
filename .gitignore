@@ -7,3 +7,6 @@ node_modules/
 .agent-teams/
 .commandcode/
 /command-code-session-*.html
+
+# macOS
+.DS_Store
