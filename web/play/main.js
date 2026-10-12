@@ -16,7 +16,7 @@ const ANSWERS = { lu: { wait: 0.8, polish: 0.8, depth: 0.85 }, shan: { wait: 0.2
 const NEED = '我想看一个人在乱世里怎么做选择';
 const DIRECTOR = { lu: '陆导', shan: '单导' };
 const HOLDER = '门客（你）';
-// 收束页拿不到 scenes 里的幕名时兜底（正常都走 view 里的 title）
+// 收束页的四幕固定称呼：旧存档可能把幕 id 放在 title 中
 const ACT_TITLE = { daliang: '大梁', yimen: '夷门', night: '取符之夜', ye: '邺城', granary: '暮色粮仓' };
 // 结局的来路（引擎里的 ending id）：刻在最后一片竹简的封泥旁边
 const ENDING_LABEL = { history: '本作的历史', broken: '本作的历史', 'jinbi-lives': '另一种可能' };
@@ -456,16 +456,20 @@ function showFinal(v) {
   ui.clearGizmos();
   ui.hideLine();
   cam.setShot({ target: [0, 1.3, -1.0], dist: 62, az: 0.6, elev: 0.46 });
+  // 收束页拿不到 view.acts 时的兜底：幕名走 ACT_TITLE，别把 daliang / yimen 这类 id 当人话刻上去
   const raw = v?.acts ?? lastActs ?? (play.state().acts
-    ? Object.entries(play.state().acts).map(([id, a]) => ({ id, title: id, text: a.outcome?.text ?? '' }))
+    ? Object.entries(play.state().acts).map(([id, a]) => ({ id, title: ACT_TITLE[id] ?? id, text: a.outcome?.text ?? '' }))
     : []);
   const acts = (raw ?? []).map((a) => ({
     id: a.id,
-    title: a.title || ACT_TITLE[a.id] || a.id,
+    title: ACT_TITLE[a.id] || a.title || a.id,
     outcome: a.outcome ?? a.text ?? '',
   }));
   const coda = v?.coda ?? lastCoda ?? {};
   ended = true;
+  // 收束页是「另一页」，现场那三层刻痕与已打开的心思面板到这儿收起来，别和竹简叠字
+  livingUI.close(false);
+  livingUI.ending(true);
   ui.showFinal(acts, {
     onRestart: () => location.reload(),
     onFilm: () => saveFilm(),
@@ -473,7 +477,7 @@ function showFinal(v) {
     ending: { title: coda.end || '', kind: ENDING_LABEL[coda.ending] ?? '' },
   });
   if (play.life) {
-    livingUI.chain(session, lifeRead); livingUI.paused(paused, false); persistWorld();
+    livingUI.chain(session, lifeRead, { endingKind: ENDING_LABEL[coda.ending] ?? '' }); livingUI.paused(paused, false); persistWorld();
     const next = document.createElement('button'); next.type = 'button'; next.className = 'enter'; next.textContent = '同世界再见一回';
     next.addEventListener('click', () => {
       session.beginEpisode({ work: 'qiefu' }); session.state.play = null;
@@ -481,7 +485,7 @@ function showFinal(v) {
       recording = createRecording({ session, initial: initialSave, director: picked, seed: LIFE_SEED });
       play = createPlay(session, { living: 'director', seed: LIFE_SEED });
       ended = false; paused = false; lifeSeconds = 0; inputId = 0; rec.length = 0;
-      act('begin'); view = act('next'); ui.hideEnding(); ui.hideLine(); showAct(view);
+      act('begin'); view = act('next'); ui.hideEnding(); ui.hideLine(); livingUI.ending(false); showAct(view);
     });
     ui.el.endingActions.append(next);
   }

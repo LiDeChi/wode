@@ -82,6 +82,7 @@ export function createLivingUI({ dev, ui, onPause, onToggle, onResume }) {
     paused(on, active) { pause.hidden = !active; pause.textContent = on ? '继续生活' : '暂停'; pause.setAttribute('aria-pressed', String(on)); document.body.classList.toggle('life-paused', on); },
     read(read, view, session) {
       desk.hidden = !read; if (!read) { witness.textContent = ''; return; }
+      witness.hidden = false;
       const p = read.policy;
       board.replaceChildren();
       const sand = node('div', `pace-hourglass ${p?.waitForPlayer ? 'tied' : 'loose'}`); sand.append(node('i', ''));
@@ -126,8 +127,10 @@ export function createLivingUI({ dev, ui, onPause, onToggle, onResume }) {
       ui.el.mindUnits.append(memories(actor, read?.experiences ?? []));
       ui.el.mindClose.focus();
     },
-    close() { pinned = null; ui.hideMind(); focusBack?.focus?.(); },
-    chain(session, read) {
+    close(restore = true) { pinned = null; ui.hideMind(); if (restore) focusBack?.focus?.(); },
+    // 收束页是另一页：把现场那三层刻痕和导演案收起来，别跟竹简叠在一起
+    ending(on) { witness.hidden = on; desk.hidden = on; if (on) witness.textContent = ''; },
+    chain(session, read, { endingKind = '' } = {}) {
       document.getElementById('history-loom')?.remove();
       const loom = node('details', `history-loom ${read?.policy?.historyReveal ?? 'slow'}`); loom.id = 'history-loom'; loom.append(node('summary', '', '手摇牵线机：心思怎样落到史简'));
       const track = node('div', 'loom-track');
@@ -151,7 +154,9 @@ export function createLivingUI({ dev, ui, onPause, onToggle, onResume }) {
         const peg = node('div', 'loom-peg'); peg.append(slip, detail); source(peg, e, dev); track.append(peg);
       }
       if (!selected.some(e => ['work.play', 'present.deliver'].includes(e.kind))) track.append(node('p', 'loom-missing', '这一段尚不能还原到结局；只牵存在的因果边。'));
-      const end = node('p', 'loom-ending', session.state.play?.coda?.fate ?? session.state.play?.coda?.end ?? '史简尚未收束');
+      let endText = session.state.play?.coda?.fate ?? session.state.play?.coda?.end ?? '史简尚未收束';
+      if (endingKind) endText = endText.split(`（${endingKind}）`).join('').split(`(${endingKind})`).join('').trim();
+      const end = node('p', 'loom-ending', endText);
       source(end, { path: 'session.state.play.coda', ending: session.state.play?.ending, coda: session.state.play?.coda }, dev);
       loom.append(track, end); document.querySelector('.ending-inner').append(loom);
       return loom;

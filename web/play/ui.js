@@ -308,8 +308,15 @@ export function createUI({ dev = false } = {}) {
      */
     showFinal(acts, { onRestart, onFilm, ending } = {}) {
       el.ending.hidden = false;
+      // 结局名里若已经带了来路（引擎给的是「援军未至（本作的历史）」），括号那段交给封泥旁的
+      // 小字说一次就够了，别再刻第二遍。
+      const kind = ending?.kind ?? '';
+      let title = ending?.title ?? '';
+      if (kind) {
+        title = title.split(`（${kind}）`).join('').split(`(${kind})`).join('').trim();
+      }
       // 案头挂的是这一局的结局名，封泥上的「完」留给最后一片竹简
-      el.endingBadge.textContent = ending?.title || '完';
+      el.endingBadge.textContent = title || '完';
       el.endingLived.textContent = '';
       el.endingBook.textContent = '';
       el.endingDays.textContent = '';
@@ -341,13 +348,13 @@ export function createUI({ dev = false } = {}) {
       if (!list.length) slips.appendChild(slipOf(0, '这一局', '没有留下可记的幕。'));
 
       // 最后一片：结局那一片，盖封泥
-      const last = slipOf(list.length, '完', ending?.title ? `结局：${ending.title}` : '这一局到此为止。');
+      const last = slipOf(list.length, '完', title ? `结局：${title}` : '这一局到此为止。');
       last.classList.add('slip-last');
-      if (ending?.kind) {
-        const kind = document.createElement('span');
-        kind.className = 'slip-kind';
-        kind.textContent = ending.kind;
-        last.appendChild(kind);
+      if (kind) {
+        const chip = document.createElement('span');
+        chip.className = 'slip-kind';
+        chip.textContent = kind;
+        last.appendChild(chip);
       }
       const seal = document.createElement('span');
       seal.className = 'slip-seal';
