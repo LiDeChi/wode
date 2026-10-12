@@ -175,6 +175,31 @@ const NIGHT_GOAL = 4;                    // 0 宫门外 → 1 回廊 → 2 中�
 const NIGHT_LIMIT = 12;                  // 超过这么多步天就亮了
 const NIGHT_TILES = ['宫门外', '回廊', '中庭', '卧内门口', '后门'];
 
+// 生活动作与候选计划共用同一份字段门槛；中文 label/need 只供翻译。
+const NIGHT_HAND_WHEN = {
+  trust: { person: 'ruji', gte: 0.45 },
+  unit: 'debt', verb: 'give', actionLayer: 'unit',
+  ctrl: { nightwalk: { pos: 3, done: false } },
+  flag: { fuWithRuji: true, fuOwner: 'ruji', nightHand: null },
+};
+const NIGHT_ASK_WHEN = {
+  trust: { person: 'ruji', lt: 0.45 },
+  unit: 'risk', verb: 'say', actionLayer: 'unit',
+  ctrl: { nightwalk: { pos: 3, done: false } },
+  flag: { nightAsk: null },
+};
+const NIGHT_BLOCK_WHENS = [
+  { unit: 'block', verb: 'say', actionLayer: 'unit',
+    ctrl: { nightwalk: { pos: 3, done: false } }, flag: { nightHeardA: true, nightBlock: null } },
+  ...[1, 2, 3].map((pos) => ({ unit: 'block', verb: 'say', actionLayer: 'unit',
+    ctrl: { nightwalk: { pos, moved: true, done: false } }, flag: { nightLanternPos: pos, nightBlock: null } })),
+];
+const NIGHT_LOOK_AWAY_WHEN = {
+  unit: 'look_away', verb: 'go', actionLayer: 'unit',
+  ctrl: { nightwalk: { pos: 3, done: false } },
+  flag: { nightHeardB: true, nightLookAway: null },
+};
+
 /**
  * 取符之夜：走一格这件事写在账本上只有 {act,option,pos}（旧 nightStep 手写的那条），
  * 位置、灯、令牌、如姬定没定神，全在这一场自己手里。
@@ -496,11 +521,28 @@ export const QIFU_SCENES = {
       ],
       stimulus: {
         // 如姬按托付分两支：托付够 → 「记着恩」（目标加权 0.75）压过顾虑，命中 debt/give；
-        // 托付不够 → 顾虑 0.4 吃满（她的风险单元上限 0.42），命中 risk/say。两支都停在 unit 层，
-        // 也就是「她自己的手真的动了」；托付这条闸门由下面的规则显式检查，不靠通道暗示。
+        // 托付不够 → 顾虑 0.4 吃满（她的风险单元上限 0.42），命中 risk/say。两支都停在 unit 层；
+        // 选中动作之后还要通过 gate 与独立授权，是否真的动手由 acted/actSeq 记账。
         ruji: { 高托付: { 恩: 0.6, 惧: 0.4 }, 低托付: { 恩: 0.1, 惧: 0.4 } },
         guard_a: { 人: 0.4 },           // 拦住来人
         guard_b: { 人: 0.4 },           // 装作没看见
+      },
+      // 动作前闸门；导演的 autonomy.people/verbs 由内核独立检查，不能借玩家 grants。
+      gate: {
+        ruji: { verbs: ['give', 'say'], give: { when: NIGHT_HAND_WHEN }, say: { when: NIGHT_ASK_WHEN } },
+        guard_a: { verbs: ['say'], say: { any: NIGHT_BLOCK_WHENS.map((when) => ({ when })) } },
+        guard_b: { verbs: ['go'], go: { when: NIGHT_LOOK_AWAY_WHEN } },
+      },
+      positions: { ruji: '卧内门口', guard_b: '中庭' },
+      // 低问只到门边一格的听见范围；甲随独立巡灯走，未知位置不作为广播理由。
+      receivers: {
+        ruji: [
+          ...[2, 3].map((pos) => ({ person: 'guard_a', when: {
+            verb: 'say', ctrl: { nightwalk: { pos: 3 } }, flag: { nightLanternPos: pos },
+          } })),
+          { person: 'guard_b', when: { verb: 'say', ctrl: { nightwalk: { pos: 3 } } } },
+        ],
+        guard_a: [], guard_b: [],
       },
       // 环境日程：巡灯是外部条件，不是演员手艺。八拍一巡，先示警，再按位置/移动/视线判断被看见。
       // 期限与 step 分账：这里只写灯与到期，绝不复用旧「wait → rujiReady」那条时间动作。
@@ -514,16 +556,16 @@ export const QIFU_SCENES = {
           { at: 32, patrol: '天亮', warn: '天边泛白', end: 'dawn' },
         ],
       },
-      // 候选计划：规则表里用 id/note 命名（id/note 是结果字段，不参与匹配）
+      // 候选计划的 when / any 就是 gate 的字段；need / outcome 只是说明。
       plans: [
-        { id: 'hand', who: 'ruji', unit: 'debt', label: '记着恩', verb: 'give',
+        { id: 'hand', who: 'ruji', unit: 'debt', label: '记着恩', verb: 'give', when: NIGHT_HAND_WHEN,
           need: ['托付 ≥ 0.45', '人在门边 pos 3', '符在她手里', '独立 give 授予'],
           outcome: '递一次半块兵符（她的 actor.act + flag nightHand 防重复），不因时间到就递' },
-        { id: 'ask', who: 'ruji', unit: 'risk', label: '顾虑被发现', verb: 'say',
-          need: ['托付不够（< 0.45）'], outcome: '低声问「会不会被发现」，不递符' },
-        { id: 'block', who: 'guard_a', unit: 'block', label: '拦人', verb: 'say',
+        { id: 'ask', who: 'ruji', unit: 'risk', label: '顾虑被发现', verb: 'say', when: NIGHT_ASK_WHEN,
+          need: ['托付不够（< 0.45）', '人在门边 pos 3', '尚未低问', '独立 say 授予'], outcome: '低声问「会不会被发现」，不递符' },
+        { id: 'block', who: 'guard_a', unit: 'block', label: '拦人', verb: 'say', any: NIGHT_BLOCK_WHENS.map((when) => ({ when })),
           need: ['听见低问，或人进了他的视线'], outcome: '要令牌（他自己的 actor.act）' },
-        { id: 'look-away', who: 'guard_b', unit: 'look_away', label: '装没看见', verb: 'go',
+        { id: 'look-away', who: 'guard_b', unit: 'look_away', label: '装没看见', verb: 'go', when: NIGHT_LOOK_AWAY_WHEN,
           need: ['听见低问'], outcome: '装作没看见，放他过去' },
       ],
     },
@@ -539,65 +581,60 @@ export const QIFU_SCENES = {
 
       // ── 生活规则（生活关闭时永不匹配：玩家路径没有 facts.pulse）──────────────────────────────
       // 每一条 when 都带 not:{pulse:null}。规则只消费心智给出的结果（停层/选中动作层）和
-      // 世界已经成立的事实（位置、符在谁手里、托付），物件/位置/接受门槛由这里显式检查；
-      // act 效果自己只验证授权（policy.autonomy），所以陆导（不自动）会得到 refusedAct。
-      { id: 'life-own', note: '生活情境：符从卧内到如姬手里（第一拍）',
-        when: { person: null, not: { pulse: null }, flag: { fuWithRuji: null } },
-        then: [['flag', 'fuWithRuji', true]],
-        text: '如姬从卧内取出那半块兵符，握在手里。' },
+      // 世界已经成立的事实（位置、符在谁手里、托付）。独立授权与 gate 先于 actor.act，
+      // 后果只在 acted:true/refused:null 时成立，陆导等玩家时不写递符或低问旗标。
+      { id: 'life-own', note: '首次更鼓：符取到如姬手里，巡灯也独立走到回廊',
+        when: { person: null, tick: 8, not: { pulse: null }, flag: { fuOwner: null, fuWithRuji: null } },
+        then: [['flag', 'fuWithRuji', true], ['flag', 'fuOwner', 'ruji'], ['flag', 'nightLanternPos', 1]],
+        text: '如姬从卧内取出那半块兵符，握在手里。更鼓敲过一巡，灯到了回廊。' },
       { id: 'life-patrol-1', note: '环境日程：八拍一巡，先示警',
         when: { person: null, tick: 8, not: { pulse: null } },
-        text: '更鼓敲过一巡，回廊那盏灯挪了一格。' },
+        then: [['flag', 'nightLanternPos', 1]],
+        text: '更鼓敲过一巡，灯到了回廊。' },
       { id: 'life-patrol-2',
         when: { person: null, tick: 16, not: { pulse: null } },
+        then: [['flag', 'nightLanternPos', 2]],
         text: '更鼓两巡，灯到了中庭。' },
       { id: 'life-patrol-3',
         when: { person: null, tick: 24, not: { pulse: null } },
-        then: [['flag', 'nightLate', true]],
+        then: [['flag', 'nightLanternPos', 3], ['flag', 'nightLate', true]],
         text: '夜过半，灯停在卧内门口。' },
       { id: 'life-patrol-4', note: '期限到（与 step 分账）',
         when: { person: null, tick: 32, not: { pulse: null } },
-        then: [['end', 'dawn']],
+        then: [['flag', 'nightLanternPos', 4], ['end', 'dawn']],
         text: '天边泛白，宫门要开了。' },
 
       // ── 候选计划 ───────────────────────────────────────────────────────────────────────
-      // 每条都先看心智的停层（stoppedAt:'unit' = 她/他自己的手真的动了），再看动作、位置、
-      // 托付与物件；动作用 act 效果落地——导演没给这个动词时内核返回 refusedAct，账本里就没有
-      // actor.act（陆导等拍、单导不等，差别正好记在账本上）。画面文字只写「世界看得见的动静」，
-      // 不替演员宣称他没做过的事；nightHand/nightAsk 是场景的一次性闸门，只防重复。
-      { id: 'plan-hand', note: '候选计划 hand：门边 + 托付够 + 符在她手里 + 独立 give 授予成立才递一次',
-        when: { person: 'ruji', not: { pulse: null }, stoppedAt: 'unit', action: /答应为公子窃符/,
-          trust: { person: 'ruji', gte: 0.45 },
-          flag: { fuWithRuji: true, nightHand: null },
-          ctrl: { nightwalk: { pos: 3 } } },
-        then: [['flag', 'nightHand', true]],   // 动作由内核按心智结果落成 actor.act，规则不再写一遍
-        text: '如姬把那半块兵符握在手里，往门缝这边看。' },
+      // 停层和选中的动作层分开检查；只有真实 actor.act 成功后才写后果，中文动作不参与判断。
+      { id: 'plan-hand', note: '门边 + 托付够 + 所有权在如姬 + 独立 give 授予成立才递一次',
+        when: { ...NIGHT_HAND_WHEN, person: 'ruji', stoppedAt: 'unit', acted: true,
+          not: { pulse: null }, refused: null },
+        then: [['flag', 'nightHand', true], ['flag', 'fuWithRuji', false], ['flag', 'fuOwner', 'player']],
+        text: '如姬把半块兵符递到门缝这边，你接在手里。' },
 
-      { id: 'plan-ask', note: '候选计划 ask：托付不够只低问，不递符',
-        when: { person: 'ruji', not: { pulse: null }, stoppedAt: 'unit', action: /先问清楚会不会被发现/,
-          trust: { person: 'ruji', lt: 0.45 }, flag: { nightAsk: null } },
-        then: [['flag', 'nightAsk', true]],
-        text: '如姬在门后停住，压着声音想问一句「会不会被发现」。' },
+      // 与 receivers 同一份听见范围：甲在中庭或门边才听到，乙离门边一格。
+      ...[2, 3].map((pos) => ({ id: `plan-ask-heard-a-${pos}`, note: '低问实际发出，甲乙在听见范围内',
+        when: { ...NIGHT_ASK_WHEN, flag: { ...NIGHT_ASK_WHEN.flag, nightLanternPos: pos },
+          person: 'ruji', stoppedAt: 'unit', acted: true, not: { pulse: null }, refused: null },
+        then: [['flag', 'nightAsk', true], ['flag', 'nightHeardA', true], ['flag', 'nightHeardB', true]],
+        text: '如姬压着声音问：「会不会被发现？」附近的守卫听到了。' })),
+      { id: 'plan-ask', note: '托付不够只低问，远处提灯的甲没有听到',
+        when: { ...NIGHT_ASK_WHEN, person: 'ruji', stoppedAt: 'unit', acted: true,
+          not: { pulse: null }, refused: null },
+        then: [['flag', 'nightAsk', true], ['flag', 'nightHeardB', true]],
+        text: '如姬压着声音问：「会不会被发现？」中庭的守卫乙听到了。' },
 
-      // 计划 block：甲听见低问、或人已经进了他的视线，且他自己命中拦人 → 才拦（要令牌是他自己的动作）
-      { id: 'plan-block', note: '候选计划 block：听见低问才拦',
-        when: { person: 'guard_a', not: { pulse: null }, stoppedAt: 'unit', action: /拦住来人/,
-          flag: { nightAsk: true } },
-        text: '守卫甲提着灯往卧内门口这边偏了偏。' },
-      { id: 'plan-block-seen', note: '候选计划 block：进了视线才拦（没进视线不抓人）',
-        when: { person: 'guard_a', not: { pulse: null }, stoppedAt: 'unit', action: /拦住来人/,
-          ctrl: { nightwalk: { pos: 2 } } },
-        text: '守卫甲看见中庭有人挪动，提灯照了过去。' },
-      { id: 'plan-post-a', when: { person: 'guard_a', not: { pulse: null } },
-        text: '守卫甲提着灯，守着回廊。' },
-
-      // 计划 look-away：乙的老习惯（听见低问时他把头转开）
-      { id: 'plan-look-away', note: '候选计划 look-away',
-        when: { person: 'guard_b', not: { pulse: null }, stoppedAt: 'unit', action: /装作没看见/,
-          flag: { nightAsk: true } },
+      ...NIGHT_BLOCK_WHENS.map((when, i) => ({ id: i === 0 ? 'plan-block' : `plan-block-seen-${i}`,
+        note: i === 0 ? '甲听到低问才要令牌' : '玩家正在巡灯照到的格子移动，甲才要令牌',
+        when: { ...when, person: 'guard_a', stoppedAt: 'unit', acted: true,
+          not: { pulse: null }, refused: null },
+        then: [['flag', 'nightBlock', true]],
+        text: '守卫甲提灯拦住来人：「令牌呢？」' })),
+      { id: 'plan-look-away', note: '乙听见低问，且自己选中装没看见才转头',
+        when: { ...NIGHT_LOOK_AWAY_WHEN, person: 'guard_b', stoppedAt: 'unit', acted: true,
+          not: { pulse: null }, refused: null },
+        then: [['flag', 'nightLookAway', true]],
         text: '守卫乙把头转向墙那边。' },
-      { id: 'plan-post-b', when: { person: 'guard_b', not: { pulse: null } },
-        text: '守卫乙站在中庭，眼睛看着别处。' },
     ],
   },
 
