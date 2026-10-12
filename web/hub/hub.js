@@ -4,6 +4,9 @@ import { createSession } from '../../shared/engine/session.js';
 import { decode, directorInput, STORAGE_KEY } from '../film/format.js';
 import { createScene, attachPointer, night } from './scene.js';
 import { createHubStage } from './hubstage.js';
+import { loadWorld } from '../film/world.js';
+import { experienceOf } from './experience.js';
+import { createRecords } from './records.js';
 
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -19,16 +22,17 @@ try {
 // ── 导师的笔记：还是那一句真的 ────────────────────────────────
 let mentorLines = ['先把能玩的、录好的排在眼前，其余作品备好再来。'];
 let mentorSource = '临时排片说明；导师笔记尚未读取';
+let world = null, experience = null;
 try {
-  const session = createSession();
+  world = loadWorld();
+  const session = createSession(world ? { saved: world.saved } : {});
   const { answers, need } = directorInput(last?.director || 'B');
-  session.meet(answers, need);
+  if (!world) session.meet(answers, need);
+  experience = experienceOf(session);
   const notes = session.mentor.notes();
-  const said = (field) => notes.find(n => n.field === field)?.said;
-  mentorLines = [said('wait'), said('polish'), said('depth')].filter(Boolean);
-  if (!mentorLines.length) mentorLines = notes.map(n => n.said).filter(Boolean);
-  mentorSource = last ? '按上一局开场的口味，重读导师笔记' : '先按不让你等的口味排片；玩过后跟着你调整';
-  if (DEV) window.__hub = { notes, answers, need, director: session.state.directorId };
+  mentorLines = experience.notes.map(n => n.text).filter(Boolean);
+  mentorSource = world ? '同一个世界里留下的导师笔记' : '初次见面的笔记；还没有上次的经历';
+  if (DEV) window.__hub = { notes, experience, answers, need, director: session.state.directorId };
 } catch {
   mentorLines = ['先把能玩的、录好的排在眼前，其余作品备好再来。'];
   mentorSource = '临时排片说明；导师笔记尚未读取';
@@ -37,7 +41,7 @@ try {
 // ── 台上摆什么：一件实物 = 一行排片 ───────────────────────────
 // x 是它在那一层的位置，scale 是它比实物放大多少倍（台子收窄了，东西要大得认得出）。
 const ROW1 = [
-  { id: 'tally', kind: 'tally', name: '窃符', tagline: '亲自走一局', row: 1, x: -4.3, scale: 1.6, act: 'game', href: '/play.html',
+  { id: 'tally', kind: 'tally', name: '窃符', tagline: world ? '继续这个世界' : '亲自走一局', row: 1, x: -4.3, scale: 1.6, act: 'game', href: world ? '/play.html?resume=1' : '/play.html',
     detail: '从大梁走到邺城。你说的话、递出的东西，会改变一个人的决定。' },
   { id: 'history', kind: 'scroll', name: '援军往邯郸去', tagline: '坐下，自动放映', row: 1, x: -2.15, scale: 1.35, tint: '#7a5a34',
     tag: '援军往邯郸去', act: 'film', href: '/film.html?demo=history',
@@ -73,6 +77,7 @@ const canvas = $('stage');
 const render = createScene(canvas);
 night(render.scene, '#0a0f17', 0.0125);
 const stage = createHubStage(render, ITEMS);
+const records = experience ? createRecords(render, experience) : null;
 
 // 镜头：桌面推得近（实物撑满大半个画面），竖屏退远（先看整座台）。
 const portrait = () => innerWidth < innerHeight;
@@ -107,6 +112,11 @@ const picker = attachPointer(canvas, render.camera, render.pickables, {
   },
   async onPick(node) {
     if (picked) { stage.liftSkip(); return; }   // 再点一下：这一趟快进
+    if (node.kind === 'record') {
+      stage.setLine(node.id === 'notebook' ? records.turn() : records.read(node.id));
+      render.shot(node.center, { dist: portrait() ? 5.5 : 4.8, elev: 12, az: 0, time: .5 });
+      setCaption(node); return;
+    }
     if (node.kind === 'mentor') {
       lineIndex += 1;
       stage.setLine(mentorLines[lineIndex % mentorLines.length]);
@@ -146,12 +156,12 @@ function setCaption(node, going = false, override = '') {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ── 键盘也认这件实物 ────────────────────────────────────────
-const order = ITEMS.map(i => i.id).concat('mentor');
+const order = ITEMS.map(i => i.id).concat('mentor', [...(records?.nodes.keys() ?? [])]);
 function stepHover(delta) {
   const current = picker.hovered;
   const at = current ? order.indexOf(current.id) : -1;
   const nextId = order[(at + delta + order.length + (at < 0 ? 1 : 0)) % order.length];
-  const node = stage.nodes.get(nextId) || (nextId === 'mentor' ? stage.mentorNode : null);
+  const node = stage.nodes.get(nextId) || records?.nodes.get(nextId) || (nextId === 'mentor' ? stage.mentorNode : null);
   if (node) {
     picker.clear();
     focusNode = node;
@@ -172,6 +182,7 @@ function frame(ms) {
   elapsed += dt;
   render.updateCamera(dt);
   stage.update(dt, elapsed, picker.hovered ?? focusNode);
+  records?.update(render.camera);
   render.render();
   requestAnimationFrame(frame);
 }
@@ -186,7 +197,7 @@ window.addEventListener('keydown', (e) => {
 
 if (DEV) {
   window.__hub = Object.assign(window.__hub ?? {}, {
-    render, stage, mentorSource, last: Boolean(last),
+    render, stage, records, mentorSource, world, last: Boolean(last),
     items: ITEMS.map(({ id, row, act, x, scale }) => ({ id, row, act, x, scale })),
   });
   $('dev').hidden = false;

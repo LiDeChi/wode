@@ -22,7 +22,7 @@ export function directorInput(director = 'B') {
 }
 
 function validate(record) {
-  if (!record || record.v !== 1 || !Array.isArray(record.steps) || record.steps.length > 5000) {
+  if (!record || ![1, 2].includes(record.v) || !Array.isArray(record.steps) || record.steps.length > 5000) {
     throw new Error('这份电影录制无法读取。请打开示范片，或回游戏页重新录制。');
   }
   directorInput(record.director);
@@ -31,6 +31,33 @@ function validate(record) {
         step.args.some(a => typeof a !== 'string' || a.length > 200) ||
         (['begin', 'next'].includes(step.op) ? step.args.length !== 0 : step.args.length !== 1)) {
       throw new Error('录制中有不认识的动作，请回游戏页重新录制。');
+    }
+  }
+  if (record.v === 2) {
+    const tick = x => Number.isSafeInteger(x) && x >= 0 && x <= 100000;
+    const initial = record.initial;
+    if (!initial?.ledger || !initial?.minds || !initial?.mentor || record.living !== 'director' ||
+        typeof record.seed !== 'string' || record.seed.length > 200 || !Array.isArray(record.timeline) || record.timeline.length > 10000 ||
+        record.clock?.tickSeconds !== 1 || record.clock?.foregroundOnly !== true || record.clock?.pauseStops !== true || record.clock?.catchUp !== false) {
+      throw new Error('生活电影缺少开场存档、种子或拍序。');
+    }
+    let totalTicks = 0;
+    let previousTick = Number.isSafeInteger(record.initial.play?.life?.tick) ? record.initial.play.life.tick : 0;
+    for (const event of record.timeline) {
+      if (event?.kind === 'step') {
+        if (!Number.isSafeInteger(event.index) || !record.steps[event.index] || !tick(record.steps[event.index].tick)) throw new Error('电影的动作拍序不完整。');
+      } else if (event?.kind === 'pause') {
+        if (typeof event.paused !== 'boolean' || !tick(event.tick)) throw new Error('电影的暂停拍序不完整。');
+      } else if (event?.kind === 'advance') {
+        if (!tick(event.toTick) || event.toTick < previousTick || !Array.isArray(event.inputs) || event.inputs.length > 100) throw new Error('电影的推进拍序不完整。');
+        totalTicks += event.toTick - previousTick; previousTick = event.toTick;
+        if (totalTicks > 10000) throw new Error('生活电影太长，无法在这里放映。');
+        // 输入只做形状检查：op 认得、id 与拍号是小的非负整数。
+        // 参数原样交给 play 的同一个入口，不在放映厅里再解释一遍动作。
+        for (const input of event.inputs) {
+          if (typeof input.id !== 'string' || !input.id.length || input.id.length > 200 || !tick(input.tick) || !OPS.includes(input.op)) throw new Error('电影的输入拍序不完整。');
+        }
+      } else throw new Error('电影里有不认识的时间机关。');
     }
   }
   return record;

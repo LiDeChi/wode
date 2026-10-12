@@ -40,7 +40,7 @@ function progressAt(elapsedInFrame) {
 function showFrame() {
   const frame = film.frames[index];
   stage.setPerspective(perspective);
-  stage.show(frame.view, perspective, frame.ending);
+  stage.show(frame.view, perspective, frame.ending, frame);   // 第 4 个参数是这一帧本身：拍号木牌与导演手稿都从它读
   stage.setChoice(frame.choice ? `你在这里选了：${frame.choice}` : '');
   const name = frame.focus ? personDef(frame.focus)?.name || frame.focus : '这一刻';
   $('speaker').textContent = frame.ending ? '落幕' : name;
@@ -59,7 +59,7 @@ function finish() {
   document.body.dataset.filmStatus = 'ended';
   document.body.dataset.ending = film.state.ending || 'partial';
   stage.setProgress(1);
-  stage.show(film.frames.at(-1).view, perspective, true);
+  stage.show(film.frames.at(-1).view, perspective, true, film.frames.at(-1));
   $('ending-title').textContent = ({ history: '援军往邯郸去', broken: '兵符留在了宫里', 'jinbi-lives': '晋鄙随军而行' })[film.state.ending] || '这一卷录制，到这里';
   $('ending-line').textContent = film.state.coda?.lived || film.frames.at(-1).text;
   $('ending').hidden = false;

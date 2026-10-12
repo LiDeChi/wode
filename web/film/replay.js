@@ -1,6 +1,7 @@
 import { createSession } from '../../shared/engine/session.js';
 import { createPlay } from '../../shared/engine/play.js';
 import { decode, directorInput } from './format.js';
+import { experienceOf } from '../hub/experience.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
 export const PERSPECTIVES = { xinling: '主角', ruji: '如姬', houying: '侯嬴' };
@@ -22,6 +23,7 @@ function thoughtsOf(session, view) {
 /** Re-run once, cache the film's frames; animation never calls the engine. */
 export function makeReplay(input) {
   const record = decode(input);
+  if (record.v === 2) return replayLiving(record);
   const { answers, need } = directorInput(record.director);
   const session = createSession();
   session.meet(answers, need);
@@ -77,4 +79,48 @@ export function makeReplay(input) {
   // Expose immutable readbacks for dev-only diagnostics and independent verification.
   return { frames, state, record, ledger: copy(session.ledger.toJSON()),
     director: session.state.directorId, mentorNotes: session.mentor.notes() };
+}
+
+// v2 不补 begin/next、不猜等待：严格按保存的调用与逻辑拍，演在独立会话里。
+function replayLiving(record) {
+  const session = createSession({ saved: copy(record.initial) });
+  const play = createPlay(session, { living: 'director', seed: record.seed });
+  const frames = [];
+  let previousScene = record.initial.play?.life?.sceneId || 'daliang';
+  function capture(text, choice = '', focus = null) {
+    const view = play.view();
+    previousScene = view.act || previousScene;
+    const life = play.lifeRead(view.act || previousScene);
+    const thoughts = Object.fromEntries((life?.actors ?? []).filter(a => a.last?.action).map(a => [a.id, a.last.action]));
+    frames.push({ view: copy(view), scene: previousScene, text: String(text || view.coda?.lived || view.goal || view.film || '这一拍，人物留在此处。'), choice, focus,
+      thoughts, ending: view.stage === 'done', tick: play.life.tick(), life: copy(life), experience: experienceOf(session) });
+  }
+  capture(play.view().film || '从这一卷的开场存档继续。');
+  for (const [i, event] of record.timeline.entries()) {
+    try {
+      if (event.kind === 'pause') {
+        if (event.paused) play.life.pause(); else play.life.resume();
+        continue;
+      }
+      if (event.kind === 'step') {
+        const { op, args, tick } = record.steps[event.index];
+        if (tick !== play.life.tick()) throw new Error('动作不在记录的那一拍。');
+        const before = play.view();
+        const option = before.options?.find(o => o.id === args[0]);
+        // 空 args 是「看」这类不带参数的调用：照原样调用，不补一个猜出来的参数。
+        const out = play[op](...args);
+        capture(out?.answer || out?.text || out?.film || out?.last?.explain || out?.preview?.explain || play.view().log?.at(-1)?.text,
+          op === 'choose' ? option?.line || args[0] : '', out?.person || option?.to);
+      } else {
+        const result = play.advance({ toTick: event.toTick, inputs: copy(event.inputs) });
+        const outcome = result?.processed?.at(-1)?.outcome;
+        const view = play.view();
+        const actors = play.lifeRead(view.act || previousScene)?.actors ?? [];
+        const words = actors.filter(a => a.last?.at === play.life.tick()).map(a => `${a.name}：${a.last.action || '停下来想了一想'}`).join('。');
+        capture(outcome?.answer || outcome?.text || words || view.log?.at(-1)?.text);
+      }
+    } catch (error) { throw new Error(`第 ${i + 1} 段拍序无法回放：${error.message}`); }
+  }
+  if (!frames.at(-1).ending) frames.push({ ...copy(frames.at(-1)), ending: true, text: '录制到这里。回到戏台，仍是你原来的世界。' });
+  return { frames, state: copy(play.state()), record, ledger: copy(session.ledger.toJSON()), saved: copy(session.save()), director: session.state.directorId, mentorNotes: session.mentor.notes() };
 }

@@ -178,10 +178,88 @@ export function createFilmStage(render) {
     goalEye.set(target.x + Math.sin(a) * Math.cos(el) * dist, target.y + Math.sin(el) * dist, target.z + Math.cos(a) * Math.cos(el) * dist);
   }
 
-  function show(view, nextPerspective, isEnding) {
+  let lifeFrame = null;
+  const directorPaper = new THREE.Group(); root.add(directorPaper); directorPaper.visible = false;
+  // 案头木牌：写着这一拍是第几拍、这个世界等不等你。只读 frame.tick 与导演当场决定。
+  const tickHolder = new THREE.Group(); root.add(tickHolder);
+  let tickSlip = null;
+  /** 案头木牌：字板按字的真实大小做。竹简那条老路把整列字压进固定身高，
+   *  十一个字会缩成一条看不见的墨线——拍号是给眼睛看的，得自己量尺寸。 */
+  function tickSign(words, portrait) {
+    const g = new THREE.Group();
+    // 牌面跟人物木牌一个做法：深木底 + 浅墨字。夜里主光只有 .4，
+    // 浅底深字会糊成一块暗板，反过来才看得清（眼睛木牌就是这么写的）。
+    const face = textPlate(words, { size: 96, weight: 500, color: '#f4e7c4', bg: 'rgba(0,0,0,0)', worldHeight: portrait ? .95 : 1.05, vertical: true, letterSpacing: 10 });
+    // textPlate 的 worldHeight 只是「单位缩放」：板子的几何体是 1×(高/宽)，所以真高是
+    // scale.y / aspect、真宽才是 scale.x。板子按 scale 直接做，字就会从上下两头冒出去
+    //（竖排字块实测比 scale.y 高 1.7 倍）。
+    const pw = face.scale.x;
+    const ph = face.scale.y / (face.userData.aspect || 1);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(pw * 1.22, ph * 1.16, 0.035),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color('#6d5437'), roughness: 0.92 }));
+    board.castShadow = true;
+    g.add(board);
+    for (const y of [ph * 0.55, -ph * 0.55]) {
+      const lip = new THREE.Mesh(new THREE.BoxGeometry(pw * 1.4, 0.045, 0.05),
+        new THREE.MeshStandardMaterial({ color: new THREE.Color('#4b3826'), roughness: 0.95 }));
+      lip.castShadow = true; lip.position.set(0, y, -0.004); g.add(lip);
+    }
+    face.position.z = 0.021; g.add(face);
+    return g;
+  }
+  function setTick(frame) {
+    const tick = Number(frame?.tick);
+    if (!Number.isFinite(tick)) return;
+    const decision = frame.experience?.director?.decisions?.at(-1);
+    const waits = decision ? Boolean(decision.payload?.policy?.waitForPlayer) : null;
+    const portrait = innerHeight > innerWidth;
+    const words = `第 ${tick} 拍\n${waits === null ? '世界先走' : waits ? '世界等你' : '世界继续'}`;
+    const key = `${words}|${portrait}`;
+    if (tickSlip?.userData.words === key) return;
+    if (tickSlip) { tickHolder.remove(tickSlip); disposeTree(tickSlip); }
+    tickSlip = tickSign(words, portrait);
+    tickSlip.userData.words = key;
+    tickHolder.add(tickSlip);
+  }
+  const clip = (value, n) => { const s = String(value ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n)}…` : s; };
+  const clause = (value, n) => { const s = String(value ?? '').trim(); const head = s.split(/[：:]/)[0]; return clip(head.length >= 2 ? head : s, n); };
+  function setExperience(frame) {
+    lifeFrame = frame?.life || null;
+    for (const child of [...directorPaper.children]) { directorPaper.remove(child); disposeTree(child); }
+    directorPaper.visible = Boolean(frame?.experience);
+    if (!frame?.experience) return;
+    const { director = { learns: [], decisions: [], predictions: {} }, pages = [], notes = [] } = frame?.experience ?? {};
+    const learns = director.learns ?? [];
+    const portrait = innerHeight > innerWidth;
+    const decision = director.decisions?.at(-1);
+    const prediction = Object.values(director.predictions ?? {}).flatMap(p => p.list || []).at(-1);
+    const learn = learns.at(-1);
+    const hit = /猜中了?(\d+\/\d+)/.exec(String(learn?.said ?? ''));
+    const waits = decision ? Boolean(decision.payload?.policy?.waitForPlayer) : null;
+    const guessed = prediction ? clip(prediction.expect, 4) : '还没放下';
+    const chosen = decision ? (waits ? '等你回话' : clause(decision.said, 4)) : '还没定';
+    const marks = learns.length ? `旧批注 ${learns.length} 条` : '旧批注 没落笔';
+    // 一页账：预测过什么、当场怎么决定、旧批注压了几张、猜中过几次。
+    // 竖屏放不下四行横字，就改成竖排三列（手稿本来就是竖着写的）；每列/每行
+    // 都不超过八个字——字板高度锁死，多一个字画布就变宽，整页会撑得比纸还大。
+    const rows = portrait
+      ? [`预测${guessed.split(' ').at(-1)}`, `当场${chosen.split(' ').at(-1)}`, `旧批注${learns.length ? `${learns.length}条` : '没落笔'}`]
+      : [`预测 ${guessed}`, `当场 ${chosen}`, marks, hit ? `猜中 ${hit[1]}` : '还没猜过'];
+    // 旧批注有几条，纸上就压几张：厚度是看得见的历史，不是数字。
+    const sheet = portrait ? [.78, .95] : [1.7, .95];
+    for (let i = 0; i < Math.min(12, learns.length); i++) directorPaper.add(box(sheet[0], sheet[1], .012, MAT.paperDim, 0, -sheet[1] / 2, -i * .014));
+    directorPaper.add(box(sheet[0] + .05, portrait ? 1.15 : 1.05, .03, MAT.paper, 0, portrait ? -.575 : -.525, .02));
+    const ledger = textPlate(rows.join('\n'), { size: 64, color: '#352718', bg: 'rgba(0,0,0,0)', worldHeight: 1.0, maxWidth: 900, vertical: portrait });
+    ledger.position.set(0, 0, .07); directorPaper.add(ledger);
+    if (learns.length) directorPaper.add(box(portrait ? .62 : 1.79, .055, .05, MAT.bronze, 0, -.62, .06));
+    // 落幕那几行（#ending）是 DOM，压在画面正中；这一帧得把手稿让开它。
+    directorPaper.userData.ending = Boolean(frame?.ending);
+    directorPaper.userData.source = { director, pages, notes, portrait };
+  }
+  function show(view, nextPerspective, isEnding, frame = null) {
     perspective = nextPerspective;
     ended = Boolean(isEnding);
-    const id = view.scene || 'daliang';
+    const id = view.act || view.scene || 'daliang';
     if (id !== currentScene) {
       if (world.current) world.current.visible = false;
       for (const g of extras.values()) g.visible = false;
@@ -194,6 +272,8 @@ export function createFilmStage(render) {
       currentScene = id;
     }
     setBanner(view.title, view.place);
+    setExperience(frame ?? view);
+    setTick(frame ?? view);
 
     const people = view.people || [];
     const ids = people.length ? people.map(p => p.id) : ['xinling', 'zhaoshi', 'zhuhai'];
@@ -257,6 +337,17 @@ export function createFilmStage(render) {
     // 封泥才够得着（手指点下去要 ≥44px，也不能落在字幕底下）。
     const portrait = innerHeight > innerWidth;
     placeAt(banner, 15, 0, 3.78, 8);
+    // 案头：第几拍的木牌挂在片名匾右下，导演的手稿摊在左下角——都贴着画面边，
+    // 不压在人物或字幕带上（竖屏窄，偏移要按 wide 收）。
+    // 手稿：横屏摊在人物左边的空台上，并且一律压在牌杆石座（y≈377）以下——
+    // 杆子摆在 depth 7、纸摆在 9，杆子在纸前面，摊高了就会把「当场」两行挡掉。
+    // 竖屏改竖排三列，放在侯嬴那块牌子底下、如姬左边的空处：那一格只有
+    // 115×140px，按 0.6 缩下来正好（实测 rect≈[286,300,357,440]，四边都空着）。
+    const endingNow = directorPaper.userData.ending === true;
+    placeAt(directorPaper, portrait ? 8.8 : 9, portrait ? (endingNow ? 1.046 : 0.962) : -2.27 * wide,
+      portrait ? (endingNow ? -2.37 : 0.394) : -0.35, 8);
+    directorPaper.scale.setScalar(portrait ? 0.6 : 0.86);
+    directorPaper.rotation.x = -0.5;
     if (portrait) {
       // 竖屏：牌架原来太高，最左那枚（信陵君）被切在画面外；香炉原来正挡在他身前，
       // 现在挪到左下角的台边、抬到字幕带以上。信封放到人物右边偏下——字幕带在 y≈600，
@@ -264,11 +355,18 @@ export function createFilmStage(render) {
       placeAt(boardStand, 7, -0.55, -0.28, 8);
       placeAt(incense.group, 9, -0.95, -1.5, 8);
       placeAt(letter.group, 9.5, 0.9, -0.6, 8);
+      // 竖屏的拍号木牌：三枚人物牌占满上半屏（最右那块到 387px），木牌只剩
+      // 左边一条 71px 宽的墙——缩到 0.95 挂在那儿，谁都不挡。
+      // 落幕那两行链接铺满整幅宽（竖排 flex 会把 a 拉宽），左墙这一竖条正好被它压住，
+      // 所以落幕这一帧把它缩到 0.55、挪到香炉右边那片空处；其余帧缩到 0.8 钉在左墙里。
+      if (endingNow) { placeAt(tickHolder, 11, -0.075, -2.538, 8); tickHolder.scale.setScalar(0.55); }
+      else { placeAt(tickHolder, 11, -1.199, 0.17, 8); tickHolder.scale.setScalar(0.8); }
       placeAt(slipHolder, 12, 3.4 * wide, 1.7, 8);
     } else {
       // 横屏：牌架原先正落在香炉后面，香炉也一并挪到画面最左边。
       placeAt(boardStand, 7, -2.4 * wide, -0.45, 8);
       placeAt(incense.group, 7, -4.2 * wide, 0.05, 8);
+      placeAt(tickHolder, 11, 3.2 * wide, 1.7 - 0.35 * tall, 8);
       placeAt(letter.group, 12, 4.1 * wide, -1.15 - 0.3 * tall, 8);
       placeAt(slipHolder, 12, 4.1 * wide, 2.3 - 0.3 * tall, 8);
     }
@@ -336,6 +434,14 @@ export function createFilmStage(render) {
       }
       incense.group.getWorldPosition(v).project(camera);
       out.incense = [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
+      if (directorPaper.visible) {
+        directorPaper.getWorldPosition(v).project(camera);
+        out.paper = [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
+      }
+      if (tickSlip) {
+        tickSlip.getWorldPosition(v).project(camera);
+        out.tick = [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
+      }
       return out;
     },
     /** 各件装置在屏幕上的矩形：只用来量「整块在不在画面里、够不够手指点」。 */
@@ -344,6 +450,8 @@ export function createFilmStage(render) {
       for (const [id, node] of boards) out['eye:' + id] = rectOf(node.door, camera);
       out.share = rectOf(letter.group, camera);
       out.incense = rectOf(incense.bowl, camera);
+      if (directorPaper.visible) out.paper = rectOf(directorPaper, camera);
+      if (tickSlip) out.tick = rectOf(tickSlip, camera);
       out.face = {};
       for (const [id, node] of boards) {
         out.face[id] = { text: rectOf(node.face, camera), plate: rectOf(node.door.children[0], camera) };
