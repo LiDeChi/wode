@@ -66,6 +66,8 @@ export function createSlip(bench, { onSeal } = {}) {
     group.add(tag.mesh);
     seal.node = g; seal.stamp = stamp; seal.clay = clayMat; seal.tag = tag;
     bench.register(g, 'seal', {
+      // 竖屏全景里，这块封泥的盒子垫到 .95 高就会盖住身后第四只铜钮（点钮点到封泥上）；
+      // .75 高是「宽 50、高 42 像素」——差两像素到 44，换来铜钮点得准，值。
       pad: bench.tall ? [1.05, .75, .8] : [.95, .6, .7],
       onHoverStart: () => { seal.hot = true; },
       onHoverEnd: () => { seal.hot = false; },

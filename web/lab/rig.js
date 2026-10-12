@@ -174,6 +174,33 @@ export function buildRig(bench, { variables = [] } = {}) {
     mesh.castShadow = true; mesh.receiveShadow = true;
     return mesh;
   }
+  /* ---------------- 陶罐那一排的入口牌（手机全景专用） ----------------
+     全景机位远，陶罐那一排与铜钮那一排在屏幕上只隔三十来像素；两排的手感区都要 44 像素
+     就必然互相压住——手指点罐子会点到钮上。与其把两排都垫成互相盖的透明盒子（那种「碰运气
+     的拾取」正是用户骂的），不如在全景里把罐子那排交给一块立在横梁前的木牌：点它走近了再点罐。
+     桌面不用它（桌面机位近，两排隔着五十像素以上，罐子直接点得中）。 */
+  const potEntry = new THREE.Group();
+  potEntry.name = '看陶罐入口';
+  potEntry.position.set(.05, 1.32, 2.3);
+  machine.add(potEntry);
+  {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.9, .68, .09), WOOD());
+    board.castShadow = true;
+    potEntry.add(board);
+    box(potEntry, WOOD2(), [.14, .5, .14], [-.72, -.5, 0]);
+    box(potEntry, WOOD2(), [.14, .5, .14], [.72, -.5, 0]);
+    const face = makePlate({
+      width: 1.74, height: .56, px: 900, py: 290, maxFont: 78,
+      at: [0, 0, .052], lines: ['看陶罐', '八只罐子 · 点开一局'],
+    });
+    potEntry.add(face.mesh);
+    bench.register(potEntry, 'pots:open', {
+      pad: [2.1, 1.6, .5, 0],
+      onHoverStart: () => { potEntry.userData.lift = 1; },
+      onHoverEnd: () => { potEntry.userData.lift = 0; },
+      onClick: () => { clack(true); handlers.onPotOpen?.(); },
+    });
+  }
   const pots = [];
   for (const column of ['before', 'after']) {
     for (let slot = 0; slot < 4; slot++) {
@@ -186,7 +213,9 @@ export function buildRig(bench, { variables = [] } = {}) {
       const rec = { column, slot, x, group: g, material: g.children[0].material };
       pots.push(rec);
       bench.register(g, `pot:${column}:${slot}`, {
-        pad: bench.tall ? [.72, .9, 1.05] : [.72, .6, .72],
+        // 竖屏全景里机器只占屏宽的九成多，一只罐子连手感区都得有 44 像素宽才算点得准。
+        // 罐与罐中心隔 1.04，手感区放到 .95 还留着一条缝，不会互相盖住。
+        pad: bench.tall ? [.95, .9, 1.05] : [.72, .6, .72],
         onHoverStart: () => { g.userData.lift = 1; setPotFlipTarget(column, slot, Math.PI); },
         onHoverEnd: () => { g.userData.lift = 0; setPotFlipTarget(column, slot, 0); },
         onClick: () => { clack(true); handlers.onPot?.(column, slot); },
@@ -319,6 +348,8 @@ export function buildRig(bench, { variables = [] } = {}) {
         node.selected = !node.selected;
         bench.setEmptyDrag(node.selected ? { onDrag: (dx, dy) => { acc += Math.abs(dx) >= Math.abs(dy) ? dx : -dy; apply(node.value + (dy || dx) / 60 * v.step); } } : null);
         handlers.onSelect?.(node.selected ? v.id : null);
+        // 竖屏全景里点一枚钮 = 凑近看这一排钮（见 stages.js）；桌面与已有逻辑一字不动。
+        handlers.onKnobFocus?.(v.id);
         clack();
       },
     });
@@ -340,14 +371,37 @@ export function buildRig(bench, { variables = [] } = {}) {
      只端真正压住钮的那三件（放到案前地上，y −1.62），别的一动不动——搬多了它们互相挤。 */
   const deskParts = [];
   // 端下来之后，五件在案前地上各占一个位子：左边冷灯、中间令牌与归位钉、右边闸杆与暖灯。
+  // 全景里机器只占屏宽九成七（一单位约 51 像素），所以这几件的手感区要垫到 1.1 上下才够 44 像素，
+  // 站位也就得跟着拉开：一件与一件之间留 1.2 以上，垫大了才不互相盖住。
   const TALL_DESK = {
     // 站位按「屏幕上一排五个槽」挑的：斜视角下越靠前越往右跑，所以 x 得一件件试出来。
-    'lamp:before': { x: -3.1, y: -1.62, z: 6.0 },
-    token: { x: -1.9, y: -1.62, z: 6.1 },
-    reset: { x: -.7, y: -1.62, z: 6.2 },
-    lever: { x: .3, y: -1.62, z: 6.4 },
-    'lamp:after': { x: -4.3, y: -1.62, z: 6.0 },
+    'lamp:before': { x: -3.8, y: -1.62, z: 6.0 },
+    token: { x: -1.75, y: -1.62, z: 6.1 },
+    reset: { x: -1.0, y: -1.62, z: 6.2 },
+    lever: { x: .35, y: -1.62, z: 6.4 },
+    'lamp:after': { x: 3.0, y: -1.62, z: 6.0 },
   };
+  // 全景（竖屏）里这几件的手感区：机器小，手得够得着。
+  const STAGE_PADS = {
+    token: [1.18, 1.2, .8],
+    reset: [1.14, 1.1, .9],
+    lever: [1.12, 1.15, .7],
+    'lamp:before': [1.15, 1.5, 1.2],
+    'lamp:after': [1.15, 1.5, 1.2],
+    // 局数碗就在最左边那只铜钮下方二十像素：盒子往上一垫就盖住钮（点钮点到碗上）。
+    // 第 4 个数是盒子的高度（0 = 贴着碗身），压下来以后两者中间留一条缝。
+    bowl: [.95, .66, 1, 0],
+  };
+  /** 换一种观察距离：手感区跟着换（凑近看时收回登记时那个大小，别互相挤）。
+   *  谁在这一处能点，交给 stages.js 的 bench.only()（它知道这一处的画面里有哪几件）。 */
+  function setStage(name = 'plain') {
+    const wide = bench.tall && name === 'wide';
+    for (const id of knobNodes.keys()) bench.setPad(`knob:${id}`, wide ? [1.14, .8, 1.14] : null);
+    for (const p of pots) bench.setPad(`pot:${p.column}:${p.slot}`, null);
+    for (const [n, pad] of Object.entries(STAGE_PADS)) bench.setPad(n, wide ? pad : null);
+    potEntry.visible = wide;
+    return name;
+  }
   /** 竖屏/桌面两套摆位；一件东西的木牌跟着它自己走（木牌是根节点的绝对坐标）。 */
   function setTallLayout(on) {
     for (const p of deskParts) {
@@ -490,7 +544,7 @@ export function buildRig(bench, { variables = [] } = {}) {
       setTimeout(() => { lever.armed = true; lever.target = -.3; }, 1400);
     };
     bench.register(g, 'lever', {
-      pad: bench.tall ? [.7, .95, .6, 1.6] : [.55, .7, .5, 1.6],
+      pad: bench.tall ? [.8, .95, .6, 1.6] : [.55, .7, .5, 1.6],
       cursor: 'grab',
       onHoverStart: () => { lever.hover = true; },
       onHoverEnd: () => { lever.hover = false; },
@@ -593,6 +647,9 @@ export function buildRig(bench, { variables = [] } = {}) {
     lever.pivot.rotation.x = lever.angle;
     lever.grip.scale.setScalar(1 + (lever.hover ? .12 : 0));
     // 陶罐被指到时抬一点，被点到时亮一下。
+    // 「看陶罐」那块入口木牌也抬一点：指到它就该有反应，不然手指不敢按下去。
+    potEntry.position.y = 1.32 + (potEntry.userData.lift ? .05 : 0);
+    potEntry.rotation.x += ((potEntry.userData.lift ? -.06 : 0) - potEntry.rotation.x) * (1 - Math.exp(-dt * 10));
     for (const pot of pots) {
       const lift = pot.group.userData.lift ? .04 : 0;
       pot.group.position.y += (lift - pot.group.position.y) * (1 - Math.exp(-dt * 9));
@@ -643,6 +700,8 @@ export function buildRig(bench, { variables = [] } = {}) {
     root, machine, handlers, pots, knobNodes, token, bowl, lever,
     /** 竖屏那一套摆位（手机窄屏上，案沿三件端到地上，免得压住铜钮）。 */
     setTallLayout,
+    /** 换一种观察距离（全景 / 凑近看铜钮 / 凑近看陶罐）：机器上的实物手感区跟着换。 */
+    setStage,
     beanRoot: potGroup.parent === root ? root : root,
     setKnob, setBowl, setToken: director => {
       token.director = director;
@@ -672,6 +731,15 @@ export function buildRig(bench, { variables = [] } = {}) {
     potPoint(column, slot) {
       const x = TRACK.potX(slot, column);
       return new THREE.Vector3(x, TRACK.potTop + .3, TRACK.potZ);
+    },
+    /** 一枚铜钮在世界里的位置（凑近看这一排时镜头对着它）。 */
+    knobPoint(id) {
+      const i = variables.findIndex(v => v.id === id);
+      return new THREE.Vector3(knobX(i < 0 ? 2 : i), .52, KNOB_Z);
+    },
+    /** 铜钮那一排中间——不用对着某一枚时看这儿。 */
+    knobRowPoint() {
+      return new THREE.Vector3(knobX(2) - .1, .5, KNOB_Z);
     },
     lampPoint(column) {
       return new THREE.Vector3(lamps[column]?.x ?? 0, 1.5, 4.3);

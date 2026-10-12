@@ -11,6 +11,7 @@ import { createFigures, createProbeTiles, FIGURE_BY_ID } from './figures.js';
 import { createSlip } from './slip.js';
 import { createScroll } from './scroll.js';
 import { createIncense } from './incense.js';
+import { createStages } from './stages.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -31,10 +32,20 @@ const rig = buildRig(bench, { variables: VARIABLES });
 bench.onTallChange(on => rig.setTallLayout(on));
 const beads = createBeads(rig.beanRoot, { speed: 1 });
 const figures = createFigures(bench, { onPick: node => showPerson(node.id), onLamp: () => nextMentor() });
-const tiles = createProbeTiles(bench, { onPick: appeal => runProbe(appeal) });
+const tiles = createProbeTiles(bench, { onPick: appeal => runProbe(appeal), onAsk: () => stages?.entry('ask') });
 const slip = createSlip(bench, { onSeal: sealLink });
 const scroll = createScroll(bench, { onFilm: () => toFilm() });
 const incense = createIncense(bench, { onPick: () => readColumn(baseline ? 'before' : 'after') });
+// 竖屏上有两种看法：wide 全景（整台机器装得下）/ knobs·pots·ask 凑近看一件实物（见 stages.js）。
+// 桌面不走这套，屏幕上还是原来那台镜头。
+const stages = createStages(bench, rig, {
+  figures: tiles,
+  onStage: name => {
+    if (name === 'knobs') setTop('凑近看这一排铜钮：拨一枚，再拉闸。');
+    else if (name === 'pots') setTop('凑近看这几只陶罐：点一只，看一粒豆子怎么走的。');
+    else if (name === 'ask') setTop('四张牌摆开了：点一张，等于向五个人各讲一次同一种话。');
+  },
+});
 VARIABLES.forEach(v => rig.setKnob(v.id, v.base));
 $('debug').hidden = !dev;
 
@@ -236,7 +247,12 @@ rig.handlers.onToken = d => {
   readMentor();
 };
 rig.handlers.onRun = () => run();
-rig.handlers.onPot = (column, slot) => openPot(column, slot);
+// 手机全景里点一只陶罐：先凑近看这一排罐子；已经在近看，才是真去开罐。
+rig.handlers.onPot = (column, slot) => { if (stages.entry('pots')) return; openPot(column, slot); };
+// 手机全景里那排罐子交给了「看陶罐」那块木牌（罐与钮挨太近，直接点罐会点到钮上）。
+rig.handlers.onPotOpen = () => { stages.entry('pots'); };
+// 手机全景里点一枚铜钮：先凑近看这一排钮。桌面照旧（选中、上下拖）。
+rig.handlers.onKnobFocus = () => { stages.entry('knobs'); };
 rig.handlers.onLamp = column => readColumn(column);
 
 /* 整账不常驻屏幕：点灯（或者点香炉）让它从竹简上滑出来。 */
@@ -255,7 +271,11 @@ function readColumn(column) {
   const c = distribution(r);
   setTop(`${column === 'before' ? '改前' : '改后'}的整账写在竹简上：${r.runs.length} 局里，晋鄙活下来 ${c['jinbi-lives']} 局、兵符没出宫 ${c.broken} 局。`);
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') releaseFocus(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (scroll.shown) releaseFocus();     // 竹简开着：先收竹简
+  else stages.back();                   // 否则退回全景（桌面上这一步本来就是空的）
+});
 
 /* ---------------- 拉闸：跑一批 ---------------- */
 async function run() {
@@ -358,11 +378,12 @@ function paint() {
 
 /* ---------------- 点开一只陶罐：看一局怎么走的 ---------------- */
 function releaseFocus() {
-  bench.release();
   slip.hide();
   scroll.hide();
   rig.showTopPlates(true);
   lineAway(false);
+  // 手机近看时，收掉推近要回到「当前这一处」，不是一路退回全景。
+  stages.release();
 }
 let focusTimer = 0;
 function openPot(column, slot) {
@@ -465,7 +486,7 @@ setHint('正在准备第一批实验…');
 readMentor();
 run();
 if (dev) window.__lab = {
-  bench, rig, beads, figures, tiles, slip, scroll, incense,
+  bench, rig, beads, figures, tiles, slip, scroll, incense, stages,
   state: () => ({ settings, director, n: rig.samples, baseline, changed }),
   counts: () => ({
     before: baseline ? distribution(baseline) : null,
@@ -477,5 +498,7 @@ if (dev) window.__lab = {
   wear: () => ({ at: (row, lane, column) => rig.wearOf(row, lane, column), counts: paintWear() }),
   pot: (column, slot) => ({ flip: rig.potFlip(column, slot), back: rig.potBackLines(column, slot) }),
   mentor: () => ({ at: mentorAt, lines: mentorLines.slice(), shown: mentorLines[mentorAt] || null }),
+  /* 手机换观察距离那套：现在在哪一处、镜头会停在哪、横拖到哪儿了。 */
+  stage: () => ({ name: stages.stage, close: stages.close, rest: bench.rest, panOff: bench.panOff, tall: bench.tall }),
   lanes: run => lanesOf(run),
 };

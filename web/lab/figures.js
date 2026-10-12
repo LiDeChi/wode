@@ -253,17 +253,19 @@ export const APPEAL_TILES = [
   { appeal: '恩', z: 3.35 },
 ];
 
-export function createProbeTiles(bench, { onPick } = {}) {
+export function createProbeTiles(bench, { onPick, onAsk } = {}) {
   const group = new THREE.Group();
   bench.scene.add(group);
   const nodes = new Map();
   const ORDER = FIGURES.map(f => f.id);
+  // 架子上的原位（桌面一直是这样：四块沿视线方向错开一点，免得后一块压在前一块身上）。
+  const restAt = i => new THREE.Vector3(X - i * (bench.tall ? .34 : .17), SHELF_Y + .05, APPEAL_TILES[i].z);
+  // 手机近看的位置：一字排开、正对镜头——四块牌各自看得清，手感区也才排得开。
+  const askAt = i => new THREE.Vector3(-1.28 + i * .86, SHELF_Y + .12, 2.55);
 
   for (const [i, def] of APPEAL_TILES.entries()) {
     const g = new THREE.Group();
-    // 四块牌沿视线方向排开，越靠里越往左挪一点——不然排在一条线上，
-    // 后一块看着压在前一块身上，手指也分不清点的是哪一块。
-    g.position.set(X - i * (bench.tall ? .34 : .17), SHELF_Y + .05, def.z);
+    g.position.copy(restAt(i));
     group.add(g);
     const wood = new THREE.MeshStandardMaterial({ color: '#3c2c1d', roughness: .9 });
     const foot = new THREE.Mesh(new THREE.BoxGeometry(.44, .07, .38), wood);
@@ -286,7 +288,7 @@ export function createProbeTiles(bench, { onPick } = {}) {
       g.add(d);
       dots.push(d);
     }
-    const node = { ...def, group: g, lean, dots, lit: 0, hover: 0, target: 0 };
+    const node = { ...def, i, group: g, lean, dots, lit: 0, hover: 0, hot: false, at: restAt(i).clone() };
     nodes.set(def.appeal, node);
     bench.register(g, `appeal:${def.appeal}`, {
       pad: bench.tall ? [.62, .5, .32, .24] : [.46, .4, .24, .22],
@@ -296,11 +298,41 @@ export function createProbeTiles(bench, { onPick } = {}) {
     });
   }
 
+  // 手机全景里四块牌先让开，原处立一块「问四张牌」的木牌：手指够大，点一下才把四块摆开来。
+  const entryG = new THREE.Group();
+  entryG.position.set(X - .35, SHELF_Y + .05, 2.5);
+  entryG.visible = false;
+  group.add(entryG);
+  {
+    const wood = new THREE.MeshStandardMaterial({ color: '#3c2c1d', roughness: .9 });
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.2, .09, .5), wood);
+    foot.position.y = .045; foot.castShadow = true; foot.receiveShadow = true; entryG.add(foot);
+    const lean = new THREE.Group();
+    lean.position.y = .09; lean.rotation.x = -.12;
+    entryG.add(lean);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.16, .7, .07), wood);
+    body.position.y = .35; body.castShadow = true; lean.add(body);
+    const face = makePlate({
+      width: 1.1, height: .62, px: 768, py: 434, maxFont: 76, bg: null, border: null, ink: '#f0dcb4',
+      at: [0, .35, .04], lines: ['问四张牌', '凑近看谁点了头'],
+    });
+    lean.add(face.mesh);
+    bench.register(entryG, 'ask:open', {
+      pad: [1.5, 1.0, .62, .5],
+      onHoverStart: () => { entryG.userData.lift = 1; },
+      onHoverEnd: () => { entryG.userData.lift = 0; },
+      onClick: () => onAsk?.(),
+    });
+  }
+
   bench.addUpdater((dt, clock) => {
+    const k = 1 - Math.exp(-dt * 9);
     for (const node of nodes.values()) {
       node.hover += ((node.hot ? .05 : 0) - node.hover) * (1 - Math.exp(-dt * 10));
       node.lean.rotation.x = -.1 - node.hover * 1.1;
-      node.group.position.y = SHELF_Y + .05 + node.hover * .06;
+      node.group.position.x += (node.at.x - node.group.position.x) * k;
+      node.group.position.z += (node.at.z - node.group.position.z) * k;
+      node.group.position.y = node.at.y + node.hover * .06;
       const glow = node.hover * .5 + (node.hot ? Math.sin(clock * 5) * .08 : 0);
       node.dots.forEach((d, i) => {
         const on = node.lit > i;
@@ -311,8 +343,9 @@ export function createProbeTiles(bench, { onPick } = {}) {
     }
   });
 
-  return {
+  const api = {
     group, nodes,
+    entry: entryG,
     /** rows: [{id, accepted}]，按人偶的固定顺序点灯。 */
     set(appeal, rows) {
       const node = nodes.get(appeal);
@@ -322,6 +355,26 @@ export function createProbeTiles(bench, { onPick } = {}) {
     },
     acceptedOf(appeal) { return nodes.get(appeal)?.accepted || []; },
     clear() { for (const n of nodes.values()) { n.lit = 0; n.accepted = []; } },
+    /** 三种看法：plain（桌面/原样）、wide（手机全景：四块收起，立一块入口牌）、ask（手机近看：四块摆成一排）。 */
+    setStage(stage = 'plain') {
+      const ask = stage === 'ask';
+      const folded = bench.tall && !ask;
+      for (const node of nodes.values()) {
+        node.group.visible = !folded;
+        node.at.copy(bench.tall && ask ? askAt(node.i) : restAt(node.i));
+        // 摆开来以后手感区换成排得开又不重叠的大小；其余情况交回登记时那个。
+        bench.setPad(`appeal:${node.appeal}`, ask ? [.78, .62, .3, .22] : (bench.tall ? [.62, .5, .32, .24] : null));
+      }
+      entryG.visible = folded;
+      api.stage = stage;
+      return stage;
+    },
+    stage: 'plain',
+    /** 近看四张牌时镜头对着哪儿（那一排的中间）。 */
+    askPoint: () => new THREE.Vector3(0, SHELF_Y + .42, 2.55),
+    /** 手机全景里那四块牌**不可见**、只有入口牌；自查要认这一点。 */
+    get folded() { return bench.tall && api.stage !== 'ask'; },
   };
+  return api;
 }
 
