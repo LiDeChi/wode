@@ -394,6 +394,82 @@ function door(play) {
 }
 const actsBy = (session, person, verb) => entries(session, 'actor.act').filter((e) => e.payload.person === person && (!verb || e.payload.verb === verb));
 
+// t61 / t60：跨更鼓后曾出现「生活账仍记如姬持符，戏账已记符出宫」。
+// lifeRead 不提供物权旗标；用公共 view().flags 读取同一世界的物权，用账本查真实去向。
+// 八拍内（本例第0拍）物权尚为 null，是既有行为，不要求生活层凭空初始化。
+for (const [label, toTick, seed] of [
+  ['跨第一更鼓后', 9, 't60-a-after'],
+  ['八拍内', 0, 't60-b-after'],
+]) {
+  test(`night/t61：${label}干净出宫，物权与兵符去向不得同时矛盾`, () => {
+    const { session, play } = night({ seed });
+    play.advance({ toTick });
+    assert.equal(play.lifeRead('night').tick, toTick);
+    assert.equal(play.view().done, false);
+    const before = play.view().flags;
+    assert.equal(before.fuWithRuji ?? null, toTick >= 8 ? true : null);
+    assert.equal(before.fuOwner ?? null, toTick >= 8 ? 'ruji' : null);
+
+    const destinations = () => entries(session, 'claim.add').filter((e) =>
+      e.payload.presentation === 'night' && e.payload.subject === '兵符' && e.payload.predicate === '去向');
+    assert.equal(destinations().length, 0, '未落定的夜尚未写兵符去向');
+    door(play);
+    play.choose('rush');
+
+    const assertSettled = () => {
+      const flags = play.view().flags;
+      const claims = destinations();
+      assert.equal(flags.night, 'clean', '必须真实走到干净出宫的分支');
+      assert.equal(claims.length, 1, '去向必须真实落账一次，不能用空账本让不变量通过');
+      assert.match(claims[0].payload.object, /出了卧内.*信陵君手里/);
+      const rujiStillHolds = flags.fuWithRuji === true && flags.fuOwner === 'ruji';
+      const sealLeftPalace = claims.some((e) => /出了卧内.*信陵君手里/.test(e.payload.object));
+      assert.equal(rujiStillHolds && sealLeftPalace, false, '同一时刻不得既记如姬持符又记符已出宫');
+      assert.equal(flags.fuWithRuji ?? null, toTick >= 8 ? false : null);
+      assert.equal(flags.fuOwner ?? null, toTick >= 8 ? 'player' : null);
+    };
+    assert.equal(play.view().done, true);
+    assertSettled();
+    play.next();
+    assert.equal(play.view().act, 'ye');
+    assertSettled();
+  });
+}
+
+test('night/t61：已递符后被守卫撞见，物权收回如姬且去向只记留卧内', () => {
+  const { session, play } = night({ seed: 't60-s2' });
+  play.advance({ toTick: 9 });
+  door(play);
+  play.advance({ toTick: 16 });
+  play.advance({ toTick: 24 });
+  const before = play.view().flags;
+  assert.equal(actsBy(session, 'ruji', 'give').length, 1, '必须先发生真实递符，才覆盖反向矛盾');
+  assert.equal(before.nightHand, true);
+  assert.equal(before.fuOwner, 'player');
+  assert.equal(before.fuWithRuji, false);
+  assert.equal(play.view().done, false);
+  for (let i = 0; i < 10 && !play.view().done; i++) play.choose('wait');
+  assert.equal(play.view().done, true, '等待必须真实触发被撞见的收幕');
+  assert.equal(play.view().night.seen, true);
+
+  const assertSettled = () => {
+    const flags = play.view().flags;
+    const claims = entries(session, 'claim.add').filter((e) =>
+      e.payload.presentation === 'night' && e.payload.subject === '兵符' && e.payload.predicate === '去向');
+    assert.equal(flags.night, 'seen');
+    assert.equal(claims.length, 1, '失手结清只写一次真实兵符去向');
+    assert.match(claims[0].payload.object, /兵符留在卧内/);
+    assert.equal(claims.some((e) => /出了卧内.*信陵君手里/.test(e.payload.object)), false);
+    assert.equal(flags.fuOwner, 'ruji');
+    assert.equal(flags.fuWithRuji, true);
+    assert.equal(flags.nightHand, true, '递过一次的历史保留，不能拿它当当前物权');
+  };
+  assertSettled();
+  play.next();
+  assert.equal(play.view().act, 'ye');
+  assertSettled();
+});
+
 test('night：单导高托付门边只递一次；物权随真实动作改变', () => {
   const { session, play } = night();
   door(play);
