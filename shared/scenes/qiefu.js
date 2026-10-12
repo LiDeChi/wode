@@ -489,9 +489,11 @@ export const QIFU_SCENES = {
       // 动词映射：心智选中单元带哪个 verb，演员才动得起来（give=如姬的「记着恩」、say=「顾虑被发现」/甲「拦人」、go=乙「装没看见」）
       verbs: ['give', 'say', 'go'],
       situation: '半块兵符在如姬手里；回廊的巡灯每八拍挪一格。如姬记着公子的恩，也怕被发现；甲按令拦人，乙爱睁一只眼。',
-      // 每个演员面对的刺激（生活情境）。t52 起应由这里取，按场景候选能力分给各人；
-      // 今天 plan.js 只读 scene.ambient.channels（那份玩家路径的 watch/react 也在用，不能动），
-      // 所以如姬的单元暂时吃不到恩/惧——她的「记着恩/顾虑被发现」两个动作要等 t52 接通后才会自己发生。
+      // 分支名称只是索引；信任用 when 字段裁判，不解析中文或更改玩家的 ambient。
+      conditions: [
+        { name: '高托付', when: { trust: { person: 'ruji', gte: 0.45 } } },
+        { name: '低托付', when: { trust: { person: 'ruji', lt: 0.45 } } },
+      ],
       stimulus: {
         // 如姬按托付分两支：托付够 → 「记着恩」（目标加权 0.75）压过顾虑，命中 debt/give；
         // 托付不够 → 顾虑 0.4 吃满（她的风险单元上限 0.42），命中 risk/say。两支都停在 unit 层，
@@ -514,14 +516,14 @@ export const QIFU_SCENES = {
       },
       // 候选计划：规则表里用 id/note 命名（id/note 是结果字段，不参与匹配）
       plans: [
-        { id: 'hand', who: 'ruji', unit: 'debt（记着恩）', verb: 'give',
+        { id: 'hand', who: 'ruji', unit: 'debt', label: '记着恩', verb: 'give',
           need: ['托付 ≥ 0.45', '人在门边 pos 3', '符在她手里', '独立 give 授予'],
           outcome: '递一次半块兵符（她的 actor.act + flag nightHand 防重复），不因时间到就递' },
-        { id: 'ask', who: 'ruji', unit: 'risk（顾虑被发现）', verb: 'say',
+        { id: 'ask', who: 'ruji', unit: 'risk', label: '顾虑被发现', verb: 'say',
           need: ['托付不够（< 0.45）'], outcome: '低声问「会不会被发现」，不递符' },
-        { id: 'block', who: 'guard_a', unit: 'block（拦人）', verb: 'say',
+        { id: 'block', who: 'guard_a', unit: 'block', label: '拦人', verb: 'say',
           need: ['听见低问，或人进了他的视线'], outcome: '要令牌（他自己的 actor.act）' },
-        { id: 'look-away', who: 'guard_b', unit: 'look_away（装没看见）', verb: 'go',
+        { id: 'look-away', who: 'guard_b', unit: 'look_away', label: '装没看见', verb: 'go',
           need: ['听见低问'], outcome: '装作没看见，放他过去' },
       ],
     },
