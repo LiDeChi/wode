@@ -1,13 +1,12 @@
 node_modules/
-dist/
 .runtime/
 .env
-.env.*
-!.env.example
-.playwright-mcp/
-playwright-report/
-test-results/
-artifacts/captures/
-artifacts/*.webm
 *.log
+
+# 本机工具状态，不属于产品
+.agent-teams/
+.commandcode/
+/command-code-session-*.html
+
+# macOS
 .DS_Store

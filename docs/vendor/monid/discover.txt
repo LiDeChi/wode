@@ -1,0 +1,86 @@
+On this page
+POST /v1/discover ​
+Search for data endpoints using natural language. The API uses AI-powered routing to match your query to the best available endpoints.
+Request ​
+POST /v1/discover
+Headers ​
+HeaderRequiredDescription
+AuthorizationYesBearer <api-key>
+Content-TypeYesapplication/json
+Body ​
+FieldTypeRequiredDescription
+querystringYesA short natural language search query (min 1 character)
+limitnumberNoMaximum results to return (1-20, default 5)
+Example Request ​
+curlTypeScriptPython
+bash
+curl -X POST https://api.monid.ai/v1/discover \
+  -H "Authorization: Bearer monid_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "twitter posts about AI",
+    "limit": 5
+  }'
+typescript
+const response = await fetch("https://api.monid.ai/v1/discover", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer monid_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    query: "twitter posts about AI",
+    limit: 5,
+  }),
+});
+const data = await response.json();
+python
+import requests
+response = requests.post(
+    "https://api.monid.ai/v1/discover",
+    headers={
+        "Authorization": "Bearer monid_live_...",
+        "Content-Type": "application/json",
+    },
+    json={
+        "query": "twitter posts about AI",
+        "limit": 5,
+    },
+)
+data = response.json()
+Response ​
+200 OK ​
+FieldTypeDescription
+resultsarrayMatching endpoints
+results[].providerstringProvider slug
+results[].providerNamestringProvider display name
+results[].endpointstringEndpoint path
+results[].descriptionstringEndpoint description
+results[].priceobjectPricing information
+results[].price.typestring"PER_CALL" or "PER_RESULT"
+results[].price.amountnumberPrice in USD
+results[].price.currencystring"USD"
+querystringThe original search query
+countnumberNumber of results returned
+Example Response ​
+json
+{
+  "results": [
+    {
+      "provider": "apify",
+      "providerName": "Apify",
+      "endpoint": "/apidojo/tweet-scraper",
+      "description": "Scrape tweets by search terms, hashtags, or user handles",
+      "price": {
+        "type": "PER_CALL",
+        "amount": 0.003,
+        "currency": "USD"
+      }
+    }
+  ],
+  "query": "twitter posts about AI",
+  "count": 1
+}
+Next Step ​
+Use POST /v1/inspect to get full details for a discovered endpoint.
+ 

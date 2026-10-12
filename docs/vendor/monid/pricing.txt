@@ -1,0 +1,47 @@
+On this page
+Pricing ​
+You or your agent only pays for what you use. No subscriptions or enterprise contracts.
+Pricing Models ​
+Each endpoint has its own price. There are two pricing models:
+Per-Call ​
+A flat fee per execution, regardless of how many results are returned.
+json
+{
+  "type": "PER_CALL",
+  "amount": 0.003,
+  "currency": "USD"
+}
+For example, a Twitter search endpoint might cost $0.003 per call.
+Per-Result ​
+A fee per result item returned, with an optional flat base fee.
+json
+{
+  "type": "PER_RESULT",
+  "amount": 0.001,
+  "flatFee": 0.002,
+  "currency": "USD"
+}
+For example, scraping product reviews at $0.001 per review plus a $0.002 base fee per call.
+Viewing Prices ​
+Prices are shown in three places:
+Discover results -- each endpoint includes its price
+Inspect details -- full pricing breakdown with notes
+Run response -- the actual cost charged for the execution
+Ask Your Agent ​
+The easiest way to check pricing. Set up your agent with MCP or Skill, then ask:
+"How much does it cost to scrape Twitter posts?"
+Your agent will discover the endpoint and report its pricing automatically.
+With the CLI ​
+bash
+monid discover -q "twitter posts"
+# Price column shows per-endpoint pricing
+monid inspect -p apify -e /apidojo/tweet-scraper
+# Detailed pricing section with type, amount, and notes
+With the API ​
+The price field is included in discover, inspect, and run responses.
+Next Steps ​
+Set up with MCP -- Connect your AI client
+Set up with Skill -- Give your agent the Monid skill
+CLI Run Reference -- Execute endpoints from the command line
+API Run Reference -- Execute endpoints via the API
+ 

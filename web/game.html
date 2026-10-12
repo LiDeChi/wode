@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>竊符 · 呈現</title>
+<link rel="stylesheet" href="/game.css" />
+<!-- three.js 是 vendor 進來的靜態檔，不是 npm 依賴；three.module.js 內部用相對路徑 import three.core.js -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/three.module.js",
+    "three/": "/vendor/three/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="stage"></canvas>
+
+  <!-- 場景名牌：左上一行，說明這是哪一場、導演給了什麼 -->
+  <div id="scene-tag" class="scene-tag">
+    <span id="scene-name">大梁</span>
+    <span id="scene-grant" class="scene-grant"></span>
+  </div>
+
+  <!-- 狀態：這一幕的壓力。糧食在掉，這就是壓力本身 -->
+  <div id="meters" class="meters">
+    <div class="meter" data-meter="grain">
+      <span class="meter-label">城中餘糧</span>
+      <div class="meter-track"><div class="meter-fill" id="grain-fill"></div></div>
+      <span class="meter-value" id="grain-value">—</span>
+    </div>
+    <div class="meter" data-meter="dawn">
+      <span class="meter-label">距天亮</span>
+      <div class="meter-track"><div class="meter-fill" id="dawn-fill"></div></div>
+      <span class="meter-value" id="dawn-value">—</span>
+    </div>
+  </div>
+
+  <!-- 目標：一句話，說你現在該做什麼 -->
+  <div id="objective" class="objective"></div>
+
+  <!-- 走近某人時出現的提示 -->
+  <div id="prompt" class="prompt" hidden></div>
+
+  <!-- 台詞條：角色說的話，底部一條 -->
+  <div id="linebar" class="linebar" hidden>
+    <div class="line-speaker" id="line-speaker"></div>
+    <div class="line-text" id="line-text"></div>
+    <div class="line-source" id="line-source"></div>
+  </div>
+
+  <!-- 裝置：導演的授予決定這裡出現什麼。不是選單，是裝置 -->
+  <div id="device" class="device" hidden>
+    <div class="device-head">
+      <span class="device-title" id="device-title">你要怎麼做？</span>
+      <span class="device-why" id="device-why"></span>
+    </div>
+    <div class="device-options" id="device-options"></div>
+  </div>
+
+  <!-- 看心思：一層滑入的浮層，不是常駐面板 -->
+  <div id="mind" class="mind" hidden>
+    <div class="mind-head">
+      <span id="mind-name"></span>
+      <button id="mind-close" class="mind-close" type="button" aria-label="關上">×</button>
+    </div>
+    <div class="mind-body" id="mind-body"></div>
+  </div>
+
+  <!-- 開場：導演設計還沒讀到時的最初一屏 -->
+  <div id="title" class="title">
+    <div class="title-inner">
+      <div class="title-seal">竊</div>
+      <h1>竊符</h1>
+      <p class="title-sub">你是信陵君門下新來的門客。<br />一座被圍十七個月的城，等不到援軍。</p>
+      <div id="title-status" class="title-status">正在讀導演給這一場的設計…</div>
+      <button id="title-start" class="title-start" type="button" disabled>入場</button>
+      <p class="title-keys">WASD／方向鍵走動 · E 走近 · 空白鍵說一句 · Tab 看心思 · R 重來</p>
+    </div>
+  </div>
+
+  <!-- 收場 -->
+  <div id="coda" class="coda" hidden>
+    <div class="coda-inner">
+      <h2 id="coda-title">這一場到此</h2>
+      <p id="coda-text"></p>
+      <button id="coda-again" class="title-start" type="button">再來一次</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/game/main.js"></script>
+</body>
+</html>

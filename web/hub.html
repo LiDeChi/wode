@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>数字世界 · 排片表</title>
+<link rel="stylesheet" href="/hub/hub.css">
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
+</head>
+<body>
+<canvas id="stage" aria-label="夜里的戏台：台上有虎符、卷轴、推演机和一盘绳结"></canvas>
+
+<!-- 台口的匾：整页唯一的常驻字。 -->
+<div class="lintel" aria-hidden="true"><b>排片表</b><i id="lintel-sub">一个世界。你可以走进去，也可以坐下来看。</i></div>
+
+<!-- 摸到哪件实物，这里才出现它的一行字：不是卡片，只有刻出来的一行。 -->
+<div id="laser" class="laser" hidden>
+  <b id="laser-name"></b>
+  <span id="laser-tag"></span>
+  <em id="laser-detail"></em>
+</div>
+
+<!-- 导师的话在灯下（场景里）；这里给读屏和看不见字的人留一份。 -->
+<p class="sr-only" id="mentor-text">导师的话在灯下。</p>
+
+<pre id="dev" class="dev" hidden></pre>
+<script type="module" src="/hub/hub.js"></script>
+</body>
+</html>

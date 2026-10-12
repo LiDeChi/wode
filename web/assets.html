@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>導演手裡的筆 · 資產預覽</title>
+<style>
+  :root{
+    --paper:#fbf8f1; --ink:#3a3326; --ink-soft:#6b6151; --line:#e4d8bd; --panel:#fffdf8;
+    --muted:#c9bda2; --seal:#a33b2a; --bad:#8a5a2b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:15px/1.6 "PingFang TC","PingFang SC",system-ui,-apple-system,"Noto Sans CJK TC",sans-serif}
+  a{color:inherit}
+  header.top{border-bottom:1px solid var(--line);padding:20px 24px 14px;background:#fffdf8;position:sticky;top:0;z-index:5}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .seal{display:inline-grid;place-items:center;width:30px;height:30px;background:var(--seal);color:#fff;
+    border-radius:4px;font-weight:700;font-size:16px;align-self:center}
+  h1{font-size:20px;margin:0;letter-spacing:.04em}
+  .sub{color:var(--ink-soft);font-size:13px;margin:2px 0 0}
+  .back{margin-left:auto;font-size:13px;color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 11px;font-size:12.5px;color:var(--ink-soft)}
+  .chip b{color:var(--ink);font-weight:600}
+  .chip.warn{border-color:#e0c39a;background:#fff6ee;color:var(--bad)}
+  .bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--ink-soft)}
+  .bar label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+  .bar select,.bar button{font:inherit;font-size:13px;padding:3px 8px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);border-radius:5px}
+  main{padding:22px 24px 60px;max-width:1180px;margin:0 auto}
+  h2.dir{font-size:17px;margin:26px 0 4px;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+  h2.dir small{font-weight:400;color:var(--ink-soft);font-size:13px;margin-left:8px}
+  .work{margin:14px 0 4px}
+  h3.work{font-size:15px;margin:16px 0 6px;color:var(--ink-soft);letter-spacing:.06em}
+  h3.work b{color:var(--ink);font-size:16px}
+  section.scene{margin:10px 0 20px;padding-left:12px;border-left:2px solid var(--line)}
+  h4.scene{font-size:14px;margin:0 0 8px;font-weight:600}
+  h4.scene small{font-weight:400;color:var(--ink-soft);margin-left:8px}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+  .thumb{position:relative;background:#f0ead9;cursor:zoom-in;display:block;width:100%}
+  .thumb img{display:block;width:100%;height:190px;object-fit:cover}
+  .card .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;flex:1}
+  .kicker{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft)}
+  .tag{border:1px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--paper)}
+  .tag.placeholder{border-color:#e0c39a;background:#fff6ee;color:var(--bad)}
+  .tag.cloud{border-color:#c9d7c3;background:#f3f8f0;color:#3f5c35}
+  .tag.draft{border-color:#c9b48a;background:#fdf6e6;color:#7d6320}
+  .tag.reject{border-color:#d9a08a;background:#fdeee6;color:#8f3a22}
+  .reject{font-size:12.5px;color:#8f3a22;background:#fff4ee;border:1px solid #e6c3b0;border-radius:6px;padding:7px 9px}
+  .reject b{font-weight:600}
+  .note{font-size:12.5px;color:#7d6320;background:#fdf6e6;border:1px solid #e6d8b0;border-radius:6px;padding:7px 9px}
+  .note b{font-weight:600}
+  .card[data-rej="1"]{border-color:#d9a08a}
+  .line{font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .prompt{font-size:12.5px;color:var(--ink-soft)}
+  audio{width:100%;height:34px}
+  details summary{cursor:pointer;font-size:12px;color:var(--ink-soft)}
+  details[open] summary{margin-bottom:4px}
+  code{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3ecdc;padding:1px 5px;border-radius:4px;word-break:break-all}
+  .why{font-size:12.5px;color:var(--ink-soft);border-top:1px dashed var(--line);padding-top:7px}
+  .empty{max-width:640px;margin:40px auto;background:#fffdf8;border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+  .empty h2{margin:0 0 10px;font-size:17px}
+  .empty pre{background:#f3ecdc;padding:10px 12px;border-radius:6px;overflow:auto;font-size:12.5px}
+  #errors{margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  #errors h2{font-size:15px;margin:0 0 8px}
+  #errors li{font-size:13px;color:var(--bad);margin:4px 0}
+  #lightbox{position:fixed;inset:0;background:#231f18e6;display:none;place-items:center;z-index:20;padding:24px;cursor:zoom-out}
+  #lightbox img{max-width:100%;max-height:100%;border-radius:6px}
+  .foot{color:var(--ink-soft);font-size:12.5px;margin-top:26px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="seal">筆</span>
+    <div>
+      <h1>導演手裡的筆 · 資產預覽</h1>
+      <p class="sub">導演按自己的性情給一部作品開單，這裡是他開出來的圖和聲音。</p>
+    </div>
+    <a class="back" href="/">← 回首頁</a>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="bar" id="bar" hidden>
+    <label>作品 <select id="f-work"><option value="">全部</option></select></label>
+    <label>只看 <select id="f-kind">
+      <option value="">全部</option><option value="image">圖片</option><option value="sound">聲音</option>
+    </select></label>
+    <label><input type="checkbox" id="f-ph" /> 只看佔位／缺的</label>
+    <label><input type="checkbox" id="f-rej" /> 只看導演退回的</label>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<main id="main"></main>
+<div id="lightbox"><img alt="" /></div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const isPlaceholder = (e) => e.fallback === true || e.quality === 'placeholder';
+// 導演的兩句話：這一條是草稿（還不能當交付），或者他退回了（不算交付）
+const isDraft = (e) => e.draft === true || e.quality === 'draft';
+const isRejected = (e) => Boolean(e.review && e.review.verdict && e.review.verdict !== 'accept');
+const KIND_CN = { image: '圖', voice: '台詞', sfx: '音效', music: '音樂' };
+const SOUND = new Set(['voice', 'sfx', 'music']);
+
+// 場景名：直接問場景模組要（beat → 標題·地點），問不到就用 beat id 本身
+const sceneNames = {};
+async function loadSceneNames(work) {
+  if (sceneNames[work] !== undefined) return sceneNames[work];
+  try {
+    const mod = await import(`/shared/scenes/${work}.js`);
+    const map = {};
+    for (const [beat, sc] of Object.entries(mod.SCENES || {})) {
+      if (!sc || sc.work !== work) continue;
+      map[beat] = [sc.title || beat, sc.place].filter(Boolean).join(' · ');
+    }
+    sceneNames[work] = map;
+  } catch {
+    sceneNames[work] = {};
+  }
+  return sceneNames[work];
+}
+
+function sceneOf(e, names) {
+  const f = e.for || {};
+  if (e.spec && e.spec.role === 'plate') return { key: '__plate', title: '底版（這一部作品的整體調子）' };
+  if (f.beat) return { key: f.beat, title: names[f.beat] || f.beat };
+  if (f.line || f.person) return { key: '__all', title: '全劇（不在某一場裡的台詞）' };
+  if (f.verb) return { key: '__ctrl', title: '音效（八個控制器）' };
+  return { key: '__other', title: '其他' };
+}
+
+function card(e) {
+  const ph = isPlaceholder(e);
+  const draft = isDraft(e);
+  const rejected = isRejected(e);
+  const tags = [
+    `<span class="tag">${esc(e.provider || '?')}</span>`,
+    e.model ? `<span class="tag">${esc(String(e.model).slice(0, 34))}</span>` : '',
+    ph ? '<span class="tag placeholder">替身／佔位</span>' : '<span class="tag cloud">正式</span>',
+    e.quality ? `<span class="tag">${esc(e.quality)}</span>` : '',
+    draft ? '<span class="tag draft">草稿</span>' : '',
+    rejected ? '<span class="tag reject">導演退回</span>' : '',
+    e.seconds ? `<span class="tag">${esc(e.seconds)}s</span>` : '',
+  ].filter(Boolean).join('');
+
+  const media = e.kind === 'image'
+    ? `<a class="thumb" data-full="/assets/${esc(e.file)}"><img loading="lazy" src="/assets/${esc(e.file)}" alt="" /></a>`
+    : `<audio controls preload="none" src="/assets/${esc(e.file)}"></audio>`;
+
+  const head = e.kind === 'voice'
+    ? `<div class="line">${esc(e.spec?.text || '')}</div>`
+    : e.kind === 'image'
+      ? `<details><summary>看 prompt</summary><div class="prompt">${esc(e.spec?.prompt || '')}</div></details>`
+      : `<div class="prompt">${esc(e.spec?.prompt || '')}</div>`;
+
+  const meta = [];
+  if (e.job_id) meta.push(`job <code>${esc(String(e.job_id).slice(0, 18))}</code>`);
+  if (e.cost && (e.cost.actual != null || e.cost.estimated != null)) {
+    meta.push(`費用 ${e.cost.actual != null ? e.cost.actual : '?'} ${esc(e.cost.currency || 'USD')}${e.cost.priceSource ? `（來源 ${esc(e.cost.priceSource)}）` : ''}`);
+  }
+  if (e.bytes) meta.push(`${Math.max(1, Math.round(e.bytes / 1024))}KB`);
+
+  // 導演的話要看得見：退回的寫清為什麼，草稿的說明它還不是交付
+  const bad = ((e.review && e.review.checks) || []).filter((c) => c.ok === false);
+  const verdictBox = rejected
+    ? `<div class="reject"><b>導演退回：</b>${esc(e.review.why || '（沒說理由）')}${bad.length
+      ? `<br />沒過的是 ${bad.map((c) => `${esc(c.name)}（實測 ${esc(c.value)}，要 ${esc(c.expect)}）`).join('；')}`
+      : ''}</div>`
+    : draft
+      ? '<div class="note"><b>草稿：</b>導演還沒要正式交付，這一條先當草稿看</div>'
+      : '';
+
+  return `<article class="card" data-kind="${esc(e.kind)}" data-ph="${ph ? 1 : 0}" data-rej="${rejected ? 1 : 0}">
+    ${media}
+    <div class="body">
+      <div class="kicker"><span class="tag">${esc(KIND_CN[e.kind] || e.kind)}</span>${tags}</div>
+      ${head}
+      <div class="kicker">${meta.join(' · ')}</div>
+      <div class="why">${esc(e.why || '')}</div>
+      ${verdictBox}
+    </div>
+  </article>`;
+}
+
+function statChips(m) {
+  const list = Object.values(m.assets || {});
+  const n = (k) => list.filter((e) => e.kind === k).length;
+  const ph = list.filter(isPlaceholder).length;
+  const rej = list.filter(isRejected).length;
+  const draft = list.filter(isDraft).length;
+  const errs = Object.keys(m.errors || {}).length;
+  const chips = [
+    `<span class="chip">圖片 <b>${n('image')}</b> 張</span>`,
+    `<span class="chip">聲音 <b>${list.filter((e) => SOUND.has(e.kind)).length}</b> 條（台詞 ${n('voice')} · 音效 ${n('sfx')} · 音樂 ${n('music')}）</span>`,
+    ph ? `<span class="chip warn">替身／佔位 <b>${ph}</b> 條</span>` : `<span class="chip">替身／佔位 <b>0</b> 條</span>`,
+    rej ? `<span class="chip warn">導演退回 <b>${rej}</b> 條（不算交付）</span>` : `<span class="chip">導演退回 <b>0</b> 條</span>`,
+    draft ? `<span class="chip warn">草稿 <b>${draft}</b> 條</span>` : '',
+    errs ? `<span class="chip warn">缺 <b>${errs}</b> 條</span>` : '',
+    `<span class="chip">共 <b>${list.length}</b> 條</span>`,
+    m.updatedAt ? `<span class="chip">更新 ${esc(String(m.updatedAt).replace('T', ' ').slice(0, 16))}</span>` : '',
+  ];
+  return chips.filter(Boolean).join('');
+}
+
+function emptyPage() {
+  $('#main').innerHTML = `<div class="empty">
+    <h2>還沒有資產：manifest 是空的</h2>
+    <p>這一頁讀的是 <code>/assets/manifest.json</code>。導演還沒開過單，或者還沒真的生成過。先看看他打算開什麼（不花錢）：</p>
+    <pre>node tools/assets/run.mjs --work qiefu --director lu --dry</pre>
+    <p>真要生成（圖片要花錢，聲音走 AudioEngine 的預算）：</p>
+    <pre>node tools/assets/run.mjs --work qiefu --director lu --kinds voice --max 3</pre>
+  </div>`;
+  $('#bar').hidden = true;
+}
+
+function render(m) {
+  const list = Object.values(m.assets || {});
+  if (!list.length) {
+    emptyPage();
+    if (Object.keys(m.errors || {}).length) renderErrors(m);
+    return;
+  }
+  $('#stats').innerHTML = statChips(m);
+
+  const works = [...new Set(list.map((e) => e.work || '(未知)'))].sort();
+  const sel = $('#f-work');
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">全部</option>' + works.map((w) => `<option value="${esc(w)}">${esc(w)}</option>`).join('');
+  sel.value = keep && works.includes(keep) ? keep : '';
+  $('#bar').hidden = false;
+
+  const byDirector = new Map();
+  for (const e of list) {
+    const d = e.director || '(未知)';
+    if (!byDirector.has(d)) byDirector.set(d, new Map());
+    const bw = byDirector.get(d);
+    const w = e.work || '(未知)';
+    if (!bw.has(w)) bw.set(w, []);
+    bw.get(w).push(e);
+  }
+
+  const dirNames = { lu: '陸導 lu（重雕琢）', shan: '單導 shan（放開）' };
+  let html = '';
+  const dirs = [...byDirector.keys()].sort();
+  const parts = [];
+  for (const d of dirs) {
+    parts.push(`<h2 class="dir">${esc(dirNames[d] || d)}<small>${byDirector.get(d).size} 部作品</small></h2>`);
+    for (const [w, entries] of [...byDirector.get(d).entries()].sort()) {
+      parts.push(`<div class="work" data-work="${esc(w)}"><h3 class="work"><b>${esc(w)}</b> · ${entries.length} 條</h3>`);
+      const names = sceneNames[w] || {};
+      const scenes = new Map();
+      for (const e of entries) {
+        const s = sceneOf(e, names);
+        if (!scenes.has(s.key)) scenes.set(s.key, { title: s.title, items: [] });
+        scenes.get(s.key).items.push(e);
+      }
+      for (const [key, s] of [...scenes.entries()].sort((a, b) => (a[0] === '__plate' ? -1 : b[0] === '__plate' ? 1 : 0))) {
+        parts.push(`<section class="scene"><h4 class="scene">${esc(s.title)}<small>${s.items.length} 條</small></h4>
+          <div class="grid">${s.items.map(card).join('')}</div></section>`);
+      }
+      parts.push('</div>');
+    }
+  }
+  html = parts.join('');
+  $('#main').innerHTML = html;
+  renderErrors(m);
+  bindFilters(m);
+  bindLightbox();
+}
+
+function renderErrors(m) {
+  const old = document.getElementById('errors');
+  if (old) old.remove();
+  const errs = Object.entries(m.errors || {});
+  if (!errs.length) return;
+  const box = document.createElement('section');
+  box.id = 'errors';
+  box.innerHTML = `<h2>還沒有做出來的 ${errs.length} 條</h2><ul>${errs.map(([k, e]) =>
+    `<li><code>${esc(k)}</code>（${esc(e.kind || '?')} · ${esc(e.provider || '?')}）：${esc(e.message || '')}</li>`).join('')}</ul>`;
+  $('#main').appendChild(box);
+}
+
+function applyFilters() {
+  const w = $('#f-work').value;
+  const kind = $('#f-kind').value;
+  const onlyPh = $('#f-ph').checked;
+  const onlyRej = $('#f-rej').checked;
+  let shown = 0;
+  document.querySelectorAll('.work').forEach((el) => {
+    el.style.display = !w || el.dataset.work === w ? '' : 'none';
+  });
+  document.querySelectorAll('.card').forEach((el) => {
+    const k = el.dataset.kind;
+    const okKind = !kind || (kind === 'sound' ? SOUND.has(k) : k === kind);
+    const okPh = !onlyPh || el.dataset.ph === '1';
+    const okRej = !onlyRej || el.dataset.rej === '1';
+    const ok = okKind && okPh && okRej;
+    el.style.display = ok ? '' : 'none';
+    if (ok) shown += 1;
+  });
+  document.querySelectorAll('section.scene').forEach((sec) => {
+    const any = [...sec.querySelectorAll('.card')].some((c) => c.style.display !== 'none');
+    sec.style.display = any ? '' : 'none';
+  });
+  const total = document.querySelectorAll('.card').length;
+  $('#shown').textContent = `顯示 ${shown} / ${total} 條`;
+}
+
+function bindFilters() {
+  for (const id of ['#f-work', '#f-kind', '#f-ph', '#f-rej']) {
+    $(id).onchange = applyFilters;
+  }
+  applyFilters();
+}
+
+function bindLightbox() {
+  const box = $('#lightbox');
+  document.querySelectorAll('.thumb').forEach((a) => {
+    a.onclick = () => {
+      box.querySelector('img').src = a.dataset.full;
+      box.style.display = 'grid';
+    };
+  });
+  box.onclick = () => { box.style.display = 'none'; };
+}
+
+(async () => {
+  let m = { assets: {} };
+  try {
+    const r = await fetch('/assets/manifest.json', { cache: 'no-store' });
+    if (r.ok) m = await r.json();
+    else $('#stats').innerHTML = `<span class="chip warn">讀不到 /assets/manifest.json（HTTP ${r.status}）—— 還沒生成過吧</span>`;
+  } catch (err) {
+    $('#stats').innerHTML = `<span class="chip warn">讀不到 manifest：${esc(err.message)}</span>`;
+  }
+  // 先拿場景名再畫，這樣分組標題是「取符之夜 · 魏王臥內」而不是 night
+  const works = [...new Set(Object.values(m.assets || {}).map((e) => e.work).filter(Boolean))];
+  await Promise.all(works.map(loadSceneNames));
+  render(m);
+})();
+</script>
+</body>
+</html>

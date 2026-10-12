@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>數字世界 · 第一階段</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="mast">
+  <a href="/hub.html" style="color:#a8382a;text-decoration:none;white-space:nowrap">排片表：现在可以玩、看电影、做对照</a>
+  <div class="brand">
+    <span class="seal">數</span>
+    <div class="brand-text">
+      <h1>數字世界</h1>
+      <p>第一階段 · 看見導師、導演、演員、呈現之間的信息怎麼流動</p>
+    </div>
+  </div>
+  <a href="/world.html" style="margin-left:auto;color:#a8382a;text-decoration:none;white-space:nowrap">第二階段：一個世界，四部作品 →</a>
+  <div id="audit-bar" class="audit-bar" aria-live="polite"></div>
+  <div id="orphan-list" class="orphan-list" hidden></div>
+</header>
+
+<main>
+  <section id="intro" class="panel">
+    <h2>初見：先說你要什麼</h2>
+    <p class="hint">導師只聽你的話。你怎麼答，他就怎麼分預算、配導演。</p>
+    <div id="prefs" class="prefs"></div>
+    <label class="need-label" for="need-input">你想看什麼？</label>
+    <input id="need-input" class="need-input" type="text" maxlength="60"
+           placeholder="例：我想看一个人在乱世里怎么做选择" />
+    <div class="intro-actions">
+      <button id="start-btn" class="btn primary" type="button">見導師，開排《竊符》</button>
+      <button id="load-btn" class="btn" type="button">讀回上次的世界</button>
+      <span id="intro-msg" class="msg"></span>
+    </div>
+  </section>
+
+  <section id="stage" hidden>
+    <div class="workspace">
+      <div class="col-main">
+
+        <div class="panel" id="graph-panel">
+          <div class="panel-head">
+            <h2>信息流泳道</h2>
+            <div class="toolbar">
+              <label class="chk"><input type="checkbox" id="claim-toggle" />
+                展開史料設定記錄（<span id="claim-count">0</span> 條）</label>
+              <button class="btn small" id="narrate-btn" type="button">讓角色自己說（模型旁注）</button>
+              <button class="btn small" id="reset-btn" type="button">重來</button>
+            </div>
+          </div>
+          <p class="hint" id="narrate-status"></p>
+          <div id="graph-a" class="graph-host"></div>
+          <div id="graph-b-wrap" hidden>
+            <h3 class="sub">換一個你（同一頁的第二個 session）</h3>
+            <div id="graph-b" class="graph-host"></div>
+          </div>
+          <p class="legend">
+            <span class="k"><i class="dot"></i>朱砂點：需要對你負責的決定，可以點</span>
+            <span class="k"><i class="line"></i>細線：cause（這件事是因為哪幾件事）</span>
+            <span class="k"><i class="tag">模</i>/<i class="tag">規</i>：這句話是模型說的，還是規則台詞</span>
+          </p>
+        </div>
+
+        <div class="panel" id="beats-panel">
+          <div class="panel-head">
+            <h2>《竊符》各拍：你的反應</h2>
+            <button class="btn small" id="wrap-btn" type="button">看完（交給導演對照）</button>
+          </div>
+          <div id="beats"></div>
+          <p class="hint" id="wrap-msg"></p>
+        </div>
+
+      </div>
+
+      <aside class="col-side">
+
+        <div class="panel" id="inspector-panel">
+          <h2>這一個決定</h2>
+          <div id="inspector" class="inspector">
+            <p class="hint">點泳道裡任何一個導師或導演的決定，這裡會顯示它硬的部分（input / options / chosen）、
+            它當時的說法，以及它怎麼走到你。</p>
+          </div>
+        </div>
+
+        <div class="panel" id="notes-panel">
+          <h2>導師筆記</h2>
+          <div id="notes"></div>
+          <p class="hint">改過的欄位會標「你改的」；之後你的反應（觀察）不會再覆蓋它。</p>
+        </div>
+
+        <div class="panel" id="compare-panel">
+          <h2>換一個你</h2>
+          <div id="compare"></div>
+        </div>
+
+        <div class="panel" id="save-panel">
+          <h2>存檔與權限</h2>
+          <div id="save"></div>
+          <p class="hint">存檔寫在伺服器的 <code>.runtime/world.json</code>；重新整理頁面會自動讀回。</p>
+        </div>
+
+      </aside>
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

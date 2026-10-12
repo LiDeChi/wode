@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>窃符 · 你的电影</title>
+<link rel="stylesheet" href="/film/style.css">
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
+</head>
+<body data-film-status="loading">
+<canvas id="stage" aria-label="窃符的放映画面：夜里的一座戏台，台上正在演"></canvas>
+
+<!-- 银幕上的字：说出口的那句、和这一局的收尾。 -->
+<div class="subtitles" aria-live="off">
+  <p id="speaker" class="speaker"></p>
+  <p id="dialogue" class="dialogue">正在装片……</p>
+  <p id="thought" class="thought"></p>
+</div>
+
+<section id="ending" class="ending" hidden>
+  <h2 id="ending-title"></h2>
+  <p id="ending-line"></p>
+  <p class="ending-actions">
+    <a id="replay" href="#replay">再燃一根香，重看这一局</a>
+    <a href="/play.html">回世界里，换一种选择</a>
+  </p>
+</section>
+
+<!-- 分享：点了封泥，链接从右边滑进来。 -->
+<aside id="share-slip" class="share-slip" hidden aria-live="polite">
+  <p id="share-message"></p>
+  <input id="share-link" readonly aria-label="电影链接">
+</aside>
+
+<div id="error" class="error" role="alert" hidden><h2>这卷电影还放不了</h2><p id="error-line"></p><a href="/film.html?demo=history">看一条完整示范片</a></div>
+
+<!-- 木牌在场景里；这里给键盘和读屏留一份同样的入口（看不见、不占鼠标）。 -->
+<div class="sr-only" role="group" aria-label="换一个人的视角重放">
+  <button data-perspective="xinling" type="button">主角</button>
+  <button data-perspective="ruji" type="button">如姬</button>
+  <button data-perspective="houying" type="button">侯嬴</button>
+</div>
+
+<pre id="dev" class="dev" hidden></pre>
+<script type="module" src="/film/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>窃符 · 可玩</title>
+<link rel="stylesheet" href="/play/style.css" />
+<!-- three.js 是 vendor 进来的静态档（照抄 web/game.html 第 9 行）；play/ 与 shared/ 都由同一个服务器静态发 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/three.module.js",
+    "three/": "/vendor/three/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<!-- 场景里的一切可点之物都画在这一层上：它随镜头走，不是面板 -->
+<div id="tags" class="tags"></div>
+
+<!-- 场名牌：这是哪一场，导演这一拍给了你哪几只动词 -->
+<div id="scene-tag" class="scene-tag" hidden>
+  <span id="scene-name" class="scene-name"></span>
+  <span id="scene-place" class="scene-place"></span>
+  <span id="scene-grants" class="scene-grants"></span>
+</div>
+
+<!-- 时间压力：邯郸还能撑几天（装置，不是仪表） -->
+<div id="days" class="days" hidden>
+  <span class="days-kicker">邯郸</span>
+  <div class="days-track"><div id="days-fill" class="days-fill"></div></div>
+  <span id="days-value" class="days-value"></span>
+</div>
+
+<!-- 目标：一句人话，说你此刻该做什么 -->
+<div id="objective" class="objective" hidden></div>
+
+<!-- 前兆：他停住了 / 皱眉 / 已经动了——先说前兆，再有反应 -->
+<div id="tell" class="tell" hidden></div>
+
+<!-- 台词条 -->
+<div id="linebar" class="linebar" hidden>
+  <div class="line-speaker" id="line-speaker"></div>
+  <div class="line-text" id="line-text"></div>
+  <button class="line-advance" id="advance" type="button" hidden>继续 <span aria-hidden="true">›</span></button>
+</div>
+
+<!-- 看心思：一层滑入的浮层，不是常驻面板 -->
+<div id="mind" class="mind" hidden>
+  <div class="mind-head">
+    <span id="mind-name" class="mind-name"></span>
+    <span id="mind-title" class="mind-title"></span>
+    <button id="mind-close" class="mind-close" type="button" aria-label="关上">×</button>
+  </div>
+  <div class="mind-body">
+    <div class="mind-explain" id="mind-explain"></div>
+    <div class="mind-meters" id="mind-meters"></div>
+    <div class="mind-units" id="mind-units"></div>
+  </div>
+</div>
+
+<!-- 漏刻：取符之夜的步数压力 -->
+<div id="clepsydra" class="clepsydra" hidden>
+  <div class="clepsydra-head">漏刻</div>
+  <div class="clepsydra-body">
+    <div class="clepsydra-vessel"><div class="clepsydra-water" id="clepsydra-water"></div></div>
+    <div class="clepsydra-read">
+      <div class="clepsydra-tile" id="clepsydra-tile"></div>
+      <div class="clepsydra-steps" id="clepsydra-steps"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 开场：选导演 -->
+<div id="title" class="screen title">
+  <div class="title-inner">
+    <div class="seal">窃</div>
+    <h1>窃 符</h1>
+    <p class="title-sub">你是信陵君门下新来的门客。<br />一座被围的城，等不到援军。</p>
+    <p class="title-ask">你想让谁来掌这一场？</p>
+    <div class="title-choices">
+      <button id="pick-lu" class="choice" type="button">
+        <span class="choice-name">陆导</span>
+        <span class="choice-note">雕琢好的一段：慢，停得住</span>
+      </button>
+      <button id="pick-shan" class="choice" type="button">
+        <span class="choice-name">单导</span>
+        <span class="choice-note">能真的改变它：快，放得开</span>
+      </button>
+    </div>
+    <p class="title-keys">点人 → 点他头顶的签 · 人身边的两个小机关：看心思、追问 · 空档处按空格往下走</p>
+  </div>
+</div>
+
+<!-- 电影段：先不入场，先听一段 -->
+<div id="film" class="screen film" hidden>
+  <div class="film-inner">
+    <p id="film-text" class="film-text"></p>
+    <div class="film-foot">
+      <span id="film-director" class="film-director"></span>
+      <button id="enter-film" class="enter" type="button">入场</button>
+    </div>
+  </div>
+</div>
+
+<!-- 结局 / 尾声 -->
+<div id="ending" class="screen ending" hidden>
+  <div class="ending-inner">
+    <div class="ending-badge" id="ending-badge"></div>
+    <p class="ending-lived" id="ending-lived"></p>
+    <p class="ending-book" id="ending-book"></p>
+    <p class="ending-days" id="ending-days"></p>
+    <div class="ending-summary" id="ending-summary" hidden></div>
+    <div class="ending-actions" id="ending-actions"></div>
+  </div>
+</div>
+
+<!-- 出错时的一句人话 -->
+<div id="fatal" class="screen fatal" hidden>
+  <div class="fatal-inner">
+    <p class="fatal-line">这一场出了点岔子。</p>
+    <p class="fatal-detail" id="fatal-detail"></p>
+    <button id="restart" class="enter" type="button">重开一局</button>
+  </div>
+</div>
+
+<!-- 调试：只在 ?dev=1 出现 -->
+<pre id="dev" class="dev" hidden></pre>
+
+<script type="module" src="/play/main.js"></script>
+</body>
+</html>

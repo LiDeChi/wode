@@ -1,0 +1,134 @@
+/* 一個世界的夜色地圖：墨底、絹色海報、五種線各有自己的動法。朱砂只給「推不動」和「被推翻」。 */
+:root {
+  --night: #17150f; --night-2: #221e16; --silk: #efe6d2; --silk-2: #e4d8bd;
+  --ink: #26221c; --ink-soft: #5c5347; --faint: #a39883;
+  --cinnabar: #c0473a; --gold: #c9a24a; --blue: #6d9cbf; --flow: #d9cfb8; --jade: #7fa58a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(ellipse at 50% 0%, #2c2619 0%, var(--night) 60%) fixed, var(--night);
+  color: var(--silk); font: 15px/1.65 "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+.top { display: flex; align-items: center; gap: 18px; padding: 14px 28px 6px; }
+.brand { display: flex; gap: 14px; align-items: center; flex: 1; }
+.brand h1 { margin: 0; font-size: 22px; letter-spacing: .12em; }
+.brand p { margin: 0; color: var(--faint); font-size: 13px; }
+.seal { width: 40px; height: 40px; display: grid; place-items: center; background: var(--cinnabar); color: #fff4e8; font-size: 22px; border-radius: 4px; transform: rotate(-4deg); }
+.back { color: var(--faint); text-decoration: none; font-size: 13px; }
+.back:hover { color: var(--silk); }
+.director { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 14px 6px 6px; border: 1px solid #3a3326; border-radius: 30px; background: #1e1a12; transition: border-color .3s; }
+.director:hover { border-color: var(--gold); }
+.mask { width: 34px; height: 34px; border-radius: 50% 50% 46% 46%; display: grid; place-items: center; background: linear-gradient(160deg, #f3e9d3, #c8b48a); color: var(--cinnabar); font-weight: 700; box-shadow: inset 0 -6px 0 rgba(0,0,0,.15); animation: breathe 5s ease-in-out infinite; }
+.dname { font-weight: 700; }
+.dbio { color: var(--faint); font-size: 12px; }
+
+.meet { max-width: 640px; margin: 60px auto; padding: 28px 32px; background: var(--silk); color: var(--ink); border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.meet h2 { margin: 0 0 4px; letter-spacing: .2em; }
+.meet p { color: var(--ink-soft); margin: 0 0 16px; }
+.pref { margin: 10px 0; } .pref .q { font-weight: 700; } .pref label { margin-right: 18px; cursor: pointer; }
+.meet input#need { width: 100%; padding: 10px 12px; margin: 14px 0; font: inherit; border: 1px solid #c9bda2; border-radius: 4px; background: #fbf8f1; }
+.btn { font: inherit; padding: 9px 18px; border-radius: 4px; border: 1px solid #c9bda2; background: #fbf8f1; cursor: pointer; }
+.btn.primary { background: var(--cinnabar); color: #fff6ee; border-color: var(--cinnabar); }
+
+main { padding: 0 24px 40px; }
+.fit { position: relative; width: 100%; overflow: hidden; }
+.stage { position: absolute; left: 50%; top: 0; width: 1200px; height: 560px; margin-left: -600px; transform-origin: top center;
+  background: radial-gradient(circle at 20% 25%, rgba(201,162,74,.08), transparent 30%), radial-gradient(circle at 85% 55%, rgba(192,71,58,.08), transparent 32%); }
+#threads { position: absolute; inset: 0; width: 1200px; height: 560px; overflow: visible; }
+
+/* 海报：活的，每部有自己的小机关 */
+.poster { position: absolute; width: 260px; padding: 12px 14px 12px; background: linear-gradient(170deg, var(--silk), var(--silk-2)); color: var(--ink); border-radius: 5px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.55), inset 0 0 0 1px rgba(80,60,30,.18); cursor: pointer; overflow: hidden; transition: transform .35s, box-shadow .35s; z-index: 2; }
+.poster:hover, .poster.focus { box-shadow: 0 22px 50px rgba(0,0,0,.6), 0 0 0 2px var(--gold); }
+.poster header { display: flex; align-items: baseline; justify-content: space-between; position: relative; }
+.poster h3 { margin: 0; font-size: 19px; letter-spacing: .08em; }
+.kind { font-size: 11px; color: var(--ink-soft); }
+.who { margin: 0; font-size: 12px; color: var(--ink-soft); position: relative; }
+.lead { margin: 6px 0 8px; font-size: 13px; min-height: 2.6em; position: relative; border-left: 2px solid var(--cinnabar); padding-left: 8px; }
+.motif { position: absolute; right: -6px; top: -14px; width: 120px; height: 120px; pointer-events: none; }
+.glyph { position: absolute; right: 8px; top: 4px; font-size: 92px; line-height: 1; color: rgba(38,34,28,.07); }
+.motif i { position: absolute; display: block; border-radius: 50%; }
+.m-changping .motif i { width: 3px; height: 3px; background: rgba(90,70,40,.35); animation: dust 7s linear infinite; }
+.m-changping .motif i:nth-child(2) { left: 20px; top: 60px; } .m-changping .motif i:nth-child(3) { left: 60px; top: 30px; animation-delay: -2s; } .m-changping .motif i:nth-child(4) { left: 90px; top: 80px; animation-delay: -4s; }
+.m-night { background: linear-gradient(170deg, #e9dfc6, #d7c8a5); }
+.m-night .motif i:nth-child(2) { width: 46px; height: 46px; left: 50px; top: 40px; background: radial-gradient(circle, rgba(232,170,70,.55), transparent 70%); animation: lantern 3.4s ease-in-out infinite; transform-origin: 50% -30px; }
+.m-qiefu .motif i:nth-child(2), .m-qiefu .motif i:nth-child(3) { width: 26px; height: 44px; top: 50px; border-radius: 13px 4px 4px 13px; background: rgba(150,110,40,.22); animation: tally 4s ease-in-out infinite; }
+.m-qiefu .motif i:nth-child(2) { left: 46px; } .m-qiefu .motif i:nth-child(3) { left: 74px; border-radius: 4px 13px 13px 4px; animation-direction: reverse; }
+.m-weicheng .motif i { width: 4px; height: 4px; left: 64px; top: 20px; background: rgba(140,100,40,.45); animation: grain 1.8s linear infinite; }
+.m-weicheng .motif i:nth-child(3) { left: 70px; animation-delay: -.6s; } .m-weicheng .motif i:nth-child(4) { left: 58px; animation-delay: -1.2s; }
+
+/* 机关：竹签一样的选择，拨动就重长世界 */
+.knob { position: relative; border-top: 1px dashed rgba(80,60,30,.3); padding-top: 7px; }
+.knob-q { font-size: 11px; color: var(--ink-soft); margin-bottom: 4px; }
+.knob.still { font-size: 11px; color: var(--ink-soft); }
+.slat { display: block; width: 100%; text-align: left; font: inherit; font-size: 12.5px; margin: 3px 0; padding: 4px 8px 4px 22px; border: 1px solid rgba(80,60,30,.25); border-radius: 3px; background: rgba(255,255,255,.35); cursor: pointer; position: relative; transition: background .25s, transform .2s; }
+.slat::before { content: ""; position: absolute; left: 7px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; border: 1px solid var(--ink-soft); }
+.slat:hover { background: rgba(255,255,255,.7); transform: translateX(2px); }
+.slat.on { background: var(--ink); color: var(--silk); border-color: var(--ink); }
+.slat.on::before { background: var(--cinnabar); border-color: var(--cinnabar); box-shadow: 0 0 8px var(--cinnabar); }
+
+/* 线 */
+.thread { cursor: pointer; color: var(--flow); outline: none; transition: opacity .4s; }
+.thread.dim { opacity: .18; }
+.thread .hit { stroke: transparent; stroke-width: 18; fill: none; }
+.thread .ink, .thread .twin { fill: none; stroke: currentColor; stroke-width: 2; }
+.thread text { fill: currentColor; font-size: 13px; text-anchor: middle; letter-spacing: .2em; paint-order: stroke; stroke: var(--night); stroke-width: 4px; }
+.thread:hover .ink, .thread:focus .ink { stroke-width: 3.5; filter: drop-shadow(0 0 5px currentColor); }
+.t-承接 { color: var(--flow); } .t-承接 .ink { stroke-dasharray: 8 7; animation: flow 1.2s linear infinite; }
+.t-引用 { color: var(--gold); } .t-引用 .ink { stroke-width: 3.2; }
+.t-并行 { color: var(--blue); } .t-并行 .ink, .t-并行 .twin { stroke-width: 1.4; }
+.t-争议 { color: var(--cinnabar); } .t-争议 .ink { stroke-dasharray: 3 4; animation: tremble .18s steps(2) infinite; }
+.t-争议 .knot circle { fill: var(--cinnabar); animation: breathe 1.4s ease-in-out infinite; }
+.t-反转 { color: var(--cinnabar); } .t-反转 .ink { stroke-width: 2.4; stroke-dasharray: 40 6 2 6; }
+.t-反转 .crack circle { fill: var(--night); stroke: var(--cinnabar); stroke-width: 2; } .t-反转 .crack path { fill: none; stroke: var(--cinnabar); stroke-width: 2; }
+.thread.fresh .ink { animation: draw 1.4s ease-out, flow 1.2s linear infinite 1.4s; stroke-dasharray: 900; filter: drop-shadow(0 0 8px currentColor); }
+.thread.fresh text { animation: blink 1.4s ease-out 2; }
+.ghost { fill: none; stroke-width: 2; stroke: currentColor; opacity: .7; stroke-dasharray: 4 6; animation: fade 2.2s ease-out forwards; }
+
+.narration { max-width: 980px; margin: 4px auto 10px; text-align: center; color: var(--silk); font-size: 15px; min-height: 2.4em; }
+.narration.pulse { animation: rise .6s ease-out; }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; font-size: 12px; color: var(--faint); }
+.lg { display: inline-flex; align-items: center; gap: 6px; }
+.lg i { display: inline-block; width: 26px; height: 0; border-top: 2px solid currentColor; }
+.lg.t-承接 i { border-top-style: dashed; } .lg.t-引用 i { border-top-width: 3px; } .lg.t-并行 i { height: 4px; border-bottom: 1px solid currentColor; border-top-width: 1px; } .lg.t-争议 i { border-top-style: dotted; }
+
+.former, .studio { max-width: 1060px; margin: 18px auto 0; padding: 14px 20px; border: 1px solid #3a3326; border-radius: 6px; background: rgba(30,26,18,.7); }
+.former h3, .studio h3 { margin: 0 0 8px; font-size: 15px; letter-spacing: .15em; color: var(--gold); }
+.tomb { font-size: 13.5px; margin: 4px 0; } .tomb s { color: var(--faint); } .tomb span { color: var(--faint); font-size: 12px; } .tomb em { display: block; font-style: normal; color: var(--silk); }
+.srow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; font-size: 13px; }
+.srow b { width: 96px; color: var(--silk); }
+.beat { padding: 2px 9px; border: 1px solid #4a4230; border-radius: 3px; color: var(--silk); }
+.beat small { margin-left: 6px; color: var(--faint); }
+.beat.locked { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); }
+.verdict { margin: 10px 0 0; font-size: 13.5px; } .verdict.no { color: #e3907f; } .verdict.yes { color: var(--jade); }
+
+/* 浮层：点线或点作品才滑进来 */
+.slip { position: fixed; right: 18px; top: 74px; bottom: 18px; width: 380px; overflow: auto; padding: 18px 20px; background: var(--silk); color: var(--ink); border-radius: 6px; box-shadow: -20px 0 60px rgba(0,0,0,.55); z-index: 10; animation: slide .3s ease-out; }
+.x { position: absolute; right: 10px; top: 6px; border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--ink-soft); }
+.kicker { margin: 0; font-size: 12px; letter-spacing: .15em; color: var(--ink-soft); }
+.kicker.t-争议, .kicker.t-反转 { color: var(--cinnabar); } .kicker.t-引用 { color: #8a6a2a; } .kicker.t-并行 { color: #2e5c7a; }
+.head { font-size: 15px; margin: 6px 0 12px; }
+.slip h4 { margin: 14px 0 6px; font-size: 13px; letter-spacing: .12em; color: var(--ink-soft); }
+.cc { border: 1px solid #d6c9ab; border-radius: 4px; padding: 8px 10px; margin: 6px 0; background: #fbf8f1; }
+.cc.s-former { opacity: .7; } .cc.s-former .cc-body { text-decoration: line-through; }
+.cc.s-disputed { border-color: var(--cinnabar); }
+.cc-top { display: flex; gap: 8px; align-items: baseline; font-size: 12px; } .cc-top .ch { color: var(--ink-soft); } .cc-top .st { margin-left: auto; color: var(--ink-soft); }
+.s-disputed .st, .s-former .st { color: var(--cinnabar); }
+.cc-body { font-size: 14px; margin: 3px 0; } .cc-note, .cc-foot { font-size: 11.5px; color: var(--ink-soft); }
+.why { margin: 0; padding-left: 20px; font-size: 13px; } .why li { margin: 3px 0; }
+.none { color: var(--ink-soft); font-size: 13px; }
+
+@keyframes flow { to { stroke-dashoffset: -30; } }
+@keyframes tremble { 50% { transform: translate(0.6px, -0.8px); } }
+@keyframes draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+@keyframes fade { to { opacity: 0; } }
+@keyframes blink { 50% { opacity: .2; } }
+@keyframes breathe { 50% { transform: scale(1.08); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes slide { from { transform: translateX(30px); opacity: 0; } }
+@keyframes dust { from { transform: translate(0,0); opacity: 0; } 30% { opacity: 1; } to { transform: translate(-60px, 20px); opacity: 0; } }
+@keyframes lantern { 0%,100% { transform: rotate(-8deg); opacity: .8; } 50% { transform: rotate(8deg); opacity: 1; } }
+@keyframes tally { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+@keyframes grain { from { transform: translateY(0); opacity: 1; } to { transform: translateY(70px); opacity: 0; } }

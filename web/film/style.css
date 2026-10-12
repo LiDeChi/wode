@@ -1,0 +1,59 @@
+/* 放映厅的皮：银幕之外只剩两处字——台下的台词，和落幕那几行。
+   没有顶栏、没有底栏、没有按钮条。换眼睛与分享都在场景里。 */
+:root{color-scheme:dark;--paper:#efe7d6;--dim:#a9a08d;--gold:#d7b272;--ink:#070709;
+  font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--paper);overflow:hidden;overscroll-behavior:none}
+#stage{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+a{color:inherit;text-decoration:none}
+input{font:inherit}
+a:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+
+/* 银幕上的字：说出口的那句。字后面只有一层极淡的暗，不是框。 */
+.subtitles{position:fixed;left:50%;bottom:11vh;transform:translateX(-50%);width:min(760px,86vw);z-index:3;
+  text-align:center;text-shadow:0 2px 14px #000,0 0 34px #000;transition:opacity .9s;pointer-events:none}
+.speaker{margin:0 0 10px;font-size:13px;letter-spacing:.3em;color:var(--gold);min-height:18px}
+.dialogue{margin:0;font-family:'Songti SC','STSong','Noto Serif CJK SC',serif;font-size:clamp(20px,2.1vw,28px);
+  line-height:1.85;letter-spacing:.02em;min-height:3.7em}
+.thought{margin:12px auto 0;max-width:640px;font-size:13px;line-height:1.8;color:#c8c0ae;min-height:24px}
+
+/* 落幕：写在画面中央，像戏散后还亮着的那点光。 */
+.ending{position:fixed;inset:26vh 8vw auto;z-index:4;text-align:center;text-shadow:0 2px 16px #000;
+  animation:fade-up 1.4s ease both}
+.ending h2{margin:0 0 16px;font-family:'Songti SC','STSong','Noto Serif CJK SC',serif;font-weight:400;
+  font-size:clamp(28px,3.6vw,50px);letter-spacing:.1em}
+.ending #ending-line{margin:0 auto 26px;max-width:680px;font-size:17px;line-height:1.9;color:#e2dac9}
+.ending-actions{margin:0;display:flex;gap:26px;justify-content:center;flex-wrap:wrap;font-size:14px}
+.ending-actions a{color:var(--gold);border-bottom:1px solid rgba(215,178,114,.45);padding-bottom:3px}
+.ending-actions a:hover{color:#f6e6c4}
+
+/* 分享：一封从右边滑进来的信。 */
+.share-slip{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:5;width:min(400px,88vw);
+  padding:20px 24px;background:linear-gradient(90deg,rgba(10,9,12,0),rgba(10,9,12,.92) 22%,rgba(10,9,12,.96));
+  border-left:1px solid rgba(215,178,114,.4);animation:slip-in .5s ease both}
+.share-slip p{margin:0 0 12px;font-size:13px;line-height:1.8;color:#d9d0bd}
+.share-slip input{width:100%;padding:11px 12px;background:#0d0c10;border:1px solid #3a3529;color:#e8e0cd;font-size:11px}
+@keyframes slip-in{from{opacity:0;transform:translateY(-50%) translateX(26px)}to{opacity:1;transform:translateY(-50%) translateX(0)}}
+@keyframes fade-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+.error{position:fixed;inset:28vh 10vw auto;z-index:9;text-align:center}
+.error h2{font-family:'Songti SC',serif;font-weight:400;font-size:26px}
+.error p{line-height:1.9;color:#cfc7b6}
+.error a{color:var(--gold);border-bottom:1px solid rgba(215,178,114,.45)}
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.dev{position:fixed;right:12px;top:10px;z-index:12;max-width:44vw;max-height:64vh;overflow:auto;margin:0;
+  background:rgba(8,10,14,.92);border:1px solid #2a3340;padding:10px;font-size:11px;color:#9fb0c0;white-space:pre-wrap}
+[hidden]{display:none!important}
+body[data-film-status="ended"] .subtitles{opacity:0}
+
+@media(max-width:640px){
+  .subtitles{bottom:9vh;width:90vw}
+  .dialogue{font-size:19px;min-height:3.4em}
+  .thought{font-size:12px;max-width:92vw}
+  .ending{inset:20vh 7vw auto}
+  .ending-actions{flex-direction:column;gap:14px}
+  .share-slip{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.ending,.share-slip{animation:none}.subtitles{transition:none}}

@@ -1,0 +1,13 @@
+{
+  "mode": "auto",
+  "budget": { "perCall": 0.10, "daily": 0.50, "monthly": 1.00 },
+  "unknownPriceCeiling": null,
+  "policy": { "providerOrder": ["local", "monid", "fal", "elevenlabs", "mock"], "allowEscalation": false },
+  "providers": {
+    "elevenlabs": { "defaultVoice": "21m00Tcm4TlvDq8ikWAM", "model": "eleven_multilingual_v2", "priceOverride": null },
+    "monid": { "base": "https://api.monid.ai" },
+    "fal": { "priceOverride": null }
+  },
+  "local": { "services": {} },
+  "mock": { "enabled": false, "price": 0 }
+}
