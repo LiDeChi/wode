@@ -282,7 +282,9 @@ html, body {
 .mind-name { font-family: var(--font-serif); font-size: 22px; letter-spacing: 0.12em; }
 .mind-title { font-size: 12px; color: var(--paper-dim); letter-spacing: 0.1em; }
 .mind-close {
-  margin-left: auto;
+  /* 面板的右上角是常在控件（人物生活 / 暂停）与导演案小签的地盘：
+     关闭钮让到标题行左端，免得被顶栏的「暂停」压住，点关闭变成暂停世界。 */
+  order: -1;
   width: 28px; height: 28px;
   background: none;
   border: 1px solid var(--line);
