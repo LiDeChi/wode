@@ -570,6 +570,22 @@ export const QIFU_SCENES = {
       ],
     },
     rules: [
+      // ── 结清物权（只在生活层开过口的时候）：夜结束那一刻，「符在谁手里」要与戏账同一口径 ──────────
+      // 生活层用 fuOwner/fuWithRuji 记物权（life-own 记到如姬、life-give 改到玩家）。玩家自己走出
+      // 去那一步仍走玩家路径，所以这两条把「符落定」的旗标与作品一起结清：符出宫 → 玩家手里；
+      // 被撞见/令牌被扣 → 收回如姬名下（与「兵符留在卧内」同一口径）。
+      // 生活关闭时 fuOwner 从头到尾是 null（facts 读不到就是 null），这两条永不匹配，下面那两条
+      // 原始规则原样生效，680 条对照脚本一个字节不动。
+      { id: 'night-seen-settle', note: '被看见：符留在卧内，物权收回如姬名下',
+        when: { ctrl: { nightwalk: { done: true, seen: true } }, not: { flag: { fuOwner: null } } },
+        then: [['flag', 'night', 'seen'], ['work', 'night', 'seen'], ['flag', 'fuWithRuji', true], ['flag', 'fuOwner', 'ruji']],
+        choice: 'seen',
+        text: '{ctrl.nightwalk.reason}。兵符留在了卧内。' },
+      { id: 'night-clean-settle', note: '符出宫：物权结到玩家手里',
+        when: { ctrl: { nightwalk: { done: true } }, not: { flag: { fuOwner: null } } },
+        then: [['flag', 'night', 'clean'], ['work', 'night', 'clean'], ['flag', 'fuWithRuji', false], ['flag', 'fuOwner', 'player']],
+        choice: 'clean',
+        text: '符出了卧内。' },
       { when: { ctrl: { nightwalk: { done: true, seen: true } } },
         then: [['flag', 'night', 'seen'], ['work', 'night', 'seen']],
         choice: 'seen',
