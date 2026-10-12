@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createWorld } from '/game/world.js';
 import { createActor } from '/game/actors.js';
 import * as P from './props.js';
+import { bodyOf } from './body.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const TILES_Z = [12, 6, 0, -6, -12];
@@ -65,6 +66,7 @@ export function createStage(scene, render) {
   let nightFeed = null;
   let actId = null;
   let clock = 0;
+  let lifeBodies = new Map();
 
   function clear() {
     for (const a of actors.values()) {
@@ -72,6 +74,7 @@ export function createStage(scene, render) {
       a.group.traverse?.((o) => { o.geometry?.dispose?.(); });
     }
     actors.clear();
+    lifeBodies.clear();
     if (root) {
       scene.remove(root);
       root.traverse((o) => {
@@ -450,12 +453,33 @@ export function createStage(scene, render) {
       return this;
     },
 
+    setLife(read, entries, from = 0) {
+      lifeBodies = new Map((read?.actors ?? []).map(a => [a.id, bodyOf(a, entries, from)]));
+      for (const [id, body] of lifeBodies) {
+        const actor = actors.get(id); if (!actor) continue;
+        actor.group.userData.lifeSource = body.source;
+      }
+    },
+
     /** 每帧 */
     update(dt) {
       clock += dt;
       const player = actors.get('player');
       const pp = player ? player.group.position : null;
-      for (const a of actors.values()) a.update(clock, dt, pp);
+      for (const [id, a] of actors) {
+        const body = lifeBodies.get(id);
+        a.update(clock, dt, body ? null : pp);
+        if (!body) continue;
+        const parts = a.group.userData.parts;
+        const pose = body.pose;
+        const tension = Math.min(.18, Math.max(0, Number(body.actor.stress ?? 0)) * .18);
+        parts.torso.rotation.x = (a.state.style.hunch ?? 0) + tension;
+        parts.head.rotation.x = pose === 'hesitate' ? .18 : pose === 'offer' ? -.08 : 0;
+        parts.armR.rotation.x = pose === 'offer' || pose === 'given' ? -.65 : pose === 'hesitate' ? -.22 : 0;
+        parts.armL.rotation.z = pose === 'guard' ? .42 : 0;
+        const target = pose === 'away' ? null : actors.get('player')?.group.position;
+        parts.head.rotation.y = target ? Math.max(-.55, Math.min(.55, Math.atan2(target.x - a.x, target.z - a.z) - a.group.rotation.y)) : 0;
+      }
       for (const l of live) l.update(clock, dt);
     },
 

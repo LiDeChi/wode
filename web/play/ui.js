@@ -286,7 +286,7 @@ export function createUI({ dev = false } = {}) {
       el.endingBadge.textContent = coda.end ?? coda.ending ?? '';
       el.endingLived.textContent = coda.lived ?? '';
       el.endingBook.textContent = coda.book ?? '';
-      el.endingDays.textContent = coda.days !== undefined ? `这件事，用了 ${coda.days} 天。` : '';
+      el.endingDays.textContent = dev && coda.days !== undefined ? `这件事，用了 ${coda.days} 天。` : '';
       el.endingSummary.hidden = true;
       el.endingActions.innerHTML = '';
       const b1 = document.createElement('button');

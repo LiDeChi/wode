@@ -6,6 +6,8 @@ import { createPlay } from '/shared/engine/play.js';
 import { createStage } from './stage.js';
 import { createCamera } from './camera.js';
 import { createUI } from './ui.js';
+import { createLivingUI } from './living.js';
+import { loadWorld, saveWorld, createRecording } from '/film/world.js';
 
 const params = new URLSearchParams(location.search);
 const DEV = params.get('dev') === '1';
@@ -53,11 +55,97 @@ let picked = null;          // 这一局选了哪位导演（录电影要用他�
 let lastCoda = null;        // 结局那一屏的文字，收束页还要用
 let lastActs = null;
 const rec = [];             // 这一局的动作记录：电影就是把它重放一遍
+let livingEnabled = params.get('living') !== '0';
+let paused = false;
+let lifeSeconds = 0;
+let inputId = 0;
+let lifeRead = null;
+let initialSave = null;
+let recording = null;
+const LIFE_SEED = 'play-living-v1';
+const livingUI = createLivingUI({
+  dev: DEV, ui,
+  onPause: () => setPaused(!paused),
+  onToggle: () => {
+    if (play) { ui.hint('生活入口在开场选择；重新开一个世界时可换。'); return; }
+    livingEnabled = !livingEnabled; livingUI.enabled(livingEnabled);
+  },
+  onResume: () => resumeWorld(),
+});
+livingUI.enabled(livingEnabled);
+
+function setPaused(on) {
+  paused = on;
+  lifeSeconds = 0;
+  syncPause();
+  livingUI.paused(on, !!play?.life && !ended);
+  persistWorld();
+}
+function syncPause() {
+  lifeSeconds = 0;
+  if (!play?.life) return;
+  const on = paused || document.hidden;
+  if (play.life.state().paused !== on) {
+    if (on) play.life.pause(); else play.life.resume();
+    recording?.pause(on, play.life.tick());
+  }
+  persistWorld();
+}
+function persistWorld() {
+  if (!play?.life) return;
+  try { saveWorld({ v: 1, picked, paused, saved: session.save(), recording: recording?.save() ?? null }); }
+  catch (e) { if (DEV) console.warn('续档未保存', e); ui.hint('这台设备没能留住存档；当前这一场仍可继续。'); }
+}
+function readLiving() {
+  if (!play?.life) return;
+  lifeRead = play.lifeRead(view?.act);
+  stage.setLife(lifeRead, session.ledger.entries, session.state.episode?.from ?? 0);
+  livingUI.read(lifeRead, view, session);
+  livingUI.paused(paused, !ended);
+  persistWorld();
+}
+function resumeWorld() {
+  try {
+    const saved = loadWorld();
+    if (!saved?.saved?.play?.life) throw new Error('这个世界还没有生活存档。');
+    session = createSession({ saved: saved.saved }); picked = saved.picked ?? 'shan';
+    initialSave = saved.recording?.initial ?? session.save();
+    recording = createRecording({ session, initial: initialSave, director: picked, seed: saved.saved.play.life.seed, record: saved.recording?.v === 2 ? saved.recording : null });
+    inputId = Object.keys(saved.saved.play.life.processed ?? {}).length;
+    play = createPlay(session, { living: 'director', seed: saved.saved.play.life.seed });
+    livingEnabled = true; livingUI.enabled(true);
+    paused = Boolean(saved.paused ?? saved.saved.play.life.paused); syncPause(); livingUI.paused(paused, true);
+    ui.el.title.hidden = true;
+    view = play.view();
+    if (view.stage === 'film') { view = act('next'); }
+    if (view.stage === 'intro') { act('begin'); view = act('next'); }
+    settle();
+  } catch (e) { ui.hint(humanError(e)); }
+}
+document.addEventListener('visibilitychange', syncPause);
+document.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'p' && play?.life) { e.preventDefault(); setPaused(!paused); }
+  if (e.key === 'Escape') livingUI.close();
+});
+window.addEventListener('pagehide', persistWorld);
 
 /** 所有对引擎的调用都从这儿过——顺手录一份，电影才放得出来 */
 function act(op, ...args) {
   rec.push({ op, args });
-  return play[op](...args);
+  if (play.life && paused && op === 'watch') {
+    const result = play.watch(...args); recording?.step(op, args, { tick: play.life.tick() }); return result;
+  }
+  if (play.life && ['choose', 'watch', 'ask', 'chooseKeeper'].includes(op)) {
+    const tick = play.life.tick() + 1;
+    const inp = { id: `${session.state.episode?.id ?? 'ep1'}:ui:${++inputId}`, tick, op, args };
+    const r = play.advance({ toTick: tick, inputs: [inp] });
+    recording?.advance({ toTick: tick, inputs: [inp] });
+    lifeSeconds = 0;
+    return r.processed.find(x => x.id === inp.id)?.outcome;
+  }
+  const r = play[op](...args);
+  if (play.life) recording?.step(op, args, { tick: play.life.tick() });
+  return r;
 }
 
 /* ── 小工具 ──────────────────────────────────────────────── */
@@ -162,6 +250,16 @@ function anchorFor(opt, v) {
   return { key: 'device' };
 }
 
+// 人物的「样子」在数据里是 {color, glyph}：签的提示行要说人话，不能把对象直接拼进字符串
+function lookText(look, name) {
+  if (!look) return '';
+  if (typeof look === 'string') return look;
+  const glyph = look.glyph ? `衣冠作「${look.glyph}」` : '';
+  const color = look.color ? `色 ${look.color}` : '';
+  const parts = [glyph, color].filter(Boolean).join('，');
+  return parts ? `${name}的样子：${parts}` : '';
+}
+
 function paint(v) {
   ui.setScene(v);
   ui.setDays(v.days);
@@ -179,7 +277,7 @@ function paint(v) {
     const other = isKeeper && p.id !== v.granary.keeper;
     entries.push({
       key, kind: 'person', label: other ? `${p.name}（换他）` : p.name,
-      hint: [p.title, p.look].filter(Boolean).join(' · '),
+      hint: [p.title, lookText(p.look, p.name)].filter(Boolean).join(' · '),
       onClick: () => {
         if (other) { doKeeper(p.id); return; }
         if (opened.has(p.id)) opened.delete(p.id); else opened.add(p.id);
@@ -217,7 +315,8 @@ function paint(v) {
     gizmos.push({ key, actions });
   }
   ui.setGizmos(gizmos);
-  ui.dev({ 阶段: v.stage, 场: v.act ?? v.stage, 天数: v.days, 可选项: (v.options ?? []).map((o) => `${o.id}${o.allowed ? '' : '(不许)'}`) });
+  readLiving();
+  ui.dev({ 阶段: v.stage, 场: v.act ?? v.stage, 天数: v.days, 可选项: (v.options ?? []).map((o) => `${o.id}${o.allowed ? '' : '(不许)'}`), 生活: lifeRead });
 }
 
 function showAct(v) {
@@ -252,6 +351,7 @@ async function settle() {
 
 async function doChoose(id) {
   if (busy || !view) return;
+  if (paused) { ui.hint('生活暂停着。点「继续生活」或按 P 再动手。'); return; }
   const opt = (view.options ?? []).find((o) => o.id === id);
   if (!opt) return;
   const keepOpened = view.act === 'night';
@@ -269,7 +369,7 @@ async function doChoose(id) {
     if (r.r?.tell) ui.tell(r.r.tell);
     freeze(false);
     await speak(speaker ? nameOf(speaker) : HOLDER, r.text ?? '……');
-    view = r.view;
+    view = play.life ? play.view() : r.view;
     if (!keepOpened) opened.clear();
     await settle();
   } catch (e) {
@@ -286,7 +386,12 @@ async function doWatch(id) {
     const r = act('watch', id);
     const p = anchorPos(`person:${id}`);
     if (p) cam.focus(p, { dist: 5.6, elev: 0.22 });
-    ui.showMind(r);
+    if (play.life) {
+      view = play.view(); readLiving();
+      const actor = lifeRead?.actors.find(a => a.id === id);
+      const real = actor?.last?.seq ? play.lifeTrace(actor.last.seq) : null;
+      livingUI.mind(r, lifeRead, real, session);
+    } else ui.showMind(r);
   } catch (e) {
     ui.hideMind();
     await speak('', humanError(e));
@@ -296,7 +401,7 @@ async function doWatch(id) {
 }
 
 async function doAsk(id) {
-  if (busy || !view) return;
+  if (busy || !view || paused) return;
   busy = true;
   try {
     const r = act('ask', id);
@@ -311,7 +416,7 @@ async function doAsk(id) {
 }
 
 async function doKeeper(id) {
-  if (busy || !view || view.stage !== 'granary') return;
+  if (busy || paused || !view || view.stage !== 'granary') return;
   busy = true;
   try {
     view = act('chooseKeeper', id);
@@ -338,10 +443,12 @@ function showCoda(v) {
       ui.hideEnding();
       ui.clearTags();
       view = act('next');
+      ended = false;
       showAct(view);
     },
     onClose: () => showFinal(view),
   });
+  if (play.life) { livingUI.chain(session, lifeRead); livingUI.paused(paused, false); persistWorld(); }
 }
 
 function showFinal(v) {
@@ -358,24 +465,40 @@ function showFinal(v) {
     outcome: a.outcome ?? a.text ?? '',
   }));
   const coda = v?.coda ?? lastCoda ?? {};
+  ended = true;
   ui.showFinal(acts, {
     onRestart: () => location.reload(),
     onFilm: () => saveFilm(),
     // 最后一片竹简上刻的结局名（例如「援军未至」），以及它的来路（本作的历史 / 史记）
     ending: { title: coda.end || '', kind: ENDING_LABEL[coda.ending] ?? '' },
   });
+  if (play.life) {
+    livingUI.chain(session, lifeRead); livingUI.paused(paused, false); persistWorld();
+    const next = document.createElement('button'); next.type = 'button'; next.className = 'enter'; next.textContent = '同世界再见一回';
+    next.addEventListener('click', () => {
+      session.beginEpisode({ work: 'qiefu' }); session.state.play = null;
+      initialSave = session.save();
+      recording = createRecording({ session, initial: initialSave, director: picked, seed: LIFE_SEED });
+      play = createPlay(session, { living: 'director', seed: LIFE_SEED });
+      ended = false; paused = false; lifeSeconds = 0; inputId = 0; rec.length = 0;
+      act('begin'); view = act('next'); ui.hideEnding(); ui.hideLine(); showAct(view);
+    });
+    ui.el.endingActions.append(next);
+  }
 }
 
 /** 把这一局的动作录成一份电影（web/film/format.js 的 v1 录制），交给 /film.html 放 */
 async function saveFilm() {
   try {
     const mod = await import('/film/format.js');
-    const record = {
+    const record = play.life ? recording.save() : {
       v: 1,
       director: { answers: ANSWERS[picked] ?? ANSWERS.shan, need: NEED },
       steps: rec,
     };
-    localStorage.setItem(mod.STORAGE_KEY, mod.encode(record));
+    if (play.life) persistWorld();
+    mod.decode(record);
+    localStorage.setItem(mod.STORAGE_KEY, JSON.stringify(record));
     location.href = '/film.html?last=1';
   } catch (e) {
     fail(e);
@@ -388,8 +511,10 @@ function startDirector(dir) {
   try {
     session = createSession();
     session.meet(ANSWERS[dir], NEED);
-    play = createPlay(session);
+    initialSave = session.save();
     picked = dir;
+    recording = livingEnabled ? createRecording({ session, initial: initialSave, seed: LIFE_SEED, director: picked }) : null;
+    play = createPlay(session, livingEnabled ? { living: 'director', seed: LIFE_SEED } : {});
     const film = act('begin');
     ui.el.title.hidden = true;
     ui.el.film.hidden = false;
@@ -410,7 +535,7 @@ function startDirector(dir) {
 document.getElementById('pick-lu').addEventListener('click', () => startDirector('lu'));
 document.getElementById('pick-shan').addEventListener('click', () => startDirector('shan'));
 document.getElementById('restart').addEventListener('click', () => location.reload());
-ui.bindMindClose(() => ui.hideMind());
+ui.bindMindClose(() => livingUI.close());
 
 window.addEventListener('error', (e) => fail(e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => fail(e.reason));
@@ -437,11 +562,25 @@ function screenOf(key) {
 
 let prev = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, (now - prev) / 1000);
+  const elapsed = (now - prev) / 1000;
+  const dt = Math.min(0.05, elapsed);
   prev = now;
   try {
     cam.update(dt);
-    stage.update(dt);
+    if (play?.life && !paused && !document.hidden && !busy && !ended && ['act', 'granary'].includes(view?.stage) && elapsed < 1) {
+      lifeSeconds += elapsed;
+      if (lifeSeconds >= 1) {
+        lifeSeconds -= 1;
+        const tick = play.life.tick() + 1;
+        const r = play.advance({ toTick: tick }); recording?.advance({ toTick: tick, inputs: [] });
+        view = play.view();
+        if (view.done) { busy = true; Promise.resolve(settle()).finally(() => { busy = false; }); }
+        else { stage.refresh(view); paint(view); }
+        const words = r.outcomes.map(o => o.text).filter(Boolean);
+        if (words.length) ui.tell(words.at(-1));
+      }
+    }
+    stage.update(paused || document.hidden ? 0 : dt);
     render.render();
     ui.syncTags(screenOf);
   } catch (e) {
@@ -463,5 +602,9 @@ if (DEV) {
     ask: (id) => doAsk(id),
     keeper: (id) => doKeeper(id),
     state: () => play?.state?.() ?? null,
+    lifeRead: () => lifeRead,
+    ledger: () => session?.ledger.entries,
+    pause: (on) => setPaused(on),
+    saved: () => session?.save(),
   };
 }
