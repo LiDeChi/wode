@@ -20,7 +20,10 @@ function seedHistory(claims) {
   }
 }
 
-export function createSession({ saved, speaker } = {}) {
+export function createSession(options = {}) {
+  // 支持 session.save() 直接交回，也保留 { saved, speaker } 的配置入口。
+  // 存档有自己的 ledger；配置对象的 ledger 则在 saved 里，不会混成一次新会话。
+  const { saved, speaker } = options?.ledger ? { saved: options } : options;
   const ledger = saved?.ledger ? loadLedger(saved.ledger) : createLedger();
   const claims = createClaimGraph(ledger, saved?.claims);
   if (!saved) seedHistory(claims);

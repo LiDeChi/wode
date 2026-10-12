@@ -278,7 +278,8 @@ play.lifeTrace(seq);             // 当时那条感知片段
 ### 经验跨局留、历史不串台
 
 - living 开局显式 `beginEpisode`；恢复保留原 `episode:{id,n,work,openSeq,from,to,inherit,claimIds,previous,learnedThrough}`，不重开。新段重置拍、sceneTick、输入去重、队列与 ended，记忆/心智/手艺继承；memoryOffset 让衰减时序跨段连续。
-- `life.experiences` 是已索引反应 seq 的去重表，store 是记忆；`session.save()` 同步当前 store，二者与 perceptions/episode 一起续档。自动 end 回接 `act.done/outcome`，已有 work 效果不重写；可 next，且不伪造 user.react。
+- `life.experiences` 是已索引反应 seq 的去重表，store 是记忆；`session.save()` 同步当前 store，二者与 perceptions/episode 一起续档。恢复入口兼容 `createSession(saved)` 与 `createSession({saved,speaker})`；前者直接接受 save 返回值或其 JSON 往返，恢复当前场/原拍/计划来源，不重提交。`node /tmp/t57-resume-sol3.mjs` 验四种形态续到第8拍与直走的 life/episode/完整账本一致。
+- 自动 end 回接 `act.done/outcome`，已有 work 效果不重写；可 next，且不伪造 user.react。
 - `find(subject,predicate)` 只在**本段**（`session.episodeScope().claimIds`）里找下场 / 结局 / 学习反应 → 上一局晋鄙的下场不参与新分支的结局计算。不开生活时 `episodeScope()` 为 null，行为与旧版逐字节相同。
 
 ### 记忆存储的字面契约（`shared/core/memory.js`）
